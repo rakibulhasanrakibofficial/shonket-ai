@@ -55,11 +55,14 @@ export default async function handler(req, res) {
     const { message = "", imageBase64 = "", imageMimeType = "", language = "bn" } = req.body || {};
     const cleanText = String(message).trim().slice(0, MAX_TEXT);
     if (!cleanText && !imageBase64) return send(res, 400, { error: "Add a message or screenshot to analyze." });
-    const banglaScript = /[\\u0980-\\u09FF]/.test(cleanText);
-    // Avoid generic English scam vocabulary (account, OTP, please, etc.).
-    // Require clear Banglish transliteration rather than one shared English word.
-    const banglishWords = cleanText.match(/\\b(ami|apni|apnar|tumi|tomar|amar|bondho|hoye|geche|jabe|ekhoni|ekhon|pathan|den|korun|koro|taka|paben|jitse|puraskar|bikash|bkash|nagad|chakri|beton|dorkar|khaben|keno|hobe|hoy|ase|ache|nai|na|korben|korbenna|dibena|diben)\\b/gi) || [];
-    const banglishHints = new Set(banglishWords.map(word => word.toLowerCase())).size >= 2;
+    const banglaScript = Array.from(cleanText).some(ch => {
+      const code = ch.codePointAt(0);
+      return code >= 0x0980 && code <= 0x09FF;
+    });
+    // Split on non-English letters so Banglish is detected without fragile escaped word-boundary regexes.
+    const banglishTokens = cleanText.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    const banglishVocabulary = new Set(["ami","apni","apnar","tumi","tomar","amar","bondho","hoye","geche","jabe","ekhoni","ekhon","pathan","den","korun","koro","taka","paben","jitse","puraskar","bikash","bkash","nagad","chakri","beton","dorkar","khaben","keno","hobe","hoy","ase","ache","nai","na","korben","korbenna","dibena","diben"]);
+    const banglishHints = new Set(banglishTokens.filter(token => banglishVocabulary.has(token))).size >= 2;
     const detectedResponseLanguage = language === "bn" ? "bn" : language === "en" ? "en" : (banglaScript || banglishHints ? "bn" : "en");
 
     const parts = [{
