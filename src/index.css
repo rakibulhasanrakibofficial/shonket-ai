@@ -311,3 +311,28 @@
 @media(prefers-reduced-motion:reduce){
  .about-feature,.about-loop-label,.about-loop-icon{transition:none!important;transform:none!important}
 }
+
+
+/* Fix Scam-to-Skill heading rendering: crisp text, no embossed/ghosting */
+.about-stage .about-loop-grid + * { text-rendering:geometricPrecision; }
+.about-stage h3:has(.about-gradient){
+  color:#f4f5ff;
+  font-size:clamp(1.15rem,1.8vw,1.55rem);
+  line-height:1.25;
+  letter-spacing:-.025em;
+  font-weight:800;
+  text-shadow:none!important;
+  filter:none!important;
+  -webkit-font-smoothing:antialiased;
+}
+.about-stage h3:has(.about-gradient) .about-gradient{
+  display:inline;
+  color:#c7a8ff;
+  background:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:currentColor!important;
+  text-shadow:none!important;
+  filter:none!important;
+  letter-spacing:-.02em;
+}
