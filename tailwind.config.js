@@ -1,0 +1,1 @@
+export default {content:['./index.html','./src/**/*.{js,jsx}'],theme:{extend:{fontFamily:{display:['Space Grotesk','sans-serif'],sans:['DM Sans','sans-serif']},colors:{ink:'#080914',panel:'#111426',violet:'#8B5CF6',cyan:'#35D9F2',coral:'#FF765E'}}},plugins:[]};
