@@ -336,3 +336,51 @@
   filter:none!important;
   letter-spacing:-.02em;
 }
+
+
+/* Hero sphere orbital motion — continuous, visible rotation */
+.hero-orbit{
+  pointer-events:none;
+  border:1px solid rgba(204,190,255,.52);
+  transform-origin:50% 50%;
+  will-change:transform;
+  animation:hero-orbit-spin 16s linear infinite;
+}
+.hero-orbit-one{
+  border-color:rgba(210,198,255,.62);
+  box-shadow:0 0 18px #a78bfa12,inset 0 0 18px #a78bfa0b;
+}
+.hero-orbit-two{
+  border-color:rgba(101,232,255,.34);
+  animation-name:hero-orbit-spin-reverse;
+  animation-duration:21s;
+  box-shadow:0 0 24px #22d3ee12,inset 0 0 22px #22d3ee0b;
+}
+.hero-orbit-dot{
+  position:absolute;
+  left:50%;
+  top:-5px;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#8ceeff;
+  box-shadow:0 0 8px 3px #22d3ee99,0 0 20px 7px #22d3ee55;
+}
+.hero-orbit-two .hero-orbit-dot{
+  left:auto;
+  top:50%;
+  right:-5px;
+  background:#c4b5fd;
+  box-shadow:0 0 8px 3px #a78bfa99,0 0 20px 7px #8b5cf655;
+}
+@keyframes hero-orbit-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+@keyframes hero-orbit-spin-reverse{
+  from{transform:rotate(360deg)}
+  to{transform:rotate(0deg)}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero-orbit{animation:none!important}
+}
