@@ -23,3 +23,25 @@
 .choice-button:not(:disabled):hover{transform:translateX(4px);border-color:#9b8aff;background:#8b5cf626;box-shadow:0 6px 20px #7955ff18}
 .choice-button:disabled{cursor:default}
 @media(prefers-reduced-motion:reduce){.tool-card,.action-button,.workspace-tab,.choice-button{transition:none!important;transform:none!important}}
+
+/* Individual tool identities: violet / electric cyan / warm amber */
+.tool-card{isolation:isolate;transform-style:preserve-3d;perspective:1000px}
+.tool-violet{background:radial-gradient(ellipse at 92% 4%,#8b5cf62a,transparent 43%),linear-gradient(145deg,#20183b 0%,#121429 56%,#0c1020 100%);border-color:#a78bfa45}
+.tool-cyan{background:radial-gradient(ellipse at 92% 4%,#22d3ee27,transparent 43%),linear-gradient(145deg,#102d3a 0%,#101d2b 56%,#0c1020 100%);border-color:#67e8f945}
+.tool-orange{background:radial-gradient(ellipse at 92% 4%,#fb923c2b,transparent 43%),linear-gradient(145deg,#382317 0%,#211a20 56%,#11111f 100%);border-color:#fdba7445}
+.tool-violet:before,.tool-cyan:before,.tool-orange:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;opacity:.95}
+.tool-violet:before{background:linear-gradient(90deg,#8b5cf6,#c4b5fd,transparent)}
+.tool-cyan:before{background:linear-gradient(90deg,#06b6d4,#a5f3fc,transparent)}
+.tool-orange:before{background:linear-gradient(90deg,#f97316,#fcd34d,transparent)}
+.tool-violet .tool-icon{color:#c4b5fd;background:#8b5cf630}
+.tool-cyan .tool-icon{color:#a5f3fc;background:#06b6d430}
+.tool-orange .tool-icon{color:#fdba74;background:#f9731630}
+.tool-card.is-active.tool-violet{border-color:#c4b5fd;box-shadow:0 0 0 1px #a78bfa66,0 22px 60px #8b5cf638,inset 0 1px #ffffff25}
+.tool-card.is-active.tool-cyan{border-color:#a5f3fc;box-shadow:0 0 0 1px #22d3ee66,0 22px 60px #06b6d438,inset 0 1px #ffffff25}
+.tool-card.is-active.tool-orange{border-color:#fed7aa;box-shadow:0 0 0 1px #fb923c66,0 22px 60px #f9731638,inset 0 1px #ffffff25}
+.title-3d{text-shadow:0 1px 0 #c4b5fd35,0 2px 0 #a78bfa24,0 4px 0 #111128,0 9px 18px #0009;filter:drop-shadow(0 8px 16px #7c3aed20)}
+.title-3d .text-gradient{filter:drop-shadow(0 4px 0 #6544a655) drop-shadow(0 12px 16px #22d3ee25)}
+.tool-card h3{transform:translateZ(24px);text-shadow:0 2px 0 #0005,0 7px 14px #0006}
+.tool-card .tool-icon-wrap{transform:translateZ(32px);box-shadow:0 7px 0 #0005,0 12px 24px #0005,inset 0 1px #ffffff50}
+.action-button,.workspace-tab{font-weight:800;letter-spacing:.01em}
+@media(prefers-reduced-motion:reduce){.title-3d{filter:none;text-shadow:none}}
