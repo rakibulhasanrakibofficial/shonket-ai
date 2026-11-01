@@ -20,7 +20,7 @@ function Brand(){return <a href="#home" aria-label="SHONKET AI home" className="
 export default function App(){
 const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[message,setMessage]=useState(''),[analysis,setAnalysis]=useState(null),[busy,setBusy]=useState(false),[aiError,setAiError]=useState(''),[imageFile,setImageFile]=useState(null),[imagePreview,setImagePreview]=useState(''),[language,setLanguage]=useState('en'),[analysisLanguage,setAnalysisLanguage]=useState('en'),[url,setUrl]=useState(''),[urlResult,setUrlResult]=useState(null),[scenario,setScenario]=useState(0),[choice,setChoice]=useState(null),[simScore,setSimScore]=useState(0),[simDone,setSimDone]=useState([]),[voiceListening,setVoiceListening]=useState(false),[voiceError,setVoiceError]=useState(''),[speaking,setSpeaking]=useState(false),[speechPaused,setSpeechPaused]=useState(false),[voiceOptions,setVoiceOptions]=useState([]),[selectedVoice,setSelectedVoice]=useState('');
 const resultLanguage=analysisLanguage;
-const isBn=resultLanguage==='bn';
+const isBn=language==='bn';
 const autoVoiceLanguage=language;
 const t=(en,bn)=>isBn?bn:en;
 useEffect(()=>{document.documentElement.lang=resultLanguage;},[resultLanguage]);
