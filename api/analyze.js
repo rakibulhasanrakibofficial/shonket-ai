@@ -1,6 +1,6 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const MAX_TEXT = 4000;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 const schema = {
   type: "OBJECT",
