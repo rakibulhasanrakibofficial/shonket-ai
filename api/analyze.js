@@ -9,7 +9,7 @@ const schema = {
     response_language: { type: "STRING", enum: ["bn", "en"] },
     summary_bn: { type: "STRING" },
     summary_en: { type: "STRING" },
-    evidence: { type: "ARRAY", items: { type: "OBJECT", properties: { quote: { type: "STRING" }, reason_bn: { type: "STRING" }, reason_en: { type: "STRING" } }, required: ["quote", "reason_bn", "reason_en"] } },
+    evidence: { type: "ARRAY", items: { type: "OBJECT", properties: { quote: { type: "STRING" }, quote_bn: { type: "STRING" }, quote_en: { type: "STRING" }, reason_bn: { type: "STRING" }, reason_en: { type: "STRING" } }, required: ["quote", "quote_bn", "quote_en", "reason_bn", "reason_en"] } },
     tactics: { type: "ARRAY", items: { type: "STRING" } },
     safe_actions: { type: "ARRAY", items: { type: "STRING" } },
     uncertainty: { type: "STRING" },
