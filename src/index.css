@@ -246,3 +246,20 @@
 @media(prefers-reduced-motion:reduce){
   .about-stage h2,.about-stage h2 .about-gradient,.about-stage h3,.about-stage p{filter:none}
 }
+
+
+/* Keep display typography crisp: 3D depth belongs to cards and buttons, not headings */
+.about-stage h2,
+.about-stage h2 .about-gradient{
+  text-shadow:none!important;
+  filter:none!important;
+  -webkit-text-stroke:0!important;
+}
+.about-stage h2 .about-gradient{
+  display:inline;
+  background-image:linear-gradient(100deg,#f3eaff 0%,#b69aff 42%,#62e7f6 82%,#83f0c4 100%);
+  background-clip:text;
+  -webkit-background-clip:text;
+  color:transparent;
+}
+.about-stage h2{letter-spacing:-.045em}
