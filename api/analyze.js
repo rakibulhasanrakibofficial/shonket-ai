@@ -6,6 +6,7 @@ const schema = {
   type: "OBJECT",
   properties: {
     verdict: { type: "STRING", enum: ["scam", "suspicious", "likely_safe", "uncertain"] },
+    response_language: { type: "STRING", enum: ["bn", "en"] },
     summary_bn: { type: "STRING" },
     summary_en: { type: "STRING" },
     evidence: { type: "ARRAY", items: { type: "OBJECT", properties: { quote: { type: "STRING" }, reason_bn: { type: "STRING" }, reason_en: { type: "STRING" } }, required: ["quote", "reason_bn", "reason_en"] } },
@@ -14,7 +15,7 @@ const schema = {
     uncertainty: { type: "STRING" },
     confidence: { type: "STRING", enum: ["low", "medium", "high"] }
   },
-  required: ["verdict", "summary_bn", "summary_en", "evidence", "tactics", "safe_actions", "uncertainty", "confidence"]
+  required: ["verdict", "response_language", "summary_bn", "summary_en", "evidence", "tactics", "safe_actions", "uncertainty", "confidence"]
 };
 
 const patterns = [
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
         "If evidence is weak or context is missing, say uncertain. Likely safe is not a guarantee.",
         "Give practical safe actions: never share OTPs/passwords, avoid paying unexpected fees, do not install unknown apps or downloads, avoid entering personal details on suspicious age-verification pages, and verify independently through official channels.",
         "Return the required JSON. Confidence is about this limited assessment, not a probability of fraud.",
-        "User interface language preference: " + (language === "en" ? "English" : "Bangla") + ".",
+        language === "en" ? "Write the user-facing answer in English. Set response_language to en." : language === "bn" ? "Write the user-facing answer in Bangla. Set response_language to bn." : "AUTO LANGUAGE: Detect the primary language of the submitted message or screenshot. If it is Bangla, write the user-facing answer in Bangla and set response_language to bn. If it is English, write it in English and set response_language to en. For mixed-language input, use the dominant language. For image-only input, detect the primary language visible in the screenshot.",
         cleanText ? "MESSAGE TEXT:\n" + cleanText : "No message text supplied; inspect the screenshot only."
       ].join("\n\n")
     }];
@@ -133,6 +134,7 @@ export default async function handler(req, res) {
 
     return send(res, 200, {
       verdict,
+      responseLanguage: ai.response_language === "bn" ? "bn" : "en",
       riskScore,
       riskLevel,
       summary_bn: String(ai.summary_bn || "").slice(0, 700),
