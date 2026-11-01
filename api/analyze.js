@@ -55,9 +55,13 @@ export default async function handler(req, res) {
     const { message = "", imageBase64 = "", imageMimeType = "", language = "bn" } = req.body || {};
     const cleanText = String(message).trim().slice(0, MAX_TEXT);
     if (!cleanText && !imageBase64) return send(res, 400, { error: "Add a message or screenshot to analyze." });
+    // Detect Bengali letters only. The Bengali block also contains ৳ and digits,
+    // which must not make an otherwise English message look like Bangla.
     const banglaScript = Array.from(cleanText).some(ch => {
       const code = ch.codePointAt(0);
-      return code >= 0x0980 && code <= 0x09FF;
+      return (code >= 0x0985 && code <= 0x09B9) ||
+        (code >= 0x09DC && code <= 0x09E1) ||
+        (code >= 0x09F0 && code <= 0x09F1);
     });
     // Split on non-English letters so Banglish is detected without fragile escaped word-boundary regexes.
     const banglishTokens = cleanText.toLowerCase().split(/[^a-z]+/).filter(Boolean);
