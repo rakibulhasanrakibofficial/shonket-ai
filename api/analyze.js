@@ -27,7 +27,7 @@ const patterns = [
   { id: "job", weight: 14, regex: /\b(guaranteed job|work from home|high salary|job offer)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন/i, label: "Unverified job offer" }
 ];
 
-function scoreText(text, evidenceCount = 0) {
+function scoreText(text) {
   let total = 0;
   const matched = [];
   for (const item of patterns) {
@@ -36,7 +36,6 @@ function scoreText(text, evidenceCount = 0) {
       matched.push(item.label);
     }
   }
-  if (evidenceCount > 0 && matched.length === 0) total += Math.min(12, evidenceCount * 4);
   return { score: Math.min(100, total), matched };
 }
 
@@ -118,7 +117,7 @@ export default async function handler(req, res) {
       reason_en: String(x.reason_en || "").slice(0, 320)
     })) : [];
     const combined = cleanText + " " + evidence.map(x => x.quote).join(" ");
-    const scored = scoreText(combined, evidence.length);
+    const scored = scoreText(combined);
     const verdict = scored.score >= 60 ? "scam" : scored.score >= 25 ? "suspicious" : (!cleanText && evidence.length === 0 ? "uncertain" : (["scam", "suspicious", "likely_safe", "uncertain"].includes(ai.verdict) ? ai.verdict : "uncertain"));
     const riskLevel = scored.score >= 75 ? "critical" : scored.score >= 50 ? "high" : scored.score >= 25 ? "medium" : "low";
 
