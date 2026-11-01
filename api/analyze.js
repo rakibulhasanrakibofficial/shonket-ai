@@ -56,7 +56,10 @@ export default async function handler(req, res) {
     const cleanText = String(message).trim().slice(0, MAX_TEXT);
     if (!cleanText && !imageBase64) return send(res, 400, { error: "Add a message or screenshot to analyze." });
     const banglaScript = /[\\u0980-\\u09FF]/.test(cleanText);
-    const banglishHints = /\\b(ami|apni|apnar|tumi|tomar|amar|account|bondho|hoye|jabe|ekhoni|ekhon|otp|pathan|den|korun|koro|taka|paben|jitse|puraskar|bikash|bkash|nagad|chakri|beton|dorkar|khaben|ki|keno|hobe|hoy|ase|ache|nai|na|please|korben)\\b/i.test(cleanText);
+    // Avoid generic English scam vocabulary (account, OTP, please, etc.).
+    // Require clear Banglish transliteration rather than one shared English word.
+    const banglishWords = cleanText.match(/\\b(ami|apni|apnar|tumi|tomar|amar|bondho|hoye|geche|jabe|ekhoni|ekhon|pathan|den|korun|koro|taka|paben|jitse|puraskar|bikash|bkash|nagad|chakri|beton|dorkar|khaben|keno|hobe|hoy|ase|ache|nai|na|korben|korbenna|dibena|diben)\\b/gi) || [];
+    const banglishHints = new Set(banglishWords.map(word => word.toLowerCase())).size >= 2;
     const detectedResponseLanguage = language === "bn" ? "bn" : language === "en" ? "en" : (banglaScript || banglishHints ? "bn" : "en");
 
     const parts = [{
