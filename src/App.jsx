@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {analyzeMessage} from './services/aiService';
 import {motion,AnimatePresence} from 'framer-motion';
-import {ShieldCheck,ScanSearch,BrainCircuit,ArrowUpRight,ArrowRight,Menu,X,Sparkles,Link2,MessageSquareText,LockKeyhole,Activity,Fingerprint,CheckCircle2,AlertTriangle,Globe2,ChevronRight,Upload} from 'lucide-react';
+import {ShieldCheck,ScanSearch,BrainCircuit,ArrowUpRight,ArrowRight,Menu,X,Sparkles,Link2,MessageSquareText,LockKeyhole,Activity,Fingerprint,CheckCircle2,AlertTriangle,Globe2,ChevronRight,Upload,Users} from 'lucide-react';
 const scenarios=[
 {tag:'MOBILE FINANCIAL SERVICE',title:'A support agent asks for your OTP',detail:'Someone claims your account will be blocked unless you share a one-time code.',choices:['Share the code to keep my account active','Stop and contact the official service channel','Forward the message to friends'],correct:1,explain:'Never disclose an OTP. Contact the service through its verified app or official support channel.'},
 {tag:'JOB OFFER',title:'A recruiter promises a job after an upfront fee',detail:'The message offers a guaranteed job but asks you to pay a processing charge first.',choices:['Pay quickly before the offer expires','Verify the company independently','Send personal documents immediately'],correct:1,explain:'Upfront fees and artificial urgency are warning signs. Verify the employer independently.'},
