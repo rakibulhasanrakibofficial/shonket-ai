@@ -11,11 +11,11 @@ const scenarios=[
 ];
 function Brand(){return <a href="#home" aria-label="SHONKET AI home" className="brand-lockup group flex items-center gap-3 text-white no-underline"><span className="brand-mark relative grid h-11 w-11 place-items-center rounded-[15px]"><span className="brand-mark-inner absolute inset-[3px] rounded-[12px]"/><ShieldCheck size={24} strokeWidth={1.9} className="relative z-10 text-white drop-shadow-[0_2px_7px_rgba(110,231,255,.5)]"/><span className="brand-mark-spark absolute right-[7px] top-[6px] z-20 h-1.5 w-1.5 rounded-full bg-cyan-200"/></span><span className="brand-wordmark flex items-baseline gap-1"><span className="font-display text-[19px] font-extrabold tracking-[-.055em]">SHONKET</span><span className="brand-ai text-[10px] font-extrabold tracking-[.14em]">AI</span></span></a>}
 export default function App(){
-const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[message,setMessage]=useState(''),[analysis,setAnalysis]=useState(null),[busy,setBusy]=useState(false),[aiError,setAiError]=useState(''),[imageFile,setImageFile]=useState(null),[imagePreview,setImagePreview]=useState(''),[language,setLanguage]=useState('en'),[url,setUrl]=useState(''),[urlResult,setUrlResult]=useState(null),[scenario,setScenario]=useState(0),[choice,setChoice]=useState(null),[simScore,setSimScore]=useState(0),[simDone,setSimDone]=useState([]);
+const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[message,setMessage]=useState(''),[analysis,setAnalysis]=useState(null),[busy,setBusy]=useState(false),[aiError,setAiError]=useState(''),[imageFile,setImageFile]=useState(null),[imagePreview,setImagePreview]=useState(''),[language,setLanguage]=useState(()=>localStorage.getItem('shonket-language')==='bn'?'bn':'en'),[url,setUrl]=useState(''),[urlResult,setUrlResult]=useState(null),[scenario,setScenario]=useState(0),[choice,setChoice]=useState(null),[simScore,setSimScore]=useState(0),[simDone,setSimDone]=useState([]);
 const resultLanguage=language;
 const isBn=language==='bn';
 const t=(en,bn)=>isBn?bn:en;
-useEffect(()=>{document.documentElement.lang=language;},[language]);
+useEffect(()=>{document.documentElement.lang=language;localStorage.setItem('shonket-language',language);},[language]);
 const nav=[['checker',t('Scam Checker','স্ক্যাম চেকার')],['links',t('Link Inspector','লিংক পরিদর্শক')],['simulator',t('Simulator','সিমুলেটর')]];
 useEffect(()=>()=>{if(imagePreview)URL.revokeObjectURL(imagePreview)},[imagePreview]);
 const go=id=>{setActive(id);setMobile(false);document.getElementById('tools')?.scrollIntoView({behavior:'smooth'});window.setTimeout(()=>document.getElementById('workspace-panel')?.scrollIntoView({behavior:'smooth',block:'center'}),220)};
