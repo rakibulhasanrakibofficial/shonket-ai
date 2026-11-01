@@ -195,3 +195,54 @@
 @keyframes about-orbit{to{rotate:360deg}}
 @media(max-width:640px){.about-feature{min-height:155px;padding:16px}.about-feature h3{margin-top:14px}.about-loop-grid{gap:5px}.about-loop-icon{width:46px;height:46px}.about-loop-grid:before{top:23px}.about-loop-label{font-size:10px;padding:7px 2px}.about-stage{padding-top:56px;padding-bottom:56px}}
 @media(prefers-reduced-motion:reduce){.about-device,.about-float-chip,.about-orbit{animation:none!important}.about-primary,.about-secondary{transition:none}}
+
+
+/* Readable dimensional typography for the About section */
+.about-stage h2{
+  perspective:700px;
+  text-shadow:0 2px 0 #17152b,0 4px 0 #111225,0 8px 22px #0009;
+  filter:drop-shadow(0 7px 18px #7c5cff20);
+  letter-spacing:-.045em;
+}
+.about-stage h2 .about-gradient{
+  display:inline-block;
+  text-shadow:0 2px 0 #30204f,0 5px 0 #1b1835,0 10px 22px #7c3aed55;
+  filter:drop-shadow(0 5px 10px #8b5cf655);
+}
+.about-stage h3{
+  text-shadow:0 2px 0 #111225,0 4px 12px #0009;
+}
+.about-stage p{
+  text-shadow:0 1px 8px #0008;
+}
+.about-feature h3{
+  font-size:clamp(1.05rem,1.25vw,1.3rem);
+  letter-spacing:-.025em;
+  text-shadow:0 2px 0 #111225,0 5px 12px #0009;
+}
+.about-feature p{
+  font-size:clamp(.78rem,.9vw,.9rem);
+  line-height:1.65;
+  color:#c4cbe0;
+}
+.about-loop-label{
+  font-size:clamp(.72rem,.85vw,.84rem);
+  font-weight:900;
+  text-shadow:0 1px 0 #000,0 3px 9px #0009;
+}
+.about-primary,.about-secondary{
+  text-shadow:0 1px 0 #24124c,0 3px 8px #0008;
+  font-size:clamp(.78rem,.9vw,.9rem);
+}
+.about-stage .about-feature-icon{
+  box-shadow:0 5px 0 #080b18,0 10px 22px #0007,inset 0 1px 0 #ffffff35;
+}
+@media(max-width:640px){
+  .about-stage h2{font-size:clamp(2.1rem,10vw,2.7rem);line-height:1.08}
+  .about-stage p{font-size:.9rem;line-height:1.75}
+  .about-feature h3{font-size:1.08rem}
+  .about-feature p{font-size:.82rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .about-stage h2,.about-stage h2 .about-gradient,.about-stage h3,.about-stage p{filter:none}
+}
