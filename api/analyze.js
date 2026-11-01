@@ -116,14 +116,23 @@ export default async function handler(req, res) {
       reason_bn: String(x.reason_bn || "").slice(0, 320),
       reason_en: String(x.reason_en || "").slice(0, 320)
     })) : [];
-    const combined = cleanText + " " + evidence.map(x => x.quote).join(" ");
+    // Score both pasted text and exact evidence extracted from screenshots.
+    const combined = [cleanText, ...evidence.map(x => x.quote)].filter(Boolean).join(" ");
     const scored = scoreText(combined);
-    const verdict = scored.score >= 60 ? "scam" : scored.score >= 25 ? "suspicious" : (!cleanText && evidence.length === 0 ? "uncertain" : (["scam", "suspicious", "likely_safe", "uncertain"].includes(ai.verdict) ? ai.verdict : "uncertain"));
-    const riskLevel = scored.score >= 75 ? "critical" : scored.score >= 50 ? "high" : scored.score >= 25 ? "medium" : "low";
+    const allowedVerdicts = ["scam", "suspicious", "likely_safe", "uncertain"];
+    const aiVerdict = allowedVerdicts.includes(ai.verdict) ? ai.verdict : "uncertain";
+    // Deterministic signals can raise the verdict; an AI-flagged image-only
+    // result must also never display a zero score / Low Risk contradiction.
+    const verdict = scored.score >= 60 ? "scam" : scored.score >= 25 ? "suspicious" : aiVerdict;
+    const riskScore = Math.max(
+      scored.score,
+      verdict === "scam" ? 60 : verdict === "suspicious" ? 25 : 0
+    );
+    const riskLevel = riskScore >= 75 ? "critical" : riskScore >= 50 ? "high" : riskScore >= 25 ? "medium" : "low";
 
     return send(res, 200, {
       verdict,
-      riskScore: scored.score,
+      riskScore,
       riskLevel,
       summary_bn: String(ai.summary_bn || "").slice(0, 700),
       summary_en: String(ai.summary_en || "").slice(0, 700),
