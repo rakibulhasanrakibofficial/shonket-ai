@@ -55,6 +55,9 @@ export default async function handler(req, res) {
     const { message = "", imageBase64 = "", imageMimeType = "", language = "bn" } = req.body || {};
     const cleanText = String(message).trim().slice(0, MAX_TEXT);
     if (!cleanText && !imageBase64) return send(res, 400, { error: "Add a message or screenshot to analyze." });
+    const banglaScript = /[\\u0980-\\u09FF]/.test(cleanText);
+    const banglishHints = /\\b(ami|apni|apnar|tumi|tomar|amar|account|bondho|hoye|jabe|ekhoni|ekhon|otp|pathan|den|korun|koro|taka|paben|jitse|puraskar|bikash|bkash|nagad|chakri|beton|dorkar|khaben|ki|keno|hobe|hoy|ase|ache|nai|na|please|korben)\\b/i.test(cleanText);
+    const detectedResponseLanguage = language === "bn" ? "bn" : language === "en" ? "en" : (banglaScript || banglishHints ? "bn" : "en");
 
     const parts = [{
       text: [
@@ -65,7 +68,7 @@ export default async function handler(req, res) {
         "If evidence is weak or context is missing, say uncertain. Likely safe is not a guarantee.",
         "Give practical safe actions: never share OTPs/passwords, avoid paying unexpected fees, do not install unknown apps or downloads, avoid entering personal details on suspicious age-verification pages, and verify independently through official channels.",
         "Return the required JSON. Confidence is about this limited assessment, not a probability of fraud.",
-        language === "en" ? "Write the user-facing answer in English. Set response_language to en." : language === "bn" ? "Write the user-facing answer in Bangla. Set response_language to bn." : "AUTO LANGUAGE: Detect the primary language of the submitted message or screenshot. If it is Bangla, write the user-facing answer in Bangla and set response_language to bn. If it is English, write it in English and set response_language to en. For mixed-language input, use the dominant language. For image-only input, detect the primary language visible in the screenshot.",
+        detectedResponseLanguage === "bn" ? "MANDATORY RESPONSE LANGUAGE: Bangla. Write ALL user-facing fields (summary, evidence reasons, tactics, safe actions, uncertainty) in natural, clear Bangla. Set response_language to bn. Do not answer in English." : "MANDATORY RESPONSE LANGUAGE: English. Write ALL user-facing fields in clear English. Set response_language to en. Do not answer in Bangla.",
         cleanText ? "MESSAGE TEXT:\n" + cleanText : "No message text supplied; inspect the screenshot only."
       ].join("\n\n")
     }];
@@ -134,7 +137,7 @@ export default async function handler(req, res) {
 
     return send(res, 200, {
       verdict,
-      responseLanguage: ai.response_language === "bn" ? "bn" : "en",
+      responseLanguage: detectedResponseLanguage,
       riskScore,
       riskLevel,
       summary_bn: String(ai.summary_bn || "").slice(0, 700),
