@@ -19,9 +19,9 @@ const schema = {
 
 const patterns = [
   { id: "credential", weight: 28, regex: /\b(otp|one.?time password|pin|password|verification code|passcode)\b|ওটিপি|পিন|পাসওয়ার্ড|যাচাইকরণ কোড/i, label: "Credential or OTP request" },
-  { id: "payment", weight: 24, regex: /\b(processing fee|registration fee|release fee|advance fee|send money|pay now|payment required)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i, label: "Upfront payment request" },
-  { id: "urgency", weight: 15, regex: /\b(urgent|immediately|expires today|limited time|act now|last chance|within \d+ hours?)\b|জরুরি|এখনই|আজই শেষ|শেষ সুযোগ|দ্রুত করুন/i, label: "Urgency or pressure" },
-  { id: "prize", weight: 18, regex: /\b(you have won|winner|cash prize|claim your prize|lottery)\b|পুরস্কার জিতেছেন|লটারি|বিজয়ী|পুরস্কার দাবি/i, label: "Unexpected prize or reward" },
+  { id: "payment", weight: 30, regex: /\b(processing fee|registration fee|release fee|advance fee|send money|pay now|payment required)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i, label: "Upfront payment request" },
+  { id: "urgency", weight: 18, regex: /\b(urgent|immediately|expires today|limited time|act now|last chance|within \d+ hours?)\b|জরুরি|এখনই|আজই শেষ|শেষ সুযোগ|দ্রুত করুন/i, label: "Urgency or pressure" },
+  { id: "prize", weight: 22, regex: /\b(you have won|winner|cash prize|claim your prize|lottery)\b|পুরস্কার জিতেছেন|লটারি|বিজয়ী|পুরস্কার দাবি/i, label: "Unexpected prize or reward" },
   { id: "impersonation", weight: 20, regex: /\b(account (will be|is) blocked|bank support|customer care|police|government officer|security team)\b|অ্যাকাউন্ট বন্ধ|ব্যাংক কর্মকর্তা|কাস্টমার কেয়ার|পুলিশ পরিচয়/i, label: "Possible authority impersonation" },
   { id: "link", weight: 12, regex: /https?:\/\/|www\.|\b(click here|verify your account|login here)\b|এখানে ক্লিক|অ্যাকাউন্ট যাচাই/i, label: "Link or verification prompt" },
   { id: "job", weight: 14, regex: /\b(guaranteed job|work from home|high salary|job offer)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন/i, label: "Unverified job offer" }
