@@ -81,15 +81,15 @@ export default async function handler(req, res) {
     const timeout = setTimeout(() => controller.abort(), 25000);
     let upstream;
     try {
-      upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, {
+      upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
         signal: controller.signal,
         body: JSON.stringify({
           contents: [{ role: "user", parts }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 1300,
+            maxOutputTokens: 1800,
             responseMimeType: "application/json",
             responseSchema: schema
           }
