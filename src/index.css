@@ -263,3 +263,51 @@
   color:transparent;
 }
 .about-stage h2{letter-spacing:-.045em}
+
+
+/* Visible 3D treatment: feature cards, icon tiles, loop icons and loop buttons */
+.about-feature{
+  border-width:1px;
+  transform:translateY(0) perspective(900px) rotateX(0deg);
+  box-shadow:0 7px 0 #080b18,0 15px 28px #0008,inset 0 1px 0 #ffffff38,inset 0 -8px 18px #0004;
+}
+.about-feature:hover{
+  transform:translateY(-7px) perspective(900px) rotateX(2deg);
+  box-shadow:0 12px 0 #080b18,0 24px 38px #0009,inset 0 1px 0 #ffffff55,inset 0 -8px 18px #0004;
+}
+.about-feature-cyan{box-shadow:0 7px 0 #06364a,0 15px 28px #0008,0 0 24px #22d3ee20,inset 0 1px 0 #9beeff55,inset 0 -8px 18px #001b2b99}
+.about-feature-violet{box-shadow:0 7px 0 #32145b,0 15px 28px #0008,0 0 24px #a855f725,inset 0 1px 0 #e9c8ff55,inset 0 -8px 18px #1c0b3699}
+.about-feature-amber{box-shadow:0 7px 0 #59300b,0 15px 28px #0008,0 0 24px #f59e0b20,inset 0 1px 0 #ffe0a655,inset 0 -8px 18px #28130499}
+.about-feature-icon{
+  transform:translateY(-2px);
+  border:1px solid #ffffff55;
+  box-shadow:0 4px 0 #080b18,0 8px 15px #0008,inset 0 1px 0 #ffffff75!important;
+}
+.about-feature-cyan .about-feature-icon{background:linear-gradient(145deg,#1d5c7b,#10243e)}
+.about-feature-violet .about-feature-icon{background:linear-gradient(145deg,#6840a1,#291b4b)}
+.about-feature-amber .about-feature-icon{background:linear-gradient(145deg,#85501f,#382018)}
+.about-loop-icon{
+  transform:translateY(-2px);
+  border:1px solid currentColor;
+  box-shadow:0 5px 0 #080b18,0 10px 18px #0008,inset 0 1px 0 #ffffff55,inset 0 -5px 12px #0006;
+}
+.loop-cyan{background:linear-gradient(145deg,#164d66,#091827);box-shadow:0 5px 0 #064052,0 10px 18px #0008,0 0 18px #22d3ee30,inset 0 1px 0 #a5f3fc66}
+.loop-violet{background:linear-gradient(145deg,#513078,#1d1636);box-shadow:0 5px 0 #32165b,0 10px 18px #0008,0 0 18px #a78bfa30,inset 0 1px 0 #ddd6fe66}
+.loop-amber{background:linear-gradient(145deg,#75431c,#2b1a13);box-shadow:0 5px 0 #58300d,0 10px 18px #0008,0 0 18px #f59e0b30,inset 0 1px 0 #fed7aa66}
+.loop-green{background:linear-gradient(145deg,#126044,#09281f);box-shadow:0 5px 0 #06452e,0 10px 18px #0008,0 0 18px #10b98130,inset 0 1px 0 #a7f3d066}
+.about-loop-label{
+  position:relative;
+  transform:translateY(0);
+  border-width:1px;
+  box-shadow:0 4px 0 #080b18,0 8px 14px #0007,inset 0 1px 0 #ffffff45,inset 0 -3px 7px #0005;
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+.loop-label-cyan{background:linear-gradient(180deg,#16465a,#0b1b29);box-shadow:0 4px 0 #064052,0 8px 14px #0007,inset 0 1px 0 #a5f3fc55}
+.loop-label-violet{background:linear-gradient(180deg,#49306b,#1d1733);box-shadow:0 4px 0 #32165b,0 8px 14px #0007,inset 0 1px 0 #ddd6fe55}
+.loop-label-amber{background:linear-gradient(180deg,#68401f,#2b1a13);box-shadow:0 4px 0 #58300d,0 8px 14px #0007,inset 0 1px 0 #fed7aa55}
+.loop-label-green{background:linear-gradient(180deg,#14553f,#09281f);box-shadow:0 4px 0 #06452e,0 8px 14px #0007,inset 0 1px 0 #a7f3d055}
+.about-loop-step:hover .about-loop-label{transform:translateY(-2px);filter:brightness(1.15)}
+.about-loop-step:hover .about-loop-icon{transform:translateY(-4px);filter:brightness(1.18)}
+@media(prefers-reduced-motion:reduce){
+ .about-feature,.about-loop-label,.about-loop-icon{transition:none!important;transform:none!important}
+}
