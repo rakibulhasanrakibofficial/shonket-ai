@@ -97,3 +97,49 @@
 @keyframes language-pop{0%{transform:scale(.91)}65%{transform:scale(1.06)}100%{transform:scale(1)}}
 @media(max-width:640px){.language-option{min-width:48px;min-height:36px;padding:7px 10px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.language-option{transition:none}.language-switch .language-option.is-active{animation:none}}
+
+
+/* Workspace control readability and tactile button hierarchy */
+#workspace-panel button:not(.language-option){
+  min-height:40px;
+  padding:9px 15px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.35;
+  font-weight:750;
+  letter-spacing:.01em;
+  color:#f4f6ff;
+  border-color:#8290b566;
+  background:linear-gradient(145deg,#202944,#121a2d);
+  box-shadow:0 3px 0 #080d19,inset 0 1px 0 #ffffff18;
+  transition:transform .18s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease,color .2s ease;
+}
+#workspace-panel button:not(.language-option):hover:not(:disabled){
+  transform:translateY(-2px);
+  color:#fff;
+  border-color:#9e8cff;
+  background:linear-gradient(145deg,#30345b,#17243a);
+  box-shadow:0 5px 0 #080d19,0 9px 22px #7558ff2b,inset 0 1px 0 #ffffff25;
+}
+#workspace-panel button:not(.language-option):active:not(:disabled){
+  transform:translateY(1px);
+  box-shadow:0 1px 0 #080d19,inset 0 1px 4px #0005;
+}
+#workspace-panel button:disabled{opacity:.48;cursor:not-allowed;filter:saturate(.65)}
+#workspace-panel button svg{flex-shrink:0}
+#workspace-panel label[for],#workspace-panel label{font-size:13px}
+#workspace-panel input,#workspace-panel textarea{font-size:15px;color:#f8faff}
+#workspace-panel input::placeholder,#workspace-panel textarea::placeholder{color:#8995b0;opacity:1}
+#workspace-panel .text-slate-400{color:#aeb9d2!important}
+#workspace-panel .text-slate-500{color:#929fba!important}
+#workspace-panel .text-slate-600{color:#8391ae!important}
+#workspace-panel .text-\[10px\]{font-size:11px!important}
+#workspace-panel .text-xs{font-size:13px!important}
+#workspace-panel .text-sm{font-size:14px!important}
+@media(max-width:640px){
+  #workspace-panel button:not(.language-option){min-height:42px;padding:10px 13px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+  #workspace-panel button:not(.language-option){transition:none}
+  #workspace-panel button:not(.language-option):hover{transform:none}
+}
