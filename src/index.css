@@ -39,9 +39,12 @@
 .tool-card.is-active.tool-violet{border-color:#c4b5fd;box-shadow:0 0 0 1px #a78bfa66,0 22px 60px #8b5cf638,inset 0 1px #ffffff25}
 .tool-card.is-active.tool-cyan{border-color:#a5f3fc;box-shadow:0 0 0 1px #22d3ee66,0 22px 60px #06b6d438,inset 0 1px #ffffff25}
 .tool-card.is-active.tool-orange{border-color:#fed7aa;box-shadow:0 0 0 1px #fb923c66,0 22px 60px #f9731638,inset 0 1px #ffffff25}
-.title-3d{text-shadow:0 1px 0 #c4b5fd35,0 2px 0 #a78bfa24,0 4px 0 #111128,0 9px 18px #0009;filter:drop-shadow(0 8px 16px #7c3aed20)}
-.title-3d .text-gradient{filter:drop-shadow(0 4px 0 #6544a655) drop-shadow(0 12px 16px #22d3ee25)}
+.title-3d{text-shadow:0 2px 14px #0008;filter:none}
+.title-3d .text-gradient{filter:none}
 .tool-card h3{transform:translateZ(24px);text-shadow:0 2px 0 #0005,0 7px 14px #0006}
 .tool-card .tool-icon-wrap{transform:translateZ(32px);box-shadow:0 7px 0 #0005,0 12px 24px #0005,inset 0 1px #ffffff50}
 .action-button,.workspace-tab{font-weight:800;letter-spacing:.01em}
 @media(prefers-reduced-motion:reduce){.title-3d{filter:none;text-shadow:none}}
+
+/* Crisp readable typography: remove WordArt/embossed treatment */
+.title-3d,.title-3d *{text-shadow:0 2px 12px #0006!important;-webkit-text-stroke:0!important}.title-3d .text-gradient{filter:none!important}button,.action-button,.workspace-tab,.tool-card{text-shadow:none!important;-webkit-font-smoothing:antialiased}
