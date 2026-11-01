@@ -120,7 +120,7 @@ export default async function handler(req, res) {
     })) : [];
     const combined = cleanText + " " + evidence.map(x => x.quote).join(" ");
     const scored = scoreText(combined, evidence.length);
-    const verdict = scored.score >= 60 ? "scam" : scored.score >= 30 ? "suspicious" : (ai.verdict === "uncertain" || (!cleanText && evidence.length === 0) ? "uncertain" : "likely_safe");
+    const verdict = scored.score >= 60 ? "scam" : scored.score >= 25 ? "suspicious" : (!cleanText && evidence.length === 0 ? "uncertain" : (["scam", "suspicious", "likely_safe", "uncertain"].includes(ai.verdict) ? ai.verdict : "uncertain"));
     const riskLevel = scored.score >= 75 ? "critical" : scored.score >= 50 ? "high" : scored.score >= 25 ? "medium" : "low";
 
     return send(res, 200, {
