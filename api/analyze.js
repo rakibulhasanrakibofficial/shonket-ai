@@ -168,11 +168,11 @@ export default async function handler(req, res) {
         "FIRST classify whether the input is relevant to scam checking. Set is_relevant=true for any understandable real-world communication or notice that a person might receive and want to assess, including routine library reminders, class or appointment notices, delivery updates, bills, purchase confirmations, bank notices, job/prize/loan offers, payment requests, account alerts, suspicious links, caller/chat transcripts, and similar messages. For ordinary benign notices with no warning signs, use verdict=likely_safe or uncertain, not out_of_scope. Set is_relevant=false only for content that is not a received communication or notice, such as greetings, standalone general questions, homework, code, random/gibberish text, unrelated prose, memes, landscapes, selfies, or unrelated images. Do not invent context or force a scam verdict.",
         "If the input is irrelevant, still return the required JSON, set is_relevant=false, verdict=uncertain, confidence=low, and use empty evidence, tactics, and safe_actions. Keep the summary and uncertainty short and explain that only suspicious messages or related screenshots can be checked.",
         "Assess only scam indicators visible in relevant supplied text or screenshot. Do not claim to verify a sender, domain, payment, or real-world fact.",
-        "Write concise, simple Bangla and English. For every evidence item, keep quote as the exact original fragment, and also provide quote_bn and quote_en as faithful translations of that same fragment. Never invent evidence. Translate the evidence quote for the selected response language in the UI; do not leave source-language text mixed into the result.",
+        "Keep the analysis concise. Return at most 3 evidence items, 3 tactics, and 3 safe actions. For each evidence item, quote an exact source fragment and provide faithful Bangla and English translations. Never invent evidence.",
         "Identify urgency, impersonation, OTP/password requests, upfront fees, fake prizes, job promises, and suspicious adult-content or age-verification bait only when supported. Keep descriptions non-explicit and focus on link safety; do not assume the content is illegal or malicious merely because it is adult-themed.",
         "If evidence is weak or context is missing, say uncertain. Likely safe is not a guarantee.",
         "For claim verification, use claim_verification_status=not_applicable when Google Search is not enabled. When it is enabled, use verified_match only when a primary official Bangladesh government or recognised institution source corroborates the exact material details of the offer; use contradicted only when such an official source explicitly conflicts with a material detail; otherwise use unverified. Absence of a search result is never proof of fraud or contradiction. A related but different scholarship or job circular is not an exact match. Summaries must state precisely which details were confirmed or remain unknown, in the required response language.",
-        "Give practical safe actions: never share OTPs/passwords, avoid paying unexpected fees, do not install unknown apps or downloads, avoid entering personal details on suspicious age-verification pages, and verify independently through official channels.",
+        "Give up to 3 practical safety actions, prioritising credential protection, avoiding unexpected payments or downloads, and independent verification through official channels.",
         "Return the required JSON. Confidence is about this limited assessment, not a probability of fraud.",
         ...(useWebSearch ? [searchInstruction] : []),
         detectedResponseLanguage === "bn" ? "MANDATORY RESPONSE LANGUAGE: Bangla. Write ALL user-facing fields (summary, evidence reasons, tactics, safe actions, uncertainty) in natural, clear Bangla. Set response_language to bn. Do not answer in English." : "MANDATORY RESPONSE LANGUAGE: English. Write ALL user-facing fields in clear English. Set response_language to en. Do not answer in Bangla.",
@@ -187,7 +187,7 @@ export default async function handler(req, res) {
       parts.push({ inlineData: { mimeType: imageMimeType, data: raw } });
     }
 
-    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.8-flash";
     const upstreamAttempts = [];
     let activeModel = MODEL;
     let searchFallbackUsed = false;
@@ -204,8 +204,8 @@ export default async function handler(req, res) {
             contents: [{ role: "user", parts: requestParts }],
             ...(enableSearch ? { tools: [{ google_search: {} }] } : {}),
             generationConfig: {
-              maxOutputTokens: 900,
-              thinkingConfig: { thinkingLevel: "low" },
+              maxOutputTokens: 750,
+              thinkingConfig: { thinkingLevel: model === "gemini-3.5-flash-lite" ? "minimal" : "low" },
               responseMimeType: "application/json",
               responseSchema: schema
             }
@@ -435,8 +435,8 @@ export default async function handler(req, res) {
       summary_bn: String(ai.summary_bn || "").slice(0, 700),
       summary_en: String(ai.summary_en || "").slice(0, 700),
       evidence,
-      tactics: Array.isArray(ai.tactics) ? ai.tactics.slice(0, 6).map(x => String(x).slice(0, 100)) : [],
-      safe_actions: Array.isArray(ai.safe_actions) ? ai.safe_actions.slice(0, 6).map(x => String(x).slice(0, 220)) : [],
+      tactics: Array.isArray(ai.tactics) ? ai.tactics.slice(0, 3).map(x => String(x).slice(0, 100)) : [],
+      safe_actions: Array.isArray(ai.safe_actions) ? ai.safe_actions.slice(0, 3).map(x => String(x).slice(0, 220)) : [],
       matchedSignals: scored.matched,
       uncertainty: String(ai.uncertainty || "This is an automated assessment, not proof. Verify important requests independently.").slice(0, 500),
       confidence: ["low", "medium", "high"].includes(ai.confidence) ? ai.confidence : "low",
