@@ -9,6 +9,26 @@ test('landing page loads and primary tools are reachable', async ({ page }) => {
 });
 
 test('scam checker accepts text and shows an analysis result', async ({ page }) => {
+  await page.route('**/api/analyze', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'suspicious',
+        riskLevel: 'high',
+        riskScore: 82,
+        summary_en: 'The message offers an unexpected prize and requests an OTP.',
+        summary_bn: 'বার্তাটি অপ্রত্যাশিত পুরস্কার ও OTP চাইছে।',
+        evidence: [{ reason_en: 'An unsolicited prize is used to request an OTP.', reason_bn: 'অপ্রত্যাশিত পুরস্কারের মাধ্যমে OTP চাওয়া হচ্ছে।' }],
+        tactics: ['fake_prize', 'otp_request', 'urgency'],
+        safe_actions: ['Never share OTPs or passwords.', 'Verify independently through official channels.'],
+        uncertainty: 'This is an AI-assisted assessment, not proof of fraud or safety.',
+        confidence: 'high',
+        engine: 'Gemini'
+      })
+    });
+  });
   await page.goto('/');
   await page.locator('#message').fill('Congratulations! You won a cash prize. Send your OTP immediately to claim it.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
@@ -42,7 +62,7 @@ test('link inspector flags a brand lookalike domain', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
   await page.locator('#url').fill('https://bkash-bonus.xyz');
-  await page.getByRole('button', { name: 'Inspect' }).click();
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
   await expect(page.getByText(/bkash-bonus\.xyz/i).first()).toBeVisible();
 });
