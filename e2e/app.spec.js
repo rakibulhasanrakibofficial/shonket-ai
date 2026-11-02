@@ -71,7 +71,7 @@ test('simulator can complete all scenarios and restart', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Scam Simulator/i }).click();
   const totalText = await page.getByText(/SCENARIO 1 OF/i).textContent();
-  const total = Number(totalText.match(/OF\\s+(\\d+)/i)?.[1] || 0);
+  const total = Number(totalText.match(/OF\s+(\d+)/i)?.[1] || 0);
   expect(total).toBeGreaterThanOrEqual(9);
   for (let i = 0; i < total; i += 1) {
     const choices = page.locator('.choice-button');
