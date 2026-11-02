@@ -25,7 +25,20 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
         safe_actions: ['Never share OTPs or passwords.', 'Verify independently through official channels.'],
         uncertainty: 'This is an AI-assisted assessment, not proof of fraud or safety.',
         confidence: 'high',
-        engine: 'Gemini'
+        engine: 'Gemini',
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          status: 'evidence_retrieved',
+          officialSourcesFound: 1,
+          sources: [{
+            title: 'Sample official scholarship notice',
+            url: 'https://example.gov.bd/notices/scholarship',
+            domain: 'example.gov.bd',
+            sourceType: 'government',
+            officialDomain: true
+          }]
+        }
       })
     });
   });
@@ -33,7 +46,9 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
   await page.locator('#message').fill('Congratulations! You won a cash prize. Send your OTP immediately to claim it.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
   await expect(page.locator('#workspace-panel').getByText(/AI CHECK COMPLETE|AI যাচাই সম্পন্ন|MEDIUM RISK|HIGH RISK|LOW RISK/i).first()).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/Why it was flagged|Detected clue|What to do next/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
+  await expect(page.getByText('WEB EVIDENCE · GOOGLE SEARCH')).toBeVisible();
+  await expect(page.getByText('Sample official scholarship notice')).toBeVisible();
 });
 
 test('scam checker accepts a screenshot file', async ({ page }) => {
