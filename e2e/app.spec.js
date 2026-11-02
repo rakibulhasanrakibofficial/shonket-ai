@@ -4,7 +4,7 @@ test('landing page loads and primary tools are reachable', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/SHONKET AI/i);
   await expect(page.getByRole('heading', { name: /Don.t trust/i })).toBeVisible();
-  await expect(page.getByText(/Built For Ostad Presents YUNet AIgnite Buildathon 2026/i)).toBeVisible();
+  await expect(page.getByAltText(/Official Built For Ostad Presents YUNet AIgnite Buildathon 2026 sticker/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /Check a message/i }).first()).toBeVisible();
 });
 
@@ -12,7 +12,7 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
   await page.goto('/');
   await page.locator('#message').fill('Congratulations! You won a cash prize. Send your OTP immediately to claim it.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
-  await expect(page.getByText(/Suspicious message|Scam message|AI CHECK COMPLETE/i)).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#workspace-panel').getByText(/AI CHECK COMPLETE|AI যাচাই সম্পন্ন|MEDIUM RISK|HIGH RISK|LOW RISK/i).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Why it was flagged|Detected clue|What to do next/i)).toBeVisible();
 });
 
@@ -32,7 +32,7 @@ test('link inspector identifies a known official domain without opening it', asy
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
   await page.locator('#url').fill('https://www.bkash.com');
-  await page.getByRole('button', { name: 'Inspect' }).click();
+  await page.getByRole('button', { name: 'Inspect', exact: true }).click();
   await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
   await expect(page.getByText(/bkash\.com/i).first()).toBeVisible();
   await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
