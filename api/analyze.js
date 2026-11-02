@@ -225,7 +225,7 @@ export default async function handler(req, res) {
         model: MODEL,
         enableSearch: useWebSearch,
         requestParts: parts,
-        timeoutMs: useWebSearch ? 10000 : 25000
+        timeoutMs: useWebSearch ? 8000 : 22000
       });
       if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
     } catch (error) {
@@ -257,7 +257,7 @@ export default async function handler(req, res) {
             model: MODEL,
             enableSearch: false,
             requestParts: fallbackParts,
-            timeoutMs: 25000
+            timeoutMs: 22000
           });
           if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
         } catch (error) {
@@ -441,6 +441,8 @@ export default async function handler(req, res) {
       uncertainty: String(ai.uncertainty || "This is an automated assessment, not proof. Verify important requests independently.").slice(0, 500),
       confidence: ["low", "medium", "high"].includes(ai.confidence) ? ai.confidence : "low",
       engine: "Gemini",
+      model: activeModel,
+      degradedMode: searchFallbackUsed || activeModel !== MODEL,
       webEvidence,
       claimVerification,
       disclaimer: "AI-assisted assessment only. It can be wrong; verify through official channels."
