@@ -183,10 +183,16 @@ export default async function handler(req, res) {
     try { ai = JSON.parse(rawText); } catch { return send(res, 502, { error: "The AI response could not be read. Please try again." }); }
 
     if (ai.is_relevant !== true) {
-      return send(res, 422, {
-        error: detectedResponseLanguage === "bn"
-          ? "এটি স্ক্যাম চেকিংয়ের জন্য প্রাসঙ্গিক মনে হচ্ছে না। কোনো সন্দেহজনক মেসেজ, অফার, লিংক বা সংশ্লিষ্ট স্ক্রিনশট দিন।"
-          : "This doesn't look relevant to scam checking. Submit a suspicious message, offer, link, or a related screenshot."
+      return send(res, 200, {
+        isRelevant: false,
+        responseLanguage: detectedResponseLanguage,
+        verdict: "out_of_scope",
+        summary_bn: "আপনার দেওয়া কনটেন্টটি স্ক্যাম-সম্পর্কিত বার্তা বা যোগাযোগ হিসেবে শনাক্ত হয়নি। তাই ভুল ঝুঁকি-স্কোর বা প্রতারণার verdict না দিয়ে এই ইনপুটের স্ক্যাম বিশ্লেষণ করা হয়নি।",
+        summary_en: "The submitted content was not identified as a scam-related message or interaction. To avoid a misleading risk score or fraud verdict, no scam assessment was made.",
+        guidance_bn: "কোনো SMS, WhatsApp বা Messenger বার্তা, ইমেইল, চাকরি বা পুরস্কারের অফার, পেমেন্ট অনুরোধ, অ্যাকাউন্ট সতর্কতা অথবা সন্দেহজনক লিংক-সহ স্ক্রিনশট দিলে SHONKET AI সেটি পরীক্ষা করতে পারবে।",
+        guidance_en: "Try a text or screenshot of an SMS, WhatsApp or Messenger message, email, job or prize offer, payment request, account alert, or a message containing a suspicious link.",
+        confidence: "low",
+        engine: "Gemini"
       });
     }
 
