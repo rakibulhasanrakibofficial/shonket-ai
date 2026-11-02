@@ -1,8 +1,12 @@
 export function buildFastAssessment(text, responseLanguage, scored) {
   if (!text || !scored) return null;
 
-  const prizeMatch = text.match(/\b(?:you have won(?: a)?|cash prize|claim your prize|lottery|winner)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি|বিজয়ী|পুরস্কার দাবি/i);
-  const feeMatch = text.match(/\b(?:processing fee|registration fee|release fee|advance fee|claim fee|send money|pay now|payment required)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i);
+  const prizeMatch = text.match(/\b(?:you have won(?: a)?|cash prize|claim your prize|lottery|winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি|বিজয়ী|পুরস্কার দাবি/i);
+  const feeMatch = text.match(/\b(?:processing fee|registration fee|release fee|advance fee|claim fee|send money|pay now|payment required)\b|\bfee\s+(?:pathan|diben|den)\b|\btaka\s+(?:pathan|diben|den)\b|\bage\s+(?:processing\s+)?fee\s+dite\s+hobe\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i);
+
+  // Do not fast-label educational warnings or quoted anti-scam advice as scams.
+  const warningContext = /\b(?:this is (?:a )?(?:scam|fraud)|(?:scam|fraud) warning|fraudsters? (?:use|often|typically)|scammers? (?:use|often|typically)|never pay|do not pay|don't pay|avoid paying|never send|do not send|don't send|warning against)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|প্রতারণা থেকে সাবধান|এটি প্রতারণা|স্ক্যাম থেকে সাবধান/i.test(text);
+  if (warningContext) return null;
 
   // Only bypass Gemini for this narrow, high-signal combination.
   // Scholarship and job claims still go through evidence retrieval.
