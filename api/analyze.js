@@ -1,3 +1,4 @@
+import { buildFastAssessment } from "./fastAssessment.js";
 const CONFIGURED_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 // Prefer Flash-Lite for fast message checks; map the previous 3.8 primary setting to the new fast default.
 const MODEL = CONFIGURED_MODEL === "gemini-3.8-flash" ? "gemini-3.5-flash-lite" : CONFIGURED_MODEL;
@@ -139,6 +140,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const requestStartedAt = Date.now();
     const bodyBytes = Buffer.byteLength(JSON.stringify(req.body || {}), "utf8");
     if (bodyBytes > 4 * 1024 * 1024) return send(res, 413, { error: "Request is too large. Maximum request size is 4 MB." });
     await enforceRateLimits(req);
@@ -187,6 +189,19 @@ export default async function handler(req, res) {
       const raw = String(imageBase64).replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
       if (raw.length > Math.ceil(MAX_IMAGE_BYTES * 1.4)) return send(res, 413, { error: "Screenshot is too large. Maximum size is 3 MB." });
       parts.push({ inlineData: { mimeType: imageMimeType, data: raw } });
+    }
+
+    // Return immediately for a narrow, high-confidence prize + advance-fee pattern.
+    // This avoids model latency for obvious cases while keeping claim verification separate.
+    if (!imageBase64) {
+      const preliminaryScore = scoreText(cleanText);
+      const fastAssessment = buildFastAssessment(cleanText, detectedResponseLanguage, preliminaryScore);
+      if (fastAssessment) {
+        return send(res, 200, {
+          ...fastAssessment,
+          processingTimeMs: Date.now() - requestStartedAt
+        });
+      }
     }
 
     const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || (MODEL === "gemini-3.5-flash-lite" ? "gemini-3.8-flash" : "gemini-3.5-flash-lite");
