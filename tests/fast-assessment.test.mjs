@@ -37,3 +37,24 @@ test("Bangla prize and advance-fee wording returns Bangla guidance", () => {
   assert.match(result.summary_bn, /প্রসেসিং ফি/);
   assert.match(result.safe_actions[0], /ফি পাঠাবেন না/);
 });
+
+
+test("anti-scam warning about prize fees does not trigger the instant scam path", () => {
+  const text = "This is a scam. Never pay a processing fee to claim a cash prize. Fraudsters use this trick.";
+  assert.equal(buildFastAssessment(text, "en", {
+    score: 52,
+    matched: ["Upfront payment request", "Unexpected prize or reward"]
+  }), null);
+});
+
+test("Banglish prize plus fee wording triggers the instant path", () => {
+  const text = "Apni prize jitsen, reward pete age processing fee pathan.";
+  const result = buildFastAssessment(text, "bn", {
+    score: 30,
+    matched: ["Unexpected prize or reward", "Upfront payment request"]
+  });
+  assert.ok(result);
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.responseLanguage, "bn");
+  assert.equal(result.engine, "Rule-based");
+});
