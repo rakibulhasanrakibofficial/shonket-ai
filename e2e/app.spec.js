@@ -38,6 +38,11 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
             sourceType: 'government',
             officialDomain: true
           }]
+        },
+        claimVerification: {
+          status: 'unverified',
+          summary_bn: 'এই নির্দিষ্ট দাবির যথেষ্ট সরকারি প্রমাণ পাওয়া যায়নি।',
+          summary_en: 'There is not enough authoritative evidence for this exact claim.'
         }
       })
     });
@@ -48,6 +53,8 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
   await expect(page.locator('#workspace-panel').getByText(/AI CHECK COMPLETE|AI যাচাই সম্পন্ন|MEDIUM RISK|HIGH RISK|LOW RISK/i).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
   await expect(page.getByText('WEB EVIDENCE · GOOGLE SEARCH')).toBeVisible();
+  await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
+  await expect(page.getByText('UNVERIFIED')).toBeVisible();
   await expect(page.getByText('Sample official scholarship notice')).toBeVisible();
 });
 
