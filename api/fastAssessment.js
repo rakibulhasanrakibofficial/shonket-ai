@@ -11,8 +11,8 @@ export function buildFastAssessment(text, responseLanguage, scored) {
   const urgentLinkContext = /\b(?:suspended|blocked|expires today|immediately|urgent|act now|within \d+ hours?)\b|অ্যাকাউন্ট বন্ধ|জরুরি|এখনই|আজই/i.test(text);
 
   const isBangla = responseLanguage === "bn";
-  const makeFastResult = ({ verdict = "suspicious", score, titleBn, titleEn, summaryBn, summaryEn, quote, quoteBn, quoteEn, reasonBn, reasonEn, tactics, actionsBn, actionsEn, uncertaintyBn, uncertaintyEn }) => {
-    const riskScore = Math.max(Number(scored.score) || 0, score);
+  const makeFastResult = ({ verdict = "suspicious", score, clearSignals = false, summaryBn, summaryEn, quote, quoteBn, quoteEn, reasonBn, reasonEn, tactics, actionsBn, actionsEn, uncertaintyBn, uncertaintyEn }) => {
+    const riskScore = clearSignals ? 0 : Math.max(Number(scored.score) || 0, score);
     return {
       isRelevant: true,
       verdict,
@@ -30,7 +30,7 @@ export function buildFastAssessment(text, responseLanguage, scored) {
       }],
       tactics,
       safe_actions: isBangla ? actionsBn : actionsEn,
-      matchedSignals: Array.isArray(scored.matched) ? scored.matched : [],
+      matchedSignals: clearSignals ? [] : (Array.isArray(scored.matched) ? scored.matched : []),
       uncertainty: isBangla ? uncertaintyBn : uncertaintyEn,
       confidence: "medium",
       engine: "Rule-based",
@@ -44,7 +44,25 @@ export function buildFastAssessment(text, responseLanguage, scored) {
 
   // Do not fast-label educational warnings or quoted anti-scam advice as scams.
   const warningContext = /\b(?:this is (?:a )?(?:scam|fraud)|(?:scam|fraud) warning|fraudsters? (?:use|often|typically)|scammers? (?:use|often|typically)|never pay|do not pay|don't pay|avoid paying|never send|do not send|don't send|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|warning against)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|প্রতারণা থেকে সাবধান|এটি প্রতারণা|স্ক্যাম থেকে সাবধান/i.test(text);
-  if (warningContext) return null;
+  if (warningContext) {
+    return makeFastResult({
+      verdict: "likely_safe",
+      score: 0,
+      clearSignals: true,
+      summaryBn: "বার্তাটি পুরস্কার বা আগাম ফি-সংক্রান্ত প্রতারণা সম্পর্কে সতর্ক করছে; এটি নিজে টাকা বা গোপন তথ্য চাইছে না।",
+      summaryEn: "This message is warning about prize or advance-fee scams; it is not itself asking for money or confidential information.",
+      quote: text.slice(0, 160),
+      quoteBn: "প্রতারণা সম্পর্কে সতর্কবার্তা",
+      quoteEn: text.slice(0, 160),
+      reasonBn: "এখানে আগাম টাকা না দিতে এবং প্রতারণা থেকে সতর্ক থাকতে বলা হয়েছে।",
+      reasonEn: "The text advises the reader not to pay unexpected fees and to watch for fraud.",
+      tactics: [],
+      actionsBn: ["কোনো অপ্রত্যাশিত ফি দেবেন না।", "OTP, PIN বা পাসওয়ার্ড কাউকে দেবেন না।", "গুরুত্বপূর্ণ তথ্য অফিসিয়াল উৎসে যাচাই করুন।"],
+      actionsEn: ["Do not pay unexpected fees.", "Never share an OTP, PIN, or password.", "Verify important claims through official sources."],
+      uncertaintyBn: "এটি লেখার ভাষাভিত্তিক মূল্যায়ন; প্রেরক বা উৎসের পরিচয় যাচাই করা হয়নি।",
+      uncertaintyEn: "This is an assessment of the wording only; the sender and source have not been authenticated."
+    });
+  }
 
   if (otpRequestMatch && !warningContext && urgentAccountContext) {
     return makeFastResult({
