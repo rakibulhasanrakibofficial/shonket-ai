@@ -198,7 +198,7 @@ export default async function handler(req, res) {
           ...(useWebSearch ? { tools: [{ google_search: {} }] } : {}),
           generationConfig: {
             maxOutputTokens: 900,
-            thinkingConfig: { thinkingLevel: "minimal" },
+            thinkingConfig: { thinkingLevel: "low" },
             responseMimeType: "application/json",
             responseSchema: schema
           }
