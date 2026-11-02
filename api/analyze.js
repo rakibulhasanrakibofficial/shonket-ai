@@ -243,7 +243,7 @@ export default async function handler(req, res) {
         model: MODEL,
         enableSearch: useWebSearch,
         requestParts: parts,
-        timeoutMs: useWebSearch ? 8000 : 22000
+        timeoutMs: useWebSearch ? 5000 : 9000
       });
       if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
     } catch (error) {
@@ -275,7 +275,7 @@ export default async function handler(req, res) {
             model: MODEL,
             enableSearch: false,
             requestParts: fallbackParts,
-            timeoutMs: 22000
+            timeoutMs: 9000
           });
           if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
         } catch (error) {
