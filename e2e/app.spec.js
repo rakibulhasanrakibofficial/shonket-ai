@@ -70,13 +70,16 @@ test('link inspector flags a brand lookalike domain', async ({ page }) => {
 test('simulator can complete all scenarios and restart', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Scam Simulator/i }).click();
-  for (let i = 0; i < 5; i += 1) {
+  const totalText = await page.getByText(/SCENARIO 1 OF/i).textContent();
+  const total = Number(totalText.match(/OF\\s+(\\d+)/i)?.[1] || 0);
+  expect(total).toBeGreaterThanOrEqual(9);
+  for (let i = 0; i < total; i += 1) {
     const choices = page.locator('.choice-button');
     await expect(choices.first()).toBeVisible();
     await choices.first().click();
     await expect(page.getByText(/SAFER RESPONSE/i)).toBeVisible();
-    const next = page.getByRole('button', { name: /Next scenario|View my results/i });
-    await next.click();
+    await expect(page.getByText(/REAL-LIFE ACTION PLAN/i)).toBeVisible();
+    await page.getByRole('button', { name: /Next scenario|View my results/i }).click();
   }
   await expect(page.getByText(/TRAINING COMPLETE/i)).toBeVisible();
   await page.getByRole('button', { name: /Practise again/i }).click();
