@@ -222,6 +222,7 @@ export default async function handler(req, res) {
       const firstMessage = String(firstError?.error?.message || "").toLowerCase();
       const searchUnavailable =
         upstream.status === 429 ||
+        upstream.status >= 500 ||
         ((upstream.status === 400 || upstream.status === 403) &&
           /google.?search|grounding|search tool|tool use|response.?schema|structured output/.test(firstMessage));
 
@@ -256,7 +257,11 @@ export default async function handler(req, res) {
       }
       if (status === 400 || status === 404) return send(res, 502, { error: "Gemini model or request configuration was rejected. Check GEMINI_MODEL in Vercel.", code: "AI_CONFIGURATION_ERROR" });
       if (status === 403) return send(res, 502, { error: "Gemini rejected the API request. Check API key permissions and model access in Google AI Studio.", code: "AI_PERMISSION_ERROR" });
-      return send(res, 502, { error: "The AI service is temporarily unavailable. Please try again.", code: "AI_UPSTREAM_UNAVAILABLE" });
+      return send(res, 502, {
+        error: "Gemini is temporarily unavailable after the search and fallback attempts. Please try again shortly.",
+        code: "AI_UPSTREAM_UNAVAILABLE",
+        upstreamStatus: status
+      });
     }
 
     const payload = await upstream.json();
