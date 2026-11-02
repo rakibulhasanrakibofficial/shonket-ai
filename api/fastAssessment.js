@@ -11,7 +11,7 @@ export function buildFastAssessment(text, responseLanguage, scored) {
   const urgentLinkContext = /\b(?:suspended|blocked|expires today|immediately|urgent|act now|within \d+ hours?)\b|অ্যাকাউন্ট বন্ধ|জরুরি|এখনই|আজই/i.test(text);
 
   const isBangla = responseLanguage === "bn";
-  const makeFastResult = ({ verdict = "suspicious", score, clearSignals = false, summaryBn, summaryEn, quote, quoteBn, quoteEn, reasonBn, reasonEn, tactics, actionsBn, actionsEn, uncertaintyBn, uncertaintyEn }) => {
+  const makeFastResult = ({ verdict = "suspicious", score, clearSignals = false, confidence = "medium", claimStatus = "not_applicable", claimSummaryBn = "", claimSummaryEn = "", summaryBn, summaryEn, quote, quoteBn, quoteEn, reasonBn, reasonEn, tactics, actionsBn, actionsEn, uncertaintyBn, uncertaintyEn }) => {
     const riskScore = clearSignals ? 0 : Math.max(Number(scored.score) || 0, score);
     return {
       isRelevant: true,
@@ -32,12 +32,12 @@ export function buildFastAssessment(text, responseLanguage, scored) {
       safe_actions: isBangla ? actionsBn : actionsEn,
       matchedSignals: clearSignals ? [] : (Array.isArray(scored.matched) ? scored.matched : []),
       uncertainty: isBangla ? uncertaintyBn : uncertaintyEn,
-      confidence: "medium",
+      confidence,
       engine: "Rule-based",
       model: "local-patterns",
       degradedMode: false,
       webEvidence: { searched: false, searchExecuted: false, status: "not_searched", officialSourcesFound: 0, sources: [] },
-      claimVerification: { status: "not_applicable", summary_bn: "", summary_en: "" },
+      claimVerification: { status: claimStatus, summary_bn: claimSummaryBn, summary_en: claimSummaryEn },
       disclaimer: "Rule-based warning only. It is not proof of fraud; verify important claims independently."
     };
   };
@@ -80,6 +80,29 @@ export function buildFastAssessment(text, responseLanguage, scored) {
       actionsEn: ["Do not share any OTP, PIN, or password.", "Do not open links in the message.", "Contact the bank or service through its official app or a number you find independently."],
       uncertaintyBn: "প্রেরকের পরিচয় যাচাই করা হয়নি; মূল্যায়নটি বার্তার OTP চাওয়া ও জরুরি চাপের ভিত্তিতে।",
       uncertaintyEn: "The sender has not been authenticated; this assessment is based on the OTP request and urgency language."
+    });
+  }
+
+  if (prizeMatch && !feeMatch && !otpRequestMatch && !suspiciousLinkMatch && !urgentLinkContext && !urgentAccountContext) {
+    return makeFastResult({
+      verdict: "uncertain",
+      score: 22,
+      confidence: "low",
+      claimStatus: "unverified",
+      claimSummaryBn: "বার্তার পুরস্কার-সংক্রান্ত দাবির পক্ষে কোনো বাহ্যিক সরকারি প্রমাণ এই দ্রুত পরীক্ষায় যাচাই করা হয়নি।",
+      claimSummaryEn: "No external official evidence was checked for this prize claim during this fast assessment.",
+      summaryBn: "বার্তাটি পুরস্কার জেতার দাবি করছে, কিন্তু শুধু এই দাবির ভিত্তিতে এটিকে প্রতারণা বা বৈধ—কোনোটিই নিশ্চিত বলা যায় না।",
+      summaryEn: "The message claims that you won a prize, but this claim alone is not enough to confirm that the offer is genuine or fraudulent.",
+      quote: prizeMatch[0],
+      quoteBn: /[\\u0980-\\u09FF]/.test(prizeMatch[0]) ? prizeMatch[0] : "পুরস্কার জেতার দাবি",
+      quoteEn: /[\\u0980-\\u09FF]/.test(prizeMatch[0]) ? "prize claim" : prizeMatch[0],
+      reasonBn: "পুরস্কার জেতার দাবি নিজে প্রতারণার প্রমাণ নয়; প্রেরক ও অফারটি আলাদাভাবে যাচাই করা দরকার।",
+      reasonEn: "A prize claim by itself is not proof of fraud; verify the sender and offer independently.",
+      tactics: ["unverified_prize_claim"],
+      actionsBn: ["কোনো ফি বা অগ্রিম টাকা দেবেন না।", "OTP, PIN বা পাসওয়ার্ড শেয়ার করবেন না।", "প্রতিষ্ঠানের অফিসিয়াল ওয়েবসাইট নিজে খুঁজে নোটিশ যাচাই করুন।"],
+      actionsEn: ["Do not pay an unexpected fee.", "Never share an OTP, PIN, or password.", "Find the organisation's official website independently and check for a matching notice."],
+      uncertaintyBn: "এই দ্রুত নিয়মভিত্তিক ফল sender, URL বা পুরস্কারের অস্তিত্ব যাচাই করে না।",
+      uncertaintyEn: "This fast rule-based result does not authenticate the sender, URL, or existence of the prize."
     });
   }
 
