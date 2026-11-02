@@ -309,7 +309,7 @@ export default async function handler(req, res) {
             model: FALLBACK_MODEL,
             enableSearch: false,
             requestParts: fallbackParts,
-            timeoutMs: 22000
+            timeoutMs: 9000
           });
           activeModel = FALLBACK_MODEL;
           if (!upstream.ok) upstreamAttempts.push({ model: FALLBACK_MODEL, status: upstream.status });
