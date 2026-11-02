@@ -89,3 +89,19 @@ test("urgent account verification link uses the instant phishing warning path", 
   assert.equal(result.engine, "Rule-based");
   assert.match(result.summary_en, /phishing/i);
 });
+
+
+test("a prize claim without fees or urgent links is returned as unverified, not scam", () => {
+  const text = "Congratulations! You have won a cash prize. Contact the official office to learn more.";
+  const result = buildFastAssessment(text, "en", { score: 22, matched: ["Unexpected prize or reward"] });
+  assert.ok(result);
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.riskScore, 22);
+  assert.equal(result.claimVerification.status, "unverified");
+  assert.equal(result.confidence, "low");
+});
+
+test("a prize claim with urgency is not treated as a safe prize-only case", () => {
+  const text = "You have won a cash prize. Act now, the offer expires today.";
+  assert.equal(buildFastAssessment(text, "en", { score: 40, matched: ["Unexpected prize or reward", "Urgency or pressure"] }), null);
+});
