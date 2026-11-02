@@ -4,7 +4,7 @@ export async function analyzeMessage({ message, imageFile, language = "bn" }) {
     if (!["image/png", "image/jpeg", "image/webp"].includes(imageFile.type)) {
       throw new Error("Please upload a PNG, JPG, or WebP screenshot.");
     }
-    if (imageFile.size > 5 * 1024 * 1024) throw new Error("Screenshot must be 5 MB or smaller.");
+    if (imageFile.size > 3 * 1024 * 1024) throw new Error("Screenshot must be 3 MB or smaller.");
     body.imageBase64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
