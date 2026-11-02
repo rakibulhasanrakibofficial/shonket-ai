@@ -45,7 +45,7 @@ function scoreText(text) {
 
 function shouldUseWebSearch(text) {
   if (!text) return false;
-  const hasClaimCategory = /\b(scholarship|stipend|grant|allowance|financial assistance|government scheme|recruitment|job circular|vacancy|subsidy|benefit|fellowship)\b|বৃত্তি|উপবৃত্তি|অনুদান|সরকারি সহায়তা|নিয়োগ বিজ্ঞপ্তি|চাকরির বিজ্ঞপ্তি|ভাতা|ফেলোশিপ/i.test(text);
+  const hasClaimCategory = /\b(scholarship|stipend|grant|allowance|financial assistance|government scheme|recruitment|job offer|job circular|vacancy|employment|internship|hiring|career opportunity|subsidy|benefit|fellowship)\b|বৃত্তি|উপবৃত্তি|অনুদান|সরকারি সহায়তা|নিয়োগ বিজ্ঞপ্তি|চাকরির বিজ্ঞপ্তি|ভাতা|ফেলোশিপ/i.test(text);
   const hasCheckableClaim = /\b(apply|application|offering|announced|approved|deadline|last date|selected|eligible|BDT|Tk|government|official|notice|circular|202[5-9])\b|৳|টাকা|আবেদন|ঘোষণা|শেষ তারিখ|যোগ্যতা|সরকারি|নোটিশ|বিজ্ঞপ্তি/i.test(text);
   return hasClaimCategory && hasCheckableClaim;
 }
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
     const webEvidence = {
       searched: useWebSearch,
       searchExecuted,
-      status: !useWebSearch ? "not_searched" : searchExecuted ? "evidence_retrieved" : "no_search_evidence",
+      status: !useWebSearch ? "not_searched" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
       officialSourcesFound: groundingSources.filter(source => source.officialDomain).length,
       sources: groundingSources
     };
