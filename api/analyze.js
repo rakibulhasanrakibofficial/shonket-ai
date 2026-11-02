@@ -187,11 +187,16 @@ export default async function handler(req, res) {
       parts.push({ inlineData: { mimeType: imageMimeType, data: raw } });
     }
 
-    async function requestGemini({ enableSearch, requestParts, timeoutMs }) {
+    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+    const upstreamAttempts = [];
+    let activeModel = MODEL;
+    let searchFallbackUsed = false;
+
+    async function requestGemini({ model, enableSearch, requestParts, timeoutMs }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
+        return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
           signal: controller.signal,
@@ -211,32 +216,30 @@ export default async function handler(req, res) {
       }
     }
 
-    let searchFallbackUsed = false;
-    let upstream;
+    const retryableStatus = status => status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Search is a best-effort enhancement. Give it a short time budget so a
-    // slow Search grounding call cannot consume the entire Vercel invocation.
+    let upstream;
     try {
       upstream = await requestGemini({
+        model: MODEL,
         enableSearch: useWebSearch,
         requestParts: parts,
-        timeoutMs: useWebSearch ? 12000 : 35000
+        timeoutMs: useWebSearch ? 10000 : 25000
       });
+      if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
     } catch (error) {
-      if (!useWebSearch || (error?.name !== "AbortError" && !(error instanceof TypeError))) {
-        throw error;
-      }
-      searchFallbackUsed = true;
+      if (error?.name !== "AbortError" && !(error instanceof TypeError)) throw error;
+      upstreamAttempts.push({ model: MODEL, status: error?.name === "AbortError" ? "timeout" : "network_error" });
     }
 
-    // If Search is unavailable, slow, rate-limited or returns a provider error,
-    // retry once without Search. The fallback result is always marked unverified.
+    // Search is optional. If it fails or times out, retry without Search and
+    // explicitly tell the model that no external verification took place.
     if (useWebSearch && (!upstream || !upstream.ok)) {
       const firstError = upstream ? await upstream.clone().json().catch(() => ({})) : {};
       const firstMessage = String(firstError?.error?.message || "").toLowerCase();
       const searchUnavailable = !upstream ||
-        upstream.status === 429 ||
-        upstream.status >= 500 ||
+        retryableStatus(upstream.status) ||
         ((upstream.status === 400 || upstream.status === 403) &&
           /google.?search|grounding|search tool|tool use|response.?schema|structured output/.test(firstMessage));
 
@@ -249,36 +252,102 @@ export default async function handler(req, res) {
         fallbackParts.push({
           text: "IMPORTANT: Google Search did not run. Do not state or imply that you found, checked, or verified any external source. Set claim_verification_status to unverified and explain that external verification is unavailable."
         });
-        upstream = await requestGemini({
-          enableSearch: false,
-          requestParts: fallbackParts,
-          timeoutMs: 35000
-        });
+        try {
+          upstream = await requestGemini({
+            model: MODEL,
+            enableSearch: false,
+            requestParts: fallbackParts,
+            timeoutMs: 25000
+          });
+          if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
+        } catch (error) {
+          if (error?.name !== "AbortError" && !(error instanceof TypeError)) throw error;
+          upstream = null;
+          upstreamAttempts.push({ model: MODEL, status: error?.name === "AbortError" ? "timeout" : "network_error" });
+        }
       }
     }
 
-    if (!upstream.ok) {
-      const status = upstream.status;
-      const upstreamBody = await upstream.json().catch(() => ({}));
-      const upstreamMessage = String(upstreamBody?.error?.message || "").toLowerCase();
+    // A different lightweight model is a second-line availability fallback.
+    // It is never used to claim that a failed web search supplied evidence.
+    if ((!upstream || !upstream.ok) && FALLBACK_MODEL && FALLBACK_MODEL !== MODEL) {
+      const lastStatus = upstream?.status;
+      const canRetry = !upstream || retryableStatus(lastStatus);
+      if (canRetry) {
+        await wait(700);
+        const fallbackParts = searchFallbackUsed
+          ? parts.map(part => part?.text
+            ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
+            : part
+          )
+          : parts;
+        if (searchFallbackUsed) {
+          fallbackParts.push({
+            text: "IMPORTANT: Google Search was not successfully completed. Do not claim external verification. Set claim_verification_status to unverified."
+          });
+        }
+        try {
+          upstream = await requestGemini({
+            model: FALLBACK_MODEL,
+            enableSearch: false,
+            requestParts: fallbackParts,
+            timeoutMs: 22000
+          });
+          activeModel = FALLBACK_MODEL;
+          if (!upstream.ok) upstreamAttempts.push({ model: FALLBACK_MODEL, status: upstream.status });
+        } catch (error) {
+          if (error?.name !== "AbortError" && !(error instanceof TypeError)) throw error;
+          upstream = null;
+          upstreamAttempts.push({ model: FALLBACK_MODEL, status: error?.name === "AbortError" ? "timeout" : "network_error" });
+        }
+      }
+    }
+
+    if (!upstream || !upstream.ok) {
+      const status = upstream?.status || 0;
+      const upstreamBody = upstream ? await upstream.json().catch(() => ({})) : {};
+      const providerMessage = String(upstreamBody?.error?.message || "")
+        .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]")
+        .replace(/[\\r\\n\\t]+/g, " ")
+        .replace(/\\s{2,}/g, " ")
+        .slice(0, 220);
+      const attemptSummary = upstreamAttempts.map(item => `${item.model}: ${item.status}`).join("; ");
+
+      if (status === 401) {
+        return send(res, 502, { error: "Gemini API key is invalid or expired. Check GEMINI_API_KEY in Vercel.", code: "AI_AUTHENTICATION_ERROR", upstreamStatus: status });
+      }
+      if (status === 402) {
+        return send(res, 502, { error: "Gemini API billing or prepaid credit is required for this request. Check the Google AI Studio billing page.", code: "AI_BILLING_REQUIRED", upstreamStatus: status });
+      }
+      if (status === 403) {
+        return send(res, 502, { error: "Gemini denied access to this model or API key. Check model access and billing in Google AI Studio.", code: "AI_PERMISSION_ERROR", upstreamStatus: status, providerMessage });
+      }
+      if (status === 400 || status === 404) {
+        return send(res, 502, {
+          error: `Gemini rejected the request (HTTP ${status}). ${providerMessage || "Check the model name and request settings."}`,
+          code: "AI_CONFIGURATION_ERROR",
+          upstreamStatus: status
+        });
+      }
       if (status === 429) {
-        const quotaExhausted = /quota|limit: 0|per day|per minute|resource_exhausted/.test(upstreamMessage);
+        const quotaExhausted = /quota|limit: 0|per day|per minute|resource_exhausted/.test(providerMessage.toLowerCase());
         const retryAfterSeconds = quotaExhausted ? 60 : 30;
         res.setHeader("Retry-After", String(retryAfterSeconds));
         return send(res, 429, {
           error: quotaExhausted
-            ? "Gemini's model quota is currently exhausted, including the non-search fallback. Check your Gemini API quota or wait before trying again."
-            : "The AI service is receiving too many requests. Please wait briefly and try again.",
+            ? "Gemini model quota is exhausted for the available models. Check usage and limits in Google AI Studio, then retry after the quota resets."
+            : "Gemini is rate-limiting requests. Wait briefly before trying again.",
           code: quotaExhausted ? "AI_QUOTA_EXHAUSTED" : "AI_RATE_LIMITED",
-          retryAfterSeconds
+          retryAfterSeconds,
+          upstreamAttempts
         });
       }
-      if (status === 400 || status === 404) return send(res, 502, { error: "Gemini model or request configuration was rejected. Check GEMINI_MODEL in Vercel.", code: "AI_CONFIGURATION_ERROR" });
-      if (status === 403) return send(res, 502, { error: "Gemini rejected the API request. Check API key permissions and model access in Google AI Studio.", code: "AI_PERMISSION_ERROR" });
+      const detail = providerMessage ? ` Provider message: ${providerMessage}` : "";
       return send(res, 502, {
-        error: "Gemini is temporarily unavailable after the search and fallback attempts. Please try again shortly.",
+        error: `Gemini could not complete the request (HTTP ${status || "network/timeout"}). Attempts: ${attemptSummary || "no response"}.${detail}`,
         code: "AI_UPSTREAM_UNAVAILABLE",
-        upstreamStatus: status
+        upstreamStatus: status || null,
+        upstreamAttempts
       });
     }
 
@@ -289,7 +358,7 @@ export default async function handler(req, res) {
     const webEvidence = {
       searched: useWebSearch,
       searchExecuted,
-      status: !useWebSearch ? "not_searched" : searchFallbackUsed ? "search_unavailable_fallback" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
+      status: !useWebSearch ? "not_searched" : searchFallbackUsed ? "search_unavailable_fallback" : activeModel !== MODEL ? "model_fallback_without_search" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
       officialSourcesFound: groundingSources.filter(source => source.officialDomain).length,
       sources: groundingSources
     };
@@ -343,7 +412,7 @@ export default async function handler(req, res) {
       : !officialGroundingSourceFound
         ? "unverified"
         : modelClaimStatus === "not_applicable" ? "unverified" : modelClaimStatus;
-    const forcedUnverified = useWebSearch && (searchFallbackUsed || !officialGroundingSourceFound);
+    const forcedUnverified = useWebSearch && (searchFallbackUsed || activeModel !== MODEL || !officialGroundingSourceFound);
     const claimVerification = {
       status: claimVerificationStatus,
       summary_bn: forcedUnverified
