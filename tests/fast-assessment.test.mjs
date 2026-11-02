@@ -39,12 +39,16 @@ test("Bangla prize and advance-fee wording returns Bangla guidance", () => {
 });
 
 
-test("anti-scam warning about prize fees does not trigger the instant scam path", () => {
+test("anti-scam warning about prize fees is classified as low-risk informational content", () => {
   const text = "This is a scam. Never pay a processing fee to claim a cash prize. Fraudsters use this trick.";
-  assert.equal(buildFastAssessment(text, "en", {
+  const result = buildFastAssessment(text, "en", {
     score: 52,
     matched: ["Upfront payment request", "Unexpected prize or reward"]
-  }), null);
+  });
+  assert.ok(result);
+  assert.equal(result.verdict, "likely_safe");
+  assert.equal(result.riskScore, 0);
+  assert.deepEqual(result.matchedSignals, []);
 });
 
 test("Banglish prize plus fee wording triggers the instant path", () => {
@@ -69,9 +73,12 @@ test("urgent OTP harvesting request uses the instant warning path", () => {
   assert.match(result.summary_en, /OTP or PIN/i);
 });
 
-test("a reminder never to share an OTP is not treated as an OTP request", () => {
+test("a reminder never to share an OTP is classified as low-risk advice", () => {
   const text = "Your bank will never ask for your OTP. Never share your PIN or password with anyone.";
-  assert.equal(buildFastAssessment(text, "en", { score: 0, matched: [] }), null);
+  const result = buildFastAssessment(text, "en", { score: 0, matched: [] });
+  assert.ok(result);
+  assert.equal(result.verdict, "likely_safe");
+  assert.equal(result.riskScore, 0);
 });
 
 test("urgent account verification link uses the instant phishing warning path", () => {
