@@ -1,7 +1,7 @@
 export function buildFastAssessment(text, responseLanguage, scored) {
   if (!text || !scored) return null;
 
-  const prizeMatch = text.match(/\b(?:you have won(?: a)?|cash prize|claim your prize|lottery|winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি|বিজয়ী|পুরস্কার দাবি/i);
+  const prizeMatch = text.match(/\b(?:you have won(?: a)?(?: cash)? prize|cash prize|claim your prize|lottery|winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি|বিজয়ী|পুরস্কার দাবি/i);
   const feeMatch = text.match(/\b(?:processing fee|registration fee|release fee|advance fee|claim fee|send money|pay now|payment required)\b|\bfee\s+(?:pathan|diben|den)\b|\btaka\s+(?:pathan|diben|den)\b|\bage\s+(?:processing\s+)?fee\s+dite\s+hobe\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i);
 
   const otpRequestMatch = text.match(/\b(?:reply with|send|share|provide|enter|submit|confirm)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code)\b|\botp\s+(?:pathan|diben|den|share koren)\b|\bpin\s+(?:pathan|diben|den)\b|ওটিপি\s*(?:দিন|পাঠান|শেয়ার করুন|দিয়ে দিন)|পিন\s*(?:দিন|পাঠান)|পাসওয়ার্ড\s*(?:দিন|পাঠান)/i);
