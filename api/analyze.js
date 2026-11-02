@@ -1,4 +1,6 @@
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+const CONFIGURED_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+// Prefer Flash-Lite for fast message checks; map the previous 3.8 primary setting to the new fast default.
+const MODEL = CONFIGURED_MODEL === "gemini-3.8-flash" ? "gemini-3.5-flash-lite" : CONFIGURED_MODEL;
 const MAX_TEXT = 4000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -187,7 +189,7 @@ export default async function handler(req, res) {
       parts.push({ inlineData: { mimeType: imageMimeType, data: raw } });
     }
 
-    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.8-flash";
+    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || (MODEL === "gemini-3.5-flash-lite" ? "gemini-3.8-flash" : "gemini-3.5-flash-lite");
     const upstreamAttempts = [];
     let activeModel = MODEL;
     let searchFallbackUsed = false;
