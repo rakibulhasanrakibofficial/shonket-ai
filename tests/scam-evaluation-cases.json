@@ -1,0 +1,182 @@
+[
+  {
+    "id": "scam-01",
+    "text": "Congratulations! You have won a cash prize. Pay a processing fee now to claim it.",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-02",
+    "text": "Your bKash account will be blocked today. Share your OTP with our support agent immediately.",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-03",
+    "text": "Guaranteed work from home job with high salary. Pay a registration fee to secure your position.",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-04",
+    "text": "আপনার অ্যাকাউন্ট বন্ধ হয়ে যাবে। এখনই OTP ও PIN পাঠান।",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-05",
+    "text": "Your parcel is held. Pay a release fee using this unfamiliar link within 2 hours.",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-06",
+    "text": "A caller says they are from bank security and asks me to install a remote access app and read my verification code.",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-07",
+    "text": "আপনি লটারি জিতেছেন। পুরস্কার নিতে আগে ৫০০ টাকা পাঠান।",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "scam-08",
+    "text": "Your account needs verification. Click here to login and confirm your password immediately: http://example.invalid/login",
+    "relevant": true,
+    "expected": [
+      "scam",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "safe-01",
+    "text": "Your university library book is due on Friday. Please return it to the library counter during opening hours.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-02",
+    "text": "Your appointment at the clinic is confirmed for Monday at 10 AM. Call the clinic's published number if you need to reschedule.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-03",
+    "text": "Your monthly electricity bill is available in the official customer portal. Please sign in using the app you normally use.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-04",
+    "text": "Your university class has moved to room 204 tomorrow. Please check the department notice board for updates.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-05",
+    "text": "Thank you for your purchase. Your order confirmation is available in your shopping app.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-06",
+    "text": "Your bank statement is ready in the mobile banking app. We will never ask you to share your PIN or OTP.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-07",
+    "text": "The courier attempted delivery today. Use the tracking number in the courier's official app to see the status.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "safe-08",
+    "text": "Reminder: your tuition payment is due next week. Contact the university accounts office through its official website if you have questions.",
+    "relevant": true,
+    "expected": [
+      "likely_safe",
+      "uncertain"
+    ]
+  },
+  {
+    "id": "scope-01",
+    "text": "Today is a beautiful day. I went to university and attended my classes.",
+    "relevant": false,
+    "expected": []
+  },
+  {
+    "id": "scope-02",
+    "text": "What is the difference between a stack and a queue in computer science?",
+    "relevant": false,
+    "expected": []
+  },
+  {
+    "id": "scope-03",
+    "text": "print('hello world')",
+    "relevant": false,
+    "expected": []
+  },
+  {
+    "id": "scope-04",
+    "text": "Hi, how are you doing today?",
+    "relevant": false,
+    "expected": []
+  },
+  {
+    "id": "scope-05",
+    "text": "The quick brown fox jumps over the lazy dog.",
+    "relevant": false,
+    "expected": []
+  },
+  {
+    "id": "scope-06",
+    "text": "I like football, music, and reading books in my free time.",
+    "relevant": false,
+    "expected": []
+  }
+]
