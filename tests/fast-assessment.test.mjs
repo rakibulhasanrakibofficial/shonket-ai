@@ -18,9 +18,13 @@ test("cash prize plus processing fee returns an instant suspicious assessment", 
   assert.match(result.summary_en, /upfront processing fee/i);
 });
 
-test("a prize announcement without an upfront-fee request still uses Gemini", () => {
+test("a prize announcement without an upfront-fee request returns an unverified result", () => {
   const text = "Congratulations! You have won a cash prize.";
-  assert.equal(buildFastAssessment(text, "en", { score: 22, matched: ["Unexpected prize or reward"] }), null);
+  const result = buildFastAssessment(text, "en", { score: 22, matched: ["Unexpected prize or reward"] });
+  assert.ok(result);
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.claimVerification.status, "unverified");
+  assert.equal(result.engine, "Rule-based");
 });
 
 test("a normal processing-fee message without a prize claim still uses Gemini", () => {
