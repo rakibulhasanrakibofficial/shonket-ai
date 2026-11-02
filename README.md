@@ -23,6 +23,10 @@ React, Vite, Tailwind CSS, Framer Motion, Lucide React, Vercel Serverless Functi
 ## Vercel environment variables
 - `GEMINI_API_KEY` — required; keep it server-side and never commit it.
 - `GEMINI_MODEL` — optional; defaults to `gemini-3.8-flash`.
+- `UPSTASH_REDIS_REST_URL` — required for shared, server-side API rate limiting.
+- `UPSTASH_REDIS_REST_TOKEN` — required secret for the Upstash Redis REST API.
+
+The analysis endpoint fails closed with HTTP 503 if rate-limit storage is not configured. Current limits: 5 analyses per IP per minute and 30 per IP per day. Limits are enforced server-side using atomic Redis counters. Configure both Upstash values in Vercel Environment Variables and redeploy.
 
 Redeploy after changing environment variables.
 
