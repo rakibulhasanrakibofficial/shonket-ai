@@ -32,7 +32,7 @@ test('link inspector identifies a known official domain without opening it', asy
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
   await page.locator('#url').fill('https://www.bkash.com');
-  await page.getByRole('button', { name: 'Inspect', exact: true }).click();
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
   await expect(page.getByText(/bkash\.com/i).first()).toBeVisible();
   await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
