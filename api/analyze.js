@@ -187,9 +187,9 @@ export default async function handler(req, res) {
       parts.push({ inlineData: { mimeType: imageMimeType, data: raw } });
     }
 
-    async function requestGemini({ enableSearch, requestParts }) {
+    async function requestGemini({ enableSearch, requestParts, timeoutMs }) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
           method: "POST",
@@ -212,15 +212,29 @@ export default async function handler(req, res) {
     }
 
     let searchFallbackUsed = false;
-    let upstream = await requestGemini({ enableSearch: useWebSearch, requestParts: parts });
+    let upstream;
 
-    // If Google Search grounding is unavailable or its own quota is exhausted,
-    // retry once without the search tool. A plain Gemini result must never be
-    // represented as externally verified evidence.
-    if (!upstream.ok && useWebSearch) {
-      const firstError = await upstream.clone().json().catch(() => ({}));
+    // Search is a best-effort enhancement. Give it a short time budget so a
+    // slow Search grounding call cannot consume the entire Vercel invocation.
+    try {
+      upstream = await requestGemini({
+        enableSearch: useWebSearch,
+        requestParts: parts,
+        timeoutMs: useWebSearch ? 12000 : 35000
+      });
+    } catch (error) {
+      if (!useWebSearch || (error?.name !== "AbortError" && !(error instanceof TypeError))) {
+        throw error;
+      }
+      searchFallbackUsed = true;
+    }
+
+    // If Search is unavailable, slow, rate-limited or returns a provider error,
+    // retry once without Search. The fallback result is always marked unverified.
+    if (useWebSearch && (!upstream || !upstream.ok)) {
+      const firstError = upstream ? await upstream.clone().json().catch(() => ({})) : {};
       const firstMessage = String(firstError?.error?.message || "").toLowerCase();
-      const searchUnavailable =
+      const searchUnavailable = !upstream ||
         upstream.status === 429 ||
         upstream.status >= 500 ||
         ((upstream.status === 400 || upstream.status === 403) &&
@@ -235,7 +249,11 @@ export default async function handler(req, res) {
         fallbackParts.push({
           text: "IMPORTANT: Google Search did not run. Do not state or imply that you found, checked, or verified any external source. Set claim_verification_status to unverified and explain that external verification is unavailable."
         });
-        upstream = await requestGemini({ enableSearch: false, requestParts: fallbackParts });
+        upstream = await requestGemini({
+          enableSearch: false,
+          requestParts: fallbackParts,
+          timeoutMs: 35000
+        });
       }
     }
 
@@ -364,7 +382,7 @@ export default async function handler(req, res) {
       return send(res, 429, { error: error.message });
     }
     if (error?.statusCode === 503) return send(res, 503, { error: error.message });
-    if (error?.name === "AbortError") return send(res, 504, { error: "The analysis took too long. Please try again." });
+    if (error?.name === "AbortError") return send(res, 504, { error: "Gemini analysis timed out. Search may have been unavailable, and the fallback request did not finish in time. Please try again.", code: "AI_ANALYSIS_TIMEOUT" });
     return send(res, 500, { error: "Something went wrong while analyzing this content." });
   }
 }
