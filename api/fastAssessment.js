@@ -4,9 +4,83 @@ export function buildFastAssessment(text, responseLanguage, scored) {
   const prizeMatch = text.match(/\b(?:you have won(?: a)?|cash prize|claim your prize|lottery|winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি|বিজয়ী|পুরস্কার দাবি/i);
   const feeMatch = text.match(/\b(?:processing fee|registration fee|release fee|advance fee|claim fee|send money|pay now|payment required)\b|\bfee\s+(?:pathan|diben|den)\b|\btaka\s+(?:pathan|diben|den)\b|\bage\s+(?:processing\s+)?fee\s+dite\s+hobe\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i);
 
+  const otpRequestMatch = text.match(/\\b(?:reply with|send|share|provide|enter|submit|confirm)\\s+(?:your\\s+)?(?:otp|one[- ]time password|pin|password|verification code)\\b|\\botp\\s+(?:pathan|diben|den|share koren)\\b|\\bpin\\s+(?:pathan|diben|den)\\b|ওটিপি\\s*(?:দিন|পাঠান|শেয়ার করুন|দিয়ে দিন)|পিন\\s*(?:দিন|পাঠান)|পাসওয়ার্ড\\s*(?:দিন|পাঠান)/i);
+  const urgentAccountContext = /\\b(?:account (?:will be|is) blocked|account suspended|blocked today|verify immediately|keep it active|security alert|unauthori[sz]ed access|urgent)\\b|অ্যাকাউন্ট বন্ধ|অ্যাকাউন্ট স্থগিত|আজই বন্ধ|জরুরি যাচাই/i.test(text);
+
+  const suspiciousLinkMatch = text.match(/\\b(?:click here|verify your account|login here|update your account)\\b.{0,120}https?:\\/\\/[^\\s]+|https?:\\/\\/[^\\s]+.{0,120}\\b(?:click here|verify your account|login here|account suspended|account blocked)\\b/i);
+  const urgentLinkContext = /\\b(?:suspended|blocked|expires today|immediately|urgent|act now|within \\d+ hours?)\\b|অ্যাকাউন্ট বন্ধ|জরুরি|এখনই|আজই/i.test(text);
+
+  const isBangla = responseLanguage === "bn";
+  const makeFastResult = ({ verdict = "suspicious", score, titleBn, titleEn, summaryBn, summaryEn, quote, quoteBn, quoteEn, reasonBn, reasonEn, tactics, actionsBn, actionsEn, uncertaintyBn, uncertaintyEn }) => {
+    const riskScore = Math.max(Number(scored.score) || 0, score);
+    return {
+      isRelevant: true,
+      verdict,
+      responseLanguage,
+      riskScore,
+      riskLevel: riskScore >= 75 ? "critical" : riskScore >= 50 ? "high" : riskScore >= 25 ? "medium" : "low",
+      summary_bn: summaryBn,
+      summary_en: summaryEn,
+      evidence: [{
+        quote,
+        quote_bn: quoteBn,
+        quote_en: quoteEn,
+        reason_bn: reasonBn,
+        reason_en: reasonEn
+      }],
+      tactics,
+      safe_actions: isBangla ? actionsBn : actionsEn,
+      matchedSignals: Array.isArray(scored.matched) ? scored.matched : [],
+      uncertainty: isBangla ? uncertaintyBn : uncertaintyEn,
+      confidence: "medium",
+      engine: "Rule-based",
+      model: "local-patterns",
+      degradedMode: false,
+      webEvidence: { searched: false, searchExecuted: false, status: "not_searched", officialSourcesFound: 0, sources: [] },
+      claimVerification: { status: "not_applicable", summary_bn: "", summary_en: "" },
+      disclaimer: "Rule-based warning only. It is not proof of fraud; verify important claims independently."
+    };
+  };
+
   // Do not fast-label educational warnings or quoted anti-scam advice as scams.
   const warningContext = /\b(?:this is (?:a )?(?:scam|fraud)|(?:scam|fraud) warning|fraudsters? (?:use|often|typically)|scammers? (?:use|often|typically)|never pay|do not pay|don't pay|avoid paying|never send|do not send|don't send|warning against)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|প্রতারণা থেকে সাবধান|এটি প্রতারণা|স্ক্যাম থেকে সাবধান/i.test(text);
   if (warningContext) return null;
+
+  if (otpRequestMatch && !warningContext && urgentAccountContext) {
+    return makeFastResult({
+      score: 65,
+      summaryBn: "বার্তাটি অ্যাকাউন্ট বন্ধ বা নিরাপত্তার চাপ দেখিয়ে OTP/PIN চাইছে। OTP বা PIN কাউকে দেওয়া উচিত নয়; এটি উচ্চ ঝুঁকির সংকেত।",
+      summaryEn: "The message uses an account-security threat to request an OTP or PIN. Never disclose these codes to a sender; this is a high-risk credential-harvesting signal.",
+      quote: otpRequestMatch[0],
+      quoteBn: /[\\u0980-\\u09FF]/.test(otpRequestMatch[0]) ? otpRequestMatch[0] : "OTP বা PIN চাওয়া হয়েছে",
+      quoteEn: /[\\u0980-\\u09FF]/.test(otpRequestMatch[0]) ? "request for an OTP or PIN" : otpRequestMatch[0],
+      reasonBn: "OTP/PIN দিয়ে অ্যাকাউন্টে প্রবেশ বা লেনদেন অনুমোদন করা যেতে পারে।",
+      reasonEn: "An OTP or PIN can authorise account access or a transaction.",
+      tactics: ["credential_request", "urgency"],
+      actionsBn: ["কোনো OTP, PIN বা পাসওয়ার্ড দেবেন না।", "বার্তার লিংকে ক্লিক করবেন না।", "ব্যাংক বা সেবার অফিসিয়াল অ্যাপ/নম্বর দিয়ে আলাদাভাবে যোগাযোগ করুন।"],
+      actionsEn: ["Do not share any OTP, PIN, or password.", "Do not open links in the message.", "Contact the bank or service through its official app or a number you find independently."],
+      uncertaintyBn: "প্রেরকের পরিচয় যাচাই করা হয়নি; মূল্যায়নটি বার্তার OTP চাওয়া ও জরুরি চাপের ভিত্তিতে।",
+      uncertaintyEn: "The sender has not been authenticated; this assessment is based on the OTP request and urgency language."
+    });
+  }
+
+  if (suspiciousLinkMatch && urgentLinkContext && !warningContext) {
+    return makeFastResult({
+      score: 55,
+      summaryBn: "বার্তাটি অ্যাকাউন্ট বন্ধ বা জরুরি সমস্যার ভয় দেখিয়ে একটি লিংকে ক্লিক করে তথ্য যাচাই করতে বলছে। এটি ফিশিংয়ের পরিচিত কৌশল।",
+      summaryEn: "The message pressures the recipient with an account warning and directs them to a link. This is a common phishing pattern.",
+      quote: suspiciousLinkMatch[0].slice(0, 180),
+      quoteBn: "জরুরি অ্যাকাউন্ট সতর্কতা ও লিংক",
+      quoteEn: suspiciousLinkMatch[0].slice(0, 180),
+      reasonBn: "চাপ সৃষ্টি করে লিংকে পাঠানো ব্যবহারকারীর login তথ্য চুরির ঝুঁকি তৈরি করতে পারে।",
+      reasonEn: "Urgent link prompts can lead users to credential-stealing pages.",
+      tactics: ["urgency", "suspicious_link"],
+      actionsBn: ["বার্তার লিংকে ক্লিক করবেন না।", "কোনো পাসওয়ার্ড বা OTP দেবেন না।", "অফিসিয়াল অ্যাপ বা নিজে টাইপ করা ওয়েবসাইট দিয়ে অ্যাকাউন্ট যাচাই করুন।"],
+      actionsEn: ["Do not click the message link.", "Do not enter a password or OTP.", "Check your account through the official app or by typing the known website address yourself."],
+      uncertaintyBn: "লিংকের প্রকৃত মালিকানা বা পেজের কনটেন্ট খোলা হয়নি; এটি বার্তার প্যাটার্নভিত্তিক সতর্কতা।",
+      uncertaintyEn: "The link destination has not been opened or authenticated; this is a warning based on the message pattern."
+    });
+  }
 
   // Only bypass Gemini for this narrow, high-signal combination.
   // Scholarship and job claims still go through evidence retrieval.
