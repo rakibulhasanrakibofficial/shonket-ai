@@ -44,9 +44,10 @@ function scoreText(text) {
 
 
 const RATE_LIMITS = [
-  // Judge-friendly limits while retaining per-IP abuse protection.
-  { name: "minute", windowSeconds: 60, limit: 20 },
-  { name: "day", windowSeconds: 86400, limit: 200 }
+  // Allow a 50+ user shared-network burst while retaining per-IP abuse protection.
+  // Gemini project quotas remain the upstream capacity ceiling.
+  { name: "minute", windowSeconds: 60, limit: 60 },
+  { name: "day", windowSeconds: 86400, limit: 300 }
 ];
 
 async function enforceRateLimits(req) {
