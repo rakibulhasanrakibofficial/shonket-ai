@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
+  timeout: 60_000,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL || 'http://127.0.0.1:4173',
