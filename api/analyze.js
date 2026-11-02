@@ -172,9 +172,22 @@ export default async function handler(req, res) {
 
     if (!upstream.ok) {
       const status = upstream.status;
-      if (status === 429) return send(res, 429, { error: "Gemini request limit reached. Wait briefly and try again." });
-      if (status === 400 || status === 404) return send(res, 502, { error: "Gemini model or request configuration was rejected. Check GEMINI_MODEL in Vercel." });
-      return send(res, 502, { error: "The AI service is temporarily unavailable. Please try again." });
+      const upstreamBody = await upstream.json().catch(() => ({}));
+      const upstreamMessage = String(upstreamBody?.error?.message || "").toLowerCase();
+      if (status === 429) {
+        const quotaExhausted = /quota|limit: 0|per day|per minute|resource_exhausted/.test(upstreamMessage);
+        const retryAfterSeconds = quotaExhausted ? 60 : 30;
+        res.setHeader("Retry-After", String(retryAfterSeconds));
+        return send(res, 429, {
+          error: quotaExhausted
+            ? "AI service quota is currently exhausted. Please wait and try again later."
+            : "The AI service is receiving too many requests. Please wait briefly and try again.",
+          code: quotaExhausted ? "AI_QUOTA_EXHAUSTED" : "AI_RATE_LIMITED",
+          retryAfterSeconds
+        });
+      }
+      if (status === 400 || status === 404) return send(res, 502, { error: "Gemini model or request configuration was rejected. Check GEMINI_MODEL in Vercel.", code: "AI_CONFIGURATION_ERROR" });
+      return send(res, 502, { error: "The AI service is temporarily unavailable. Please try again.", code: "AI_UPSTREAM_UNAVAILABLE" });
     }
 
     const payload = await upstream.json();
