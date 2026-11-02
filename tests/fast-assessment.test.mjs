@@ -58,3 +58,27 @@ test("Banglish prize plus fee wording triggers the instant path", () => {
   assert.equal(result.responseLanguage, "bn");
   assert.equal(result.engine, "Rule-based");
 });
+
+
+test("urgent OTP harvesting request uses the instant warning path", () => {
+  const text = "Your bank account will be blocked today. Reply with your OTP to keep it active.";
+  const result = buildFastAssessment(text, "en", { score: 48, matched: ["Credential or OTP request", "Possible authority impersonation", "Urgency or pressure"] });
+  assert.ok(result);
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.engine, "Rule-based");
+  assert.match(result.summary_en, /OTP or PIN/i);
+});
+
+test("a reminder never to share an OTP is not treated as an OTP request", () => {
+  const text = "Your bank will never ask for your OTP. Never share your PIN or password with anyone.";
+  assert.equal(buildFastAssessment(text, "en", { score: 0, matched: [] }), null);
+});
+
+test("urgent account verification link uses the instant phishing warning path", () => {
+  const text = "Your account is suspended. Click here to verify your account immediately: http://example.invalid/login";
+  const result = buildFastAssessment(text, "en", { score: 42, matched: ["Urgency or pressure", "Link or verification prompt"] });
+  assert.ok(result);
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.engine, "Rule-based");
+  assert.match(result.summary_en, /phishing/i);
+});
