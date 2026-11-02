@@ -44,7 +44,7 @@ export function buildFastAssessment(text, responseLanguage, scored) {
 
   // Do not fast-label educational warnings or quoted anti-scam advice as scams.
   const warningContext = /\b(?:this is (?:a )?(?:scam|fraud)|(?:scam|fraud) warning|fraudsters? (?:use|often|typically)|scammers? (?:use|often|typically)|never pay|do not pay|don't pay|avoid paying|never send|do not send|don't send|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|warning against)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|প্রতারণা থেকে সাবধান|এটি প্রতারণা|স্ক্যাম থেকে সাবধান/i.test(text);
-  if (warningContext) {
+  if (warningContext && !urgentAccountContext && !(suspiciousLinkMatch && urgentLinkContext)) {
     return makeFastResult({
       verdict: "likely_safe",
       score: 0,
@@ -63,6 +63,7 @@ export function buildFastAssessment(text, responseLanguage, scored) {
       uncertaintyEn: "This is an assessment of the wording only; the sender and source have not been authenticated."
     });
   }
+  if (warningContext) return null;
 
   if (otpRequestMatch && !warningContext && urgentAccountContext) {
     return makeFastResult({
