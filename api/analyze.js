@@ -41,6 +41,52 @@ function scoreText(text) {
   return { score: Math.min(100, total), matched };
 }
 
+
+const RATE_LIMITS = [
+  { name: "minute", windowSeconds: 60, limit: 5 },
+  { name: "day", windowSeconds: 86400, limit: 30 }
+];
+
+async function enforceRateLimits(req) {
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!redisUrl || !redisToken) {
+    const error = new Error("Rate limiting is not configured.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const ip = String(req.headers["x-real-ip"] || "").trim();
+  if (!ip || ip.length > 64) {
+    const error = new Error("Could not establish a trusted client address.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const script = "local current = redis.call('INCR', KEYS[1]); if current == 1 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])); end; local ttl = redis.call('TTL', KEYS[1]); return {current, ttl}";
+  for (const rule of RATE_LIMITS) {
+    const windowId = Math.floor(now / rule.windowSeconds);
+    const key = "shonket:analyze:" + rule.name + ":" + windowId + ":" + ip;
+    const response = await fetch(redisUrl.replace(/\/$/, "") + "/pipeline", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + redisToken, "Content-Type": "application/json" },
+      body: JSON.stringify([["EVAL", script, "1", key, String(rule.windowSeconds)]])
+    });
+    if (!response.ok) {
+      const error = new Error("Rate-limit service is unavailable.");
+      error.statusCode = 503;
+      throw error;
+    }
+    const payload = await response.json();
+    const result = payload?.[0]?.result;
+    if (!Array.isArray(result) || Number(result[0]) > rule.limit) {
+      const error = new Error("Rate limit reached. Please wait before trying again.");
+      error.statusCode = 429;
+      error.retryAfter = Math.max(1, Number(result?.[1]) || rule.windowSeconds);
+      throw error;
+    }
+  }
+}
+
 function send(res, status, body) {
   res.status(status).setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
@@ -48,10 +94,16 @@ function send(res, status, body) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return send(res, 405, { error: "Method not allowed." });
-  if (!process.env.GEMINI_API_KEY) return send(res, 503, { error: "Gemini API key is not configured on the server." });
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return send(res, 405, { error: "Method not allowed." });
+  }
 
   try {
+    const bodyBytes = Buffer.byteLength(JSON.stringify(req.body || {}), "utf8");
+    if (bodyBytes > 4 * 1024 * 1024) return send(res, 413, { error: "Request is too large. Maximum request size is 4 MB." });
+    await enforceRateLimits(req);
+    if (!process.env.GEMINI_API_KEY) return send(res, 503, { error: "Gemini API key is not configured on the server." });
     const { message = "", imageBase64 = "", imageMimeType = "", language = "bn" } = req.body || {};
     const cleanText = String(message).trim().slice(0, MAX_TEXT);
     if (!cleanText && !imageBase64) return send(res, 400, { error: "Add a message or screenshot to analyze." });
@@ -164,6 +216,11 @@ export default async function handler(req, res) {
       disclaimer: "AI-assisted assessment only. It can be wrong; verify through official channels."
     });
   } catch (error) {
+    if (error?.statusCode === 429) {
+      res.setHeader("Retry-After", String(error.retryAfter || 60));
+      return send(res, 429, { error: error.message });
+    }
+    if (error?.statusCode === 503) return send(res, 503, { error: error.message });
     if (error?.name === "AbortError") return send(res, 504, { error: "The analysis took too long. Please try again." });
     return send(res, 500, { error: "Something went wrong while analyzing this content." });
   }
