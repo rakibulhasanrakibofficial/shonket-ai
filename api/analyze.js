@@ -43,8 +43,9 @@ function scoreText(text) {
 
 
 const RATE_LIMITS = [
-  { name: "minute", windowSeconds: 60, limit: 5 },
-  { name: "day", windowSeconds: 86400, limit: 30 }
+  // Judge-friendly limits while retaining per-IP abuse protection.
+  { name: "minute", windowSeconds: 60, limit: 20 },
+  { name: "day", windowSeconds: 86400, limit: 200 }
 ];
 
 async function enforceRateLimits(req) {
