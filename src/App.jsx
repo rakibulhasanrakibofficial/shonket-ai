@@ -88,18 +88,14 @@ function getLiveSourceDomain(source) {
 
 function LiveSourceLogo({ source, compact = false }) {
   const [failed, setFailed] = useState(false);
-  const brand = getSourceBrand(source);
   const host = getLiveSourceHost(source);
-  if (brand) {
-    return <span className={'live-source-logo ' + (compact ? 'live-source-logo-compact' : '')}><SourceBrand source={source} size={compact ? 'compact' : 'regular'}/></span>;
-  }
   if (!host || failed) return null;
   const iconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=128';
   return (
     <span className={'live-source-logo live-source-favicon ' + (compact ? 'live-source-logo-compact' : '')}>
       <img
         src={iconUrl}
-        alt={host + ' website icon'}
+        alt={host + ' website logo'}
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
