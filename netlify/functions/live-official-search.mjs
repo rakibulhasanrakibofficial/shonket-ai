@@ -34,7 +34,7 @@ const SOURCE_GROUPS = {
       id: "bkash-security-tips",
       agency: "bKash — official safety guidance",
       title: "bKash — Security Tips",
-      listingUrl: "https://www.bkash.com/page/security-tips",
+      listingUrl: "https://www.bkash.com/index.php/en/page/security-tips",
       kind: "official_guidance"
     },
     {
