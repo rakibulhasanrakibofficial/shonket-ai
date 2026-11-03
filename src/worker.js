@@ -53,6 +53,18 @@ export async function handleAnalyzeRequest(request, env) {
 }
 
 export async function handleOfficialSearchRequest(request, env) {
+  const headers = Object.fromEntries(request.headers.entries());
+  if (request.method === "OPTIONS") {
+    const preflight = await officialSearchHandler({
+      httpMethod: "OPTIONS",
+      headers,
+      body: null
+    }, env, null);
+    return new Response(preflight.body || null, {
+      status: preflight.statusCode,
+      headers: preflight.headers
+    });
+  }
   const clientIp = String(request.headers.get("CF-Connecting-IP") || "").trim();
   if (!clientIp || clientIp.length > 64) {
     return json(503, { error: "Could not establish a trusted client address." });
@@ -61,7 +73,6 @@ export async function handleOfficialSearchRequest(request, env) {
   if (!limiter || typeof limiter.limit !== "function") {
     return json(503, { error: "The official-search rate limiter is not configured." });
   }
-  const headers = Object.fromEntries(request.headers.entries());
   if (request.method !== "POST") {
     return json(405, { error: "Method not allowed." });
   }
@@ -91,6 +102,7 @@ export default {
         runtime: "Cloudflare Workers",
         aiBindingConfigured: Boolean(env.AI),
         rateLimitConfigured: Boolean(env.ANALYZE_RATE_LIMITER),
+        officialSearchRateLimitConfigured: Boolean(env.OFFICIAL_SEARCH_RATE_LIMITER),
         timestamp: new Date().toISOString()
       });
     }
