@@ -125,7 +125,7 @@ export default function AnalysisExportActions({ analysis, message = "", language
         {(analysis.officialSearch.sources || []).map(s => <p key={s.id}><a href={s.url}>{s.title}</a> — {s.agency}{s.publishedDate ? " · " + s.publishedDate : ""}</p>)}
       </section>}
       {analysis.retrievedSources?.length > 0 && <section className="shonket-print-section">
-        <h2>{bn ? "RAG নিরাপত্তা-গাইডলাইন" : "Retrieved Safety Guidance"}</h2>
+        <h2>{bn ? "সংরক্ষিত নিরাপত্তা-উৎস" : "Curated RAG References"}</h2>
         {analysis.retrievedSources.map(s => <p key={s.id}><strong>{s.title}</strong> — {s.summary}<br /><a href={s.url}>{s.url}</a></p>)}
       </section>}
       <footer className="shonket-print-footer">
