@@ -4,8 +4,29 @@ import AnalysisExportActions from './AnalysisExportActions';
 import {motion,AnimatePresence} from 'framer-motion';
 import {ShieldCheck,ScanSearch,BrainCircuit,ArrowUpRight,ArrowRight,Menu,X,Sparkles,Link2,MessageSquareText,LockKeyhole,Activity,Fingerprint,CheckCircle2,AlertTriangle,Globe2,ChevronRight,Users,History,Trash2,Clock3,Trophy,Mic,MicOff,Upload,ExternalLink,Info,FileText} from 'lucide-react';
 const SOURCE_BRANDS = [
-  { hosts: ['bkash.com'], ids: ['bkash-fraud-awareness', 'bkash-security-tips'], name: 'bKash', logo: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Bkash.webp', surface: 'bg-[#e2136e]' },
-  { hosts: ['cirt.gov.bd'], ids: ['bgd-cirt-error524'], name: 'BGD e-GOV CIRT', logo: 'https://cirt.gov.bd/assets/images/CIRT-Main-Logo.png', surface: 'bg-white' }
+  {
+    key: 'bkash',
+    hosts: ['bkash.com'],
+    ids: ['bkash-fraud-awareness', 'bkash-security-tips'],
+    name: 'bKash',
+    logos: [
+      'https://images.seeklogo.com/logo-png/45/1/bkash-logo-png_seeklogo-457983.png',
+      'https://upload.wikimedia.org/wikipedia/commons/f/fe/Bkash.webp'
+    ],
+    surface: 'source-brand-surface-light'
+  },
+  {
+    key: 'cirt',
+    hosts: ['cirt.gov.bd'],
+    ids: ['bgd-cirt-error524'],
+    name: 'BGD e-GOV CIRT',
+    logos: [
+      'https://upload.wikimedia.org/wikipedia/commons/e/9d/BGD_e-Gov_CIRT_Emblem.svg',
+      'https://cirt.gov.bd/assets/images/CIRT-Main-Logo.png',
+      'https://pbs.twimg.com/profile_images/1712349752086691840/OHEHnX1H.jpg'
+    ],
+    surface: 'source-brand-surface-light'
+  }
 ];
 
 function getSourceBrand(source) {
@@ -15,7 +36,7 @@ function getSourceBrand(source) {
   if (!host && source.url) {
     try { host = new URL(source.url).hostname.toLowerCase(); } catch { host = ''; }
   }
-  host = host.replace(/^www\./, '').split('/')[0].split(':')[0];
+  host = host.replace(/^www\\./, '').split('/')[0].split(':')[0];
   return SOURCE_BRANDS.find(brand =>
     brand.ids.includes(id) ||
     brand.hosts.some(knownHost => host === knownHost || host.endsWith('.' + knownHost))
@@ -23,13 +44,25 @@ function getSourceBrand(source) {
 }
 
 function SourceBrand({ source, size = 'regular' }) {
+  const [logoIndex, setLogoIndex] = useState(0);
   const [failed, setFailed] = useState(false);
   const brand = getSourceBrand(source);
-  if (!brand || failed) return null;
+  if (!brand || failed || !brand.logos[logoIndex]) return null;
   const compact = size === 'compact';
   return (
-    <span className={'source-brand-mark ' + (compact ? 'source-brand-mark-compact ' : '') + brand.surface} title={brand.name} aria-label={brand.name}>
-      <img src={brand.logo} alt={brand.name + ' logo'} loading="lazy" decoding="async" onError={() => setFailed(true)} className="source-brand-image" />
+    <span className={'source-brand-mark source-brand-' + brand.key + ' ' + (compact ? 'source-brand-mark-compact ' : '') + brand.surface} title={brand.name} aria-label={brand.name}>
+      <img
+        src={brand.logos[logoIndex]}
+        alt={brand.name + ' logo'}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => {
+          if (logoIndex + 1 < brand.logos.length) setLogoIndex(index => index + 1);
+          else setFailed(true);
+        }}
+        className="source-brand-image"
+      />
     </span>
   );
 }
