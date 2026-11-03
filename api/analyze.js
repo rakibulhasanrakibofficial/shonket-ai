@@ -58,18 +58,20 @@ function shouldUseWebSearch(text) {
 
 function hostnameFromSourceTitle(value) {
   const text = String(value || "").trim();
-  const match = text.match(/(?:https?:\\/\\/)?(?:www\\.)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}/i);
-  if (!match) return "";
-  try {
-    const candidate = /^https?:\\/\\//i.test(match[0]) ? match[0] : "https://" + match[0];
-    return new URL(candidate).hostname.toLowerCase().replace(/^www\\./i, "");
-  } catch {
-    return "";
+  const candidates = text.match(/[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+  for (const candidate of candidates) {
+    try {
+      const hostname = new URL("https://" + candidate.replace(/^www[.]/i, "")).hostname;
+      return hostname.toLowerCase();
+    } catch {
+      // Ignore title fragments that are not valid hostnames.
+    }
   }
+  return "";
 }
 
 function hostnameFromSourceUri(uri) {
-  try { return new URL(uri).hostname.toLowerCase().replace(/^www\\./i, ""); }
+  try { return new URL(uri).hostname.toLowerCase().replace(/^www[.]/i, ""); }
   catch { return ""; }
 }
 
@@ -79,7 +81,9 @@ export function extractGroundingSources(metadata) {
   return chunks.flatMap(chunk => {
     const web = chunk?.web;
     const uri = typeof web?.uri === "string" ? web.uri : "";
-    if (!/^https:\\/\\//i.test(uri) || seen.has(uri)) return [];
+    let parsedUri;
+    try { parsedUri = new URL(uri); } catch { return []; }
+    if (parsedUri.protocol !== "https:" || seen.has(uri)) return [];
     seen.add(uri);
 
     const uriHost = hostnameFromSourceUri(uri);
@@ -118,7 +122,6 @@ export function classifyGroundingFailure(status, message = "", networkFailure = 
   // silently retrying without grounding makes integration bugs harder to see.
   return null;
 }
-
 
 
 const RATE_LIMITS = [
