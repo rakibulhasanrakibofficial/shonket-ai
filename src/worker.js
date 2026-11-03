@@ -1,4 +1,4 @@
-import { handler as analyzeHandler } from "../netlify/functions/analyze.mjs";
+import { handler as analyzeHandler, officialSearchHandler } from "../netlify/functions/analyze.mjs";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
@@ -52,6 +52,34 @@ export async function handleAnalyzeRequest(request, env) {
   });
 }
 
+export async function handleOfficialSearchRequest(request, env) {
+  const clientIp = String(request.headers.get("CF-Connecting-IP") || "").trim();
+  if (!clientIp || clientIp.length > 64) {
+    return json(503, { error: "Could not establish a trusted client address." });
+  }
+  const limiter = env?.OFFICIAL_SEARCH_RATE_LIMITER;
+  if (!limiter || typeof limiter.limit !== "function") {
+    return json(503, { error: "The official-search rate limiter is not configured." });
+  }
+  const headers = Object.fromEntries(request.headers.entries());
+  if (request.method !== "POST") {
+    return json(405, { error: "Method not allowed." });
+  }
+  const declaredLength = Number(headers["content-length"] || 0);
+  if (declaredLength > 16 * 1024) return json(413, { error: "Request is too large." });
+  const body = await request.text();
+  headers["content-length"] = String(new TextEncoder().encode(body).byteLength);
+  const result = await officialSearchHandler({
+    httpMethod: request.method,
+    headers,
+    body
+  }, env, limiter);
+  return new Response(result.body || null, {
+    status: result.statusCode,
+    headers: result.headers
+  });
+}
+
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
@@ -69,6 +97,10 @@ export default {
 
     if (pathname === "/api/analyze") {
       return handleAnalyzeRequest(request, env);
+    }
+
+    if (pathname === "/api/official-search") {
+      return handleOfficialSearchRequest(request, env);
     }
 
     return json(404, { error: "API route not found." });
