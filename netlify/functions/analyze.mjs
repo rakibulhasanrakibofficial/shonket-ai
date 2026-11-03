@@ -1,6 +1,6 @@
 import { buildRuleAssessment } from "../../api/ruleAssessment.js";
 import { retrieveKnowledge } from "./knowledge-base.mjs";
-import { searchOfficialSources, isEducationClaim } from "./live-official-search.mjs";
+import { searchOfficialSources, isOfficialSourceSearchApplicable } from "./live-official-search.mjs";
 
 const MAX_TEXT_LENGTH = 4000;
 // Cloudflare Workers AI credentials are supplied by Netlify Production environment variables.
@@ -363,8 +363,8 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
   const language = languageFor(message, body.language);
   const rules = buildRuleAssessment(message, language);
   const retrievedSources = retrieveKnowledge(message, 3);
-  const searchApplies = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED !== "false" && isEducationClaim(message);
-  const searchScope = "Bangladesh education ministry and DSHE public scholarship/notice listings";
+  const searchApplies = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED !== "false" && isOfficialSourceSearchApplicable(message);
+  const searchScope = "Selected Bangladesh official and institutional sources based on message category";
   const notApplicableSearch = {
     status: "not_applicable",
     scope: searchScope,
@@ -373,11 +373,11 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     sources: [],
     evidenceAssessment: {
       status: "not_applicable",
-      summary_bn: "এই বার্তার জন্য সরকারি শিক্ষা-পোর্টালে অনুসন্ধান প্রযোজ্য নয়।",
-      summary_en: "Official education-portal search was not applicable to this message."
+      summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+      summary_en: "No supported official-source category matched this message."
     },
-    summary_bn: "এই বার্তার জন্য সরকারি শিক্ষা-পোর্টালে অনুসন্ধান প্রযোজ্য নয়।",
-    summary_en: "Official education-portal search was not applicable to this message."
+    summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+    summary_en: "No supported official-source category matched this message."
   };
 
   // Portal retrieval and the concise LLM explanation run concurrently.
