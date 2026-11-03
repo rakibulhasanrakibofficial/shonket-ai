@@ -7,7 +7,7 @@ export async function analyzeMessage({ message, language = "bn" }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message: cleanMessage,
-      language: language === "en" ? "en" : "bn"
+      language: language === "en" || language === "bn" ? language : "auto"
     })
   });
 
