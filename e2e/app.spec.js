@@ -52,11 +52,57 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByText(/No external source was searched/i)).toBeVisible();
 });
 
-test('screenshot and microphone input are clearly unavailable in text-only mode', async ({ page }) => {
+test('microphone dictation uses on-device recognition and fills the message field', async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      constructor() { this.processLocally = false; }
+      start() {
+        window.__speechWasLocal = this.processLocally;
+        this.onstart?.();
+        this.onresult?.({ results: [[{ transcript: 'This is a dictated message.' }]] });
+        this.onend?.();
+      }
+      stop() {}
+      abort() {}
+    }
+    MockSpeechRecognition.available = async options =>
+      options.processLocally ? 'available' : 'unavailable';
+    MockSpeechRecognition.install = async () => true;
+    window.SpeechRecognition = MockSpeechRecognition;
+  });
   await page.goto('/');
-  await expect(page.getByText(/Voice and screenshot analysis are not available/i)).toBeVisible();
+  await expect(page.getByText(/Audio stays on your device/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Speak' }).click();
+  await expect(page.locator('#message')).toHaveValue('This is a dictated message.');
+  await expect.poll(() => page.evaluate(() => window.__speechWasLocal)).toBe(true);
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Speak|Listening/i })).toHaveCount(0);
+});
+
+test('browser voice requires explicit consent when on-device language support is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      constructor() { this.processLocally = false; }
+      start() {
+        window.__speechStarted = true;
+        window.__speechWasLocal = this.processLocally;
+        this.onstart?.();
+        this.onresult?.({ results: [[{ transcript: 'A Bangla voice transcript.' }]] });
+        this.onend?.();
+      }
+      stop() {}
+      abort() {}
+    }
+    MockSpeechRecognition.available = async () => 'unavailable';
+    MockSpeechRecognition.install = async () => false;
+    window.SpeechRecognition = MockSpeechRecognition;
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Speak' }).click();
+  await expect(page.getByText(/Optional browser voice/i)).toBeVisible();
+  expect(await page.evaluate(() => window.__speechStarted || false)).toBe(false);
+  await page.getByRole('button', { name: /Continue with browser voice/i }).click();
+  await expect(page.locator('#message')).toHaveValue('A Bangla voice transcript.');
+  await expect.poll(() => page.evaluate(() => window.__speechWasLocal)).toBe(false);
 });
 
 test('link inspector identifies a known official domain without opening it', async ({ page }) => {
