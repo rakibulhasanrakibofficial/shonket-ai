@@ -57,6 +57,9 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
   await expect(page.getByText('UNVERIFIED', { exact: true })).toBeVisible();
   await expect(page.getByText('LLM NOT CONFIGURED')).toBeVisible();
+  await expect(page.getByText('BACKEND NOT CONNECTED')).toBeVisible();
+  await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toBeVisible();
+  await expect(page.getByText(/Connect the Netlify backend/i).first()).toBeVisible();
   await expect(page.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toBeVisible();
 });
 

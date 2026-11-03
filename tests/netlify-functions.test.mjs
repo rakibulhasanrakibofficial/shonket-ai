@@ -4,6 +4,7 @@ import { handler, redactForModel } from "../netlify/functions/analyze.mjs";
 import { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const allowedOrigin = "https://rakibulhasanrakibofficial.github.io";
+process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "false";
 
 function makeEvent(message, headers = {}, httpMethod = "POST") {
   return {
@@ -60,7 +61,7 @@ test("Netlify API returns deterministic rule result and RAG sources without an L
     assert.equal(body.verdict, "suspicious");
     assert.equal(body.engine, "Rule-based");
     assert.equal(body.aiAnalysis.status, "not_configured");
-    assert.equal(body.analysisMode, "rules+rag");
+    assert.equal(body.analysisMode, "rules+rag+official-search");
     assert.ok(body.retrievedSources.some(source => source.id === "bkash-security-tips"));
     assert.equal(body.privacy.rawMessageStored, false);
   } finally {
@@ -171,6 +172,49 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
     assert.equal(body.engine, "Rule-based");
   } finally {
     globalThis.fetch = originalFetch;
+    if (previousToken === undefined) delete process.env.HF_TOKEN;
+    else process.env.HF_TOKEN = previousToken;
+  }
+});
+
+
+test("Netlify API returns live official scholarship listings and conservative evidence status", async () => {
+  const originalFetch = globalThis.fetch;
+  const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
+  const previousToken = process.env.HF_TOKEN;
+  delete process.env.HF_TOKEN;
+  process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "true";
+
+  const html = [
+    "<table>",
+    "<tr><th>No</th><th>Title</th><th>Files</th><th>Link</th><th>Published</th><th>Action</th></tr>",
+    "<tr><td>১</td><td>Government Scholarships for University Students Academic Year 2027</td><td></td><td></td><td>০৬-০৮-২০২৬</td><td><a href='/pages/moedu-scholarships/api-test-2027'>দেখুন</a></td></tr>",
+    "</table>"
+  ].join("");
+
+  globalThis.fetch = async () => new Response(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html" }
+  });
+
+  try {
+    const result = await handler(makeEvent({
+      message: "A government scholarship for university students offers 50,000 BDT for the 2027 academic year.",
+      language: "en"
+    }));
+    const body = JSON.parse(result.body);
+    assert.equal(result.statusCode, 200);
+    assert.equal(body.officialSearch.status, "results_found");
+    assert.equal(body.officialSearch.sources.length > 0, true);
+    assert.equal(body.officialSearch.sources[0].publishedDate, "06-08-2026");
+    assert.equal(body.claimVerification.officialSearchStatus, "results_found");
+    assert.equal(body.claimVerification.officialEvidenceStatus, "related_official_notice");
+    assert.match(body.officialSearch.evidenceAssessment.summary_en, /does not authenticate/i);
+    assert.equal(body.aiAnalysis.status, "not_configured");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousSearchFlag === undefined) delete process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
+    else process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = previousSearchFlag;
     if (previousToken === undefined) delete process.env.HF_TOKEN;
     else process.env.HF_TOKEN = previousToken;
   }

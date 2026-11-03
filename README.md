@@ -11,7 +11,7 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - Lexical RAG over a small, curated knowledge base of official Bangladesh safety guidance. Original source links are displayed.
 - Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js in English and Bangla; image files are not uploaded.
 - Microphone dictation, link-structure inspector, screenshot preview, and scam-awareness simulator.
-- Claims about scholarships, jobs, grants, benefits, and prizes remain **unverified** unless the exact claim is independently confirmed by its issuing organisation. The curated RAG collection is not live web search.
+- Education-related scholarship, stipend, grant, and recruitment claims can trigger a live search of three allowlisted Bangladesh education-government listings (SHED scholarships, SHED notices, and DSHE notices). This is **not whole-web search**. Results contain listing titles, publication dates, and original government notice links; attached PDFs are not parsed. A related title is not proof that the sender or every claim detail is genuine. No match does not prove the claim is false. Other claim types remain unverified unless independently checked.
 - AI-generated explanations are advisory and do not authenticate senders, domains, notices, or offers.
 
 ## Architecture
@@ -20,10 +20,11 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - **Backend:** Netlify Function at `POST /api/analyze`.
 - **LLM:** Hugging Face Inference Providers, called only from the server-side Netlify Function.
 - **RAG:** Small lexical retrieval over curated sources in `netlify/functions/knowledge-base.mjs`.
+- **Live official-source search:** `netlify/functions/live-official-search.mjs` checks only `shed.gov.bd` scholarship/notices and `dshe.gov.bd` notices for education-related claims. It reads titles and published dates from listing tables, provides original notice links, and labels partial portal outages. It does not crawl the full web, read notice PDFs, or independently verify a sender.
 - **Screenshot OCR:** Tesseract.js in the browser. The screenshot image itself is not sent to Netlify or the LLM provider.
 - **Rule engine:** `api/ruleAssessment.js`; used by the backend and by the browser as an offline fallback.
 
-The RAG implementation is lexical retrieval, not vector embeddings or a vector database. It retrieves general safety guidance; it does not prove that a specific message is genuine or fraudulent.
+The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The live official-source search is a separate server-side retrieval step over three allowlisted education-government listings, not unrestricted web search. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
 
 ## Deploy the backend to Netlify
 
@@ -45,6 +46,7 @@ Configure these in **Site configuration → Environment variables**. Never put `
 | `HF_TOKEN` | Optional | Hugging Face token with Inference Providers permission. Without it, deterministic results and RAG sources still work, but no LLM explanation is generated. |
 | `HF_MODEL` | Optional | Model and provider routing preference. Default: `Qwen/Qwen2.5-7B-Instruct:cheapest`. |
 | `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated permitted frontend origins. The GitHub Pages origin, Netlify's own `URL`, and local Vite origins are allowed by default. |
+| `OFFICIAL_SOURCE_SEARCH_ENABLED` | Optional | Defaults to enabled. Set to `false` to disable the allowlisted Bangladesh education-portal search. No API key is needed for this limited source retrieval. |
 
 Hugging Face currently provides **$0.10/month** in Inference Providers credit for free accounts, subject to change. This is a small trial allowance, not unlimited usage. Additional usage requires separately purchased credits. Review the current provider/model availability, pricing, terms and data-handling conditions before enabling hosted inference.
 
