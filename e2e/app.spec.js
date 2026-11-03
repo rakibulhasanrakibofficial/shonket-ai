@@ -99,7 +99,7 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByText('CLAIM VERIFICATION', { exact: true })).toHaveCount(1);
   await expect(page.getByText('UNVERIFIED', { exact: true })).toHaveCount(1);
   await expect(page.getByText(/official portals checked/i)).toHaveCount(1);
-  await expect(page.getByText(/references retrieved/i)).toHaveCount(1);
+  await expect(page.locator('.claim-verification-panel').getByText(/references retrieved/i)).toHaveCount(1);
   await expect(page.getByText('LLM ACTIVE')).toBeVisible();
   await expect(page.getByText('OFFICIAL CYBERSECURITY ADVISORY')).toBeVisible();
   await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toBeVisible();
