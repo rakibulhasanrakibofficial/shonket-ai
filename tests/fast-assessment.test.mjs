@@ -8,16 +8,21 @@ import screenshotHandler from "../api/analyzeScreenshot.js";
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
 test("all 22 scam-checker sample inputs match relevance and expected verdicts", () => {
+  const mismatches = [];
   for (const sample of sampleCases) {
     const result = buildRuleAssessment(sample.text, /[\\u0980-\\u09FF]/.test(sample.text) ? "bn" : "en");
-    assert.equal(result.isRelevant, sample.relevant, sample.id + " relevance mismatch");
-    if (sample.relevant) {
-      assert.ok(sample.expected.includes(result.verdict), sample.id + " expected " + sample.expected.join("/") + " but received " + result.verdict);
-    } else {
-      assert.equal(result.verdict, "out_of_scope", sample.id + " should not receive a scam verdict");
-      assert.equal(result.riskScore, null, sample.id + " should not receive a risk score");
+    if (result.isRelevant !== sample.relevant) {
+      mismatches.push(sample.id + " relevance expected " + sample.relevant + " but received " + result.isRelevant);
+      continue;
+    }
+    if (sample.relevant && !sample.expected.includes(result.verdict)) {
+      mismatches.push(sample.id + " expected " + sample.expected.join("/") + " but received " + result.verdict);
+    }
+    if (!sample.relevant && (result.verdict !== "out_of_scope" || result.riskScore !== null)) {
+      mismatches.push(sample.id + " should return out_of_scope with no risk score");
     }
   }
+  assert.deepEqual(mismatches, [], mismatches.join("\\n"));
 });
 
 test("a prize claim combined with an upfront fee is suspicious", () => {
