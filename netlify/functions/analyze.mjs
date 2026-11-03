@@ -3,6 +3,7 @@ import { retrieveKnowledge } from "./knowledge-base.mjs";
 import { searchOfficialSources } from "./live-official-search.mjs";
 
 const MAX_TEXT_LENGTH = 4000;
+// Cloudflare Workers AI credentials are supplied by Netlify Production environment variables.
 const MAX_BODY_BYTES = 16 * 1024;
 const rateBuckets = new Map();
 
