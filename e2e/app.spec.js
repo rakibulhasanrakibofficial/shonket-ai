@@ -108,15 +108,7 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 });
 
 
-test('analysis completion auto-reveals web evidence and eagerly loads source logos', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.__scrolledTargets = [];
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function (options) {
-      if (this.id) window.__scrolledTargets.push({ id: this.id, options });
-      return originalScrollIntoView?.call(this, options);
-    };
-  });
+test('analysis reveals the complete evidence stack at the top of results without manual scrolling', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
     await route.fulfill({
       status: 200,
@@ -137,41 +129,116 @@ test('analysis completion auto-reveals web evidence and eagerly loads source log
         webEvidence: {
           searched: true,
           status: 'evidence_retrieved',
-          officialSourcesFound: 1,
-          sources: [{
-            title: 'BGD e-GOV CIRT — Security Alerts',
-            url: 'https://cirt.gov.bd/alerts',
-            domain: 'cirt.gov.bd'
-          }]
+          officialSourcesFound: 3,
+          sources: [
+            { title: 'BGD e-GOV CIRT — Security Alerts', url: 'https://cirt.gov.bd/alerts', domain: 'cirt.gov.bd', id: 'cirt-alerts' },
+            { title: 'Global Error524 smishing campaign targeting Bangladesh', url: 'https://cirt.gov.bd/advisories/global-error524', domain: 'cirt.gov.bd', id: 'cirt-smishing' },
+            { title: 'Common Scams in Bangladesh', url: 'https://scamcheck.gov.bd/common-scams', domain: 'scamcheck.gov.bd', id: 'scamcheck-common-scams' }
+          ]
         },
-        claimVerification: { status: 'unverified', officialPortalCount: 1, officialSourceCount: 1 },
+        claimVerification: {
+          status: 'unverified',
+          officialPortalCount: 3,
+          officialSourceCount: 3,
+          officialEvidenceStatus: 'contextual_guidance',
+          summary_en: 'Three selected official sources were checked, but no exact claim was confirmed.'
+        },
         aiAnalysis: {
           status: 'ready',
           explanation_en: 'An advance fee is a warning sign.',
-          explanation_bn: 'আগাম ফি সতর্কতার সংকেত।',
+          explanation_bn: 'আগাম ফি একটি সতর্কতার সংকেত।',
           next_steps_en: [],
           next_steps_bn: []
         },
-        retrievedSources: [],
-        officialSearch: null
+        retrievedSources: [{
+          id: 'cirt-alerts',
+          title: 'BGD e-GOV CIRT — Security Alerts',
+          summary: 'General safety guidance about suspicious messages.',
+          url: 'https://cirt.gov.bd/alerts'
+        }],
+        officialSearch: {
+          status: 'guidance_only',
+          summary_en: 'Relevant official safety guidance was found, but no notice matching this exact message was confirmed.',
+          summary_bn: 'প্রাসঙ্গিক নিরাপত্তা নির্দেশনা পাওয়া গেছে।',
+          scopeNote_en: 'Selected official sources only.',
+          scopeNote_bn: 'শুধু নির্বাচিত সরকারি উৎস।',
+          evidenceAssessment: {
+            status: 'contextual_guidance',
+            summary_en: 'These references do not prove the exact claim.'
+          },
+          failedPortalCount: 0,
+          searchedPortals: [
+            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
+            { agency: 'ScamCheck', listingUrl: 'https://scamcheck.gov.bd' }
+          ],
+          sources: [
+            {
+              id: 'cirt-alerts',
+              agency: 'BGD e-GOV CIRT',
+              title: 'Security Alerts',
+              url: 'https://cirt.gov.bd/alerts',
+              evidenceType: 'official_safety_guidance',
+              evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY',
+              excerpt: 'Official cybersecurity guidance for Bangladesh.'
+            },
+            {
+              id: 'cirt-smishing',
+              agency: 'BGD e-GOV CIRT',
+              title: 'Global Error524 smishing campaign targeting Bangladesh',
+              url: 'https://cirt.gov.bd/advisories/global-error524',
+              evidenceType: 'official_safety_guidance',
+              evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY',
+              excerpt: 'A smishing campaign targets mobile users.'
+            },
+            {
+              id: 'scamcheck-common-scams',
+              agency: 'Government of Bangladesh — ScamCheck',
+              title: 'Common Scams in Bangladesh',
+              url: 'https://scamcheck.gov.bd/common-scams',
+              evidenceType: 'official_safety_guidance',
+              evidenceTypeLabel_en: 'OFFICIAL SAFETY GUIDANCE',
+              excerpt: 'Common scam patterns and safety advice.'
+            }
+          ]
+        }
       })
     });
   });
+
   await page.goto('/');
   await page.locator('#message').fill('Pay a processing fee to claim a prize.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
 
-  const evidencePanel = page.locator('#web-evidence-panel');
-  await expect(evidencePanel).toBeVisible({ timeout: 60_000 });
-  await expect(evidencePanel.getByText('BGD e-GOV CIRT — Security Alerts')).toBeVisible();
+  const stack = page.locator('#analysis-evidence-stack');
+  await expect(stack).toBeVisible({ timeout: 60_000 });
+  await expect(stack.locator('.web-evidence-source')).toHaveCount(3);
+  await expect(stack.locator('.claim-verification-panel')).toBeVisible();
+  await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
+  await expect(stack.locator('.retrieved-guidance-panel .retrieved-source-card')).toHaveCount(1);
 
-  await expect.poll(async () => page.evaluate(() =>
-    window.__scrolledTargets.some(item => item.id === 'web-evidence-panel')
-  )).toBe(true);
+  await expect.poll(async () => page.evaluate(() => {
+    const element = document.getElementById('analysis-evidence-stack');
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    return window.scrollY > 0 && rect.top >= -1 && rect.top < 90;
+  })).toBe(true);
 
-  await expect.poll(async () => page.locator('#web-evidence-panel img').first().getAttribute('loading')).toBe('eager');
+  const visibility = await stack.evaluate(element => {
+    const cards = [...element.querySelectorAll('.web-evidence-source,.official-search-result-card,.retrieved-source-card')];
+    return {
+      count: cards.length,
+      allRendered: cards.every(card => {
+        const style = getComputedStyle(card);
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0 && card.getBoundingClientRect().height > 0;
+      }),
+      logoLoadingModes: [...element.querySelectorAll('img')].map(img => img.loading)
+    };
+  });
+  expect(visibility.count).toBe(7);
+  expect(visibility.allRendered).toBe(true);
+  expect(visibility.logoLoadingModes.length).toBeGreaterThan(0);
+  expect(visibility.logoLoadingModes.every(mode => mode === 'eager')).toBe(true);
 });
-
 test('analysis result can be copied and exported as a print-ready PDF', async ({ page }) => {
   await page.addInitScript(() => {
     window.__copiedText = '';
