@@ -357,7 +357,7 @@ test('official source results appear before the AI analysis request finishes', a
   await expect(stack).toBeVisible({ timeout: 60_000 });
   // The official search endpoint finishes while /api/analyze is intentionally delayed.
   await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
-  await expect(stack.locator('.ai-explanation-panel')).toContainText('AI EXPLANATION PENDING');
+  await expect(page.locator('#analysis-results .ai-explanation-panel')).toContainText('AI EXPLANATION PENDING');
   await expect(stack.locator('.web-evidence-source')).toHaveCount(3);
   await expect(stack.locator('.claim-verification-panel')).toBeVisible();
   await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
