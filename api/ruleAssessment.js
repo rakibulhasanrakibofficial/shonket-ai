@@ -135,12 +135,13 @@ export function buildRuleAssessment(inputText, responseLanguage = "bn") {
   const ids = new Set(matches.map(item => item.id));
   const prizeAndFee = ids.has("prize_claim") && ids.has("upfront_fee");
   const jobAndFee = ids.has("job_offer") && ids.has("upfront_fee");
+  const paymentAndPressure = ids.has("upfront_fee") && ids.has("urgency");
   const credentialAndPressure = ids.has("credential_request") && (ids.has("urgency") || ids.has("authority_claim"));
   const phishingPattern = ids.has("suspicious_link_prompt") && ids.has("urgency") && (ids.has("url_present") || ids.has("credential_request"));
   // An unsolicited request to install remote-access software is a strong warning
   // even when the message does not also contain urgency or an authority claim.
   const remoteAccessPattern = ids.has("remote_access");
-  const strongPattern = prizeAndFee || jobAndFee || credentialAndPressure || phishingPattern || remoteAccessPattern || ids.has("credential_request");
+  const strongPattern = prizeAndFee || jobAndFee || paymentAndPressure || credentialAndPressure || phishingPattern || remoteAccessPattern || ids.has("credential_request");
   const isRelevant = matches.length > 0 || warningContext || MESSAGE_CONTEXT.test(text);
 
   if (!isRelevant) {
@@ -200,6 +201,9 @@ export function buildRuleAssessment(inputText, responseLanguage = "bn") {
   } else if (credentialAndPressure || ids.has("credential_request")) {
     summary_bn = "বার্তায় OTP, PIN বা পাসওয়ার্ড চাওয়া হয়েছে। এ ধরনের গোপন তথ্য অন্য কাউকে দেবেন না।";
     summary_en = "The message asks for an OTP, PIN, or password. Do not share these confidential details with another person.";
+  } else if (paymentAndPressure) {
+    summary_bn = "বার্তায় টাকা বা ফি চাওয়ার সঙ্গে দ্রুত সিদ্ধান্তের চাপ দেওয়া হয়েছে। টাকা পাঠানোর আগে অনুরোধটি স্বাধীনভাবে যাচাই করুন।";
+    summary_en = "The message combines a payment request with urgency. Verify the request independently before paying.";
   } else if (phishingPattern || remoteAccessPattern) {
     summary_bn = "বার্তায় চাপ সৃষ্টি করে লিংক খুলতে বা ডিভাইসে অ্যাক্সেস দিতে বলা হয়েছে। এটি ফিশিং বা অ্যাকাউন্ট-ঝুঁকির সতর্কসংকেত হতে পারে।";
     summary_en = "The message uses pressure to get the recipient to open a link or grant device access. This may be a phishing or account-security warning sign.";
