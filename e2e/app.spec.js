@@ -95,6 +95,27 @@ test('voice input shows a clear unsupported-browser message', async ({ page }) =
   await expect(page.getByRole('alert')).toContainText(/not supported in this browser/i);
 });
 
+test('speech-recognition errors keep the checker visible and show a recoverable message', async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      start() {
+        this.onstart?.();
+        this.onerror?.({ error: 'network' });
+        this.onend?.();
+      }
+      stop() {}
+      abort() {}
+    }
+    window.SpeechRecognition = MockSpeechRecognition;
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
+  await page.getByRole('button', { name: /Allow and start microphone/i }).click();
+  await expect(page.getByRole('alert')).toContainText(/speech service could not connect/i);
+  await expect(page.getByRole('heading', { name: /Check a suspicious message/i })).toBeVisible();
+  await expect(page.locator('#message')).toBeVisible();
+});
+
 test('link inspector identifies a known official domain without opening it', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
