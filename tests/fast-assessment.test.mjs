@@ -266,6 +266,49 @@ test("screenshot API extracts image text and checks it with deterministic rules"
   }
 });
 
+test("screenshot API rejects base64 payloads above the exact 2.5 MB limit", async () => {
+  const previous = {
+    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+    geminiKey: process.env.GEMINI_API_KEY
+  };
+  const originalFetch = globalThis.fetch;
+  let geminiCalled = false;
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.GEMINI_API_KEY = "test-gemini-key";
+  globalThis.fetch = async url => {
+    if (String(url) === "https://redis.example.invalid/pipeline") {
+      return { ok: true, json: async () => [{ result: [1, 60] }] };
+    }
+    geminiCalled = true;
+    throw new Error("Gemini must not receive an oversized screenshot");
+  };
+
+  try {
+    const oversizedBase64 = Buffer.alloc(2.5 * 1024 * 1024 + 1, 0x61).toString("base64");
+    const response = createMockResponse();
+    await screenshotHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.23" },
+      body: {
+        imageMimeType: "image/png",
+        imageBase64: "data:image/png;base64," + oversizedBase64
+      }
+    }, response);
+    assert.equal(response.statusCode, 413);
+    assert.equal(geminiCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
+    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
+    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previous.geminiKey;
+  }
+});
+
 test("screenshot API rejects unsupported image types before calling Gemini", async () => {
   const previous = {
     redisUrl: process.env.UPSTASH_REDIS_REST_URL,
