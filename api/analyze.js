@@ -411,6 +411,26 @@ export default async function handler(req, res) {
             searchFallbackUsed = true;
             searchFallbackReason = failureKind;
             activeSearchEnabled = false;
+            const noSearchParts = parts.map(part => part?.text
+              ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
+              : part
+            );
+            noSearchParts.push({
+              text: "IMPORTANT: Google Search did not complete. Do not claim external verification. Set claim_verification_status to unverified."
+            });
+            try {
+              upstream = await requestGemini({
+                model: FALLBACK_MODEL,
+                enableSearch: false,
+                requestParts: noSearchParts,
+                timeoutMs: 9000
+              });
+              if (!upstream.ok) upstreamAttempts.push({ model: FALLBACK_MODEL, status: upstream.status });
+            } catch (fallbackError) {
+              if (fallbackError?.name !== "AbortError" && !(fallbackError instanceof TypeError)) throw fallbackError;
+              upstream = null;
+              upstreamAttempts.push({ model: FALLBACK_MODEL, status: fallbackError?.name === "AbortError" ? "timeout" : "network_error" });
+            }
           }
         }
       }
