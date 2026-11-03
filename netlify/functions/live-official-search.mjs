@@ -18,7 +18,7 @@ const SOURCE_GROUPS = {
       id: "scamcheck-common-scams",
       agency: "Government of Bangladesh — ScamCheck",
       title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     }
   ],
@@ -94,7 +94,7 @@ const SOURCE_GROUPS = {
       id: "scamcheck-common-scams",
       agency: "Government of Bangladesh — ScamCheck",
       title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     },
     {
@@ -117,7 +117,7 @@ const SOURCE_GROUPS = {
       id: "scamcheck-common-scams",
       agency: "Government of Bangladesh — ScamCheck",
       title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     }
   ],
@@ -142,7 +142,7 @@ const SOURCE_GROUPS = {
       id: "scamcheck-common-scams",
       agency: "Government of Bangladesh — ScamCheck",
       title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     },
     {
@@ -172,7 +172,7 @@ const SOURCE_GROUPS = {
       id: "scamcheck-common-scams",
       agency: "Government of Bangladesh — ScamCheck",
       title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     }
   ]
@@ -426,13 +426,22 @@ function amounts(value) {
 
 export function compareEvidence(query, sources, searchStatus) {
   if (searchStatus === "unavailable" || searchStatus === "partial_unavailable") {
-    return { status: "search_unavailable", summary_bn: "কিছু বা সব সরকারি পোর্টালে সংযোগ করা যায়নি। অনুসন্ধান অসম্পূর্ণ; দাবিটি এখনো যাচাই করা যায়নি।", summary_en: "Some or all official portals could not be reached. The search is incomplete and the claim remains unverified." };
+    return { status: "search_unavailable", summary_bn: "কিছু বা সব official source-এ সংযোগ করা যায়নি। অনুসন্ধান অসম্পূর্ণ; দাবিটি এখনো যাচাই করা যায়নি।", summary_en: "Some or all official sources could not be reached. The search is incomplete and the claim remains unverified." };
   }
-  if (!sources.length) {
-    return { status: "no_matching_notice_found", summary_bn: "যাচাই করা সরকারি শিক্ষা-পোর্টালগুলোতে মিলে এমন নোটিশ পাওয়া যায়নি। এতে দাবিটি মিথ্যা প্রমাণ হয় না।", summary_en: "No matching notice was found in the education portals checked. This does not prove the claim is false." };
+  const listingMatches = sources.filter(source => source.evidenceType === "government_listing_match");
+  if (!listingMatches.length) {
+    return {
+      status: sources.length || searchStatus === "guidance_only" || searchStatus === "partial_guidance" ? "contextual_guidance" : "no_matching_notice_found",
+      summary_bn: sources.length
+        ? "নিরাপত্তা-সংক্রান্ত official guidance পাওয়া গেছে; এটি এই নির্দিষ্ট বার্তা বা প্রেরকের সত্যতা যাচাই করে না।"
+        : "পরীক্ষা করা official উৎসে মিলে যাওয়া কোনো notice পাওয়া যায়নি। এতে দাবিটি মিথ্যা প্রমাণ হয় না।",
+      summary_en: sources.length
+        ? "Official safety guidance was found. It does not authenticate this specific message or sender."
+        : "No matching notice was found in the official sources checked. This does not prove the claim is false."
+    };
   }
   const requestedAmounts = amounts(query);
-  const foundAmounts = amounts(sources[0].title);
+  const foundAmounts = amounts(listingMatches[0].title);
   if (requestedAmounts.length && foundAmounts.length && !requestedAmounts.some(value => foundAmounts.includes(value))) {
     return { status: "possible_amount_conflict", summary_bn: "সম্পর্কিত সরকারি নোটিশ পাওয়া গেছে, তবে বার্তার অঙ্ক ও নোটিশের শিরোনামে পাওয়া অঙ্ক মেলে না। মূল নোটিশ যাচাই করুন।", summary_en: "A related official notice was found, but the amount in the message differs from the amount stated in the notice title. Review the original notice." };
   }
@@ -535,6 +544,25 @@ export async function searchOfficialSources(query, options = {}) {
       ? parseListingRows(html, source)
       : [];
     if (rows.length) listingRecords.push(...rows.map(record => ({ ...record, category: source.category })));
+    if (!rows.length && source.kind === "recruitment_listing") {
+      const pageText = htmlToText(html);
+      guidanceSources.push({
+        id: source.id,
+        agency: source.agency,
+        title: source.title,
+        url: source.listingUrl,
+        listingUrl: source.listingUrl,
+        publishedDate: null,
+        publishedDateISO: null,
+        matchedTerms: terms.filter(term => new Set(tokens(pageText)).has(term)).slice(0, 8),
+        relevanceScore: 0,
+        evidenceType: "official_listing_context",
+        evidenceTypeLabel_en: "OFFICIAL RECRUITMENT LISTING",
+        evidenceTypeLabel_bn: "সরকারি নিয়োগ তালিকা",
+        detailFetched: true,
+        excerpt: "The official recruitment listing was reached, but no specific notice could be confidently matched to this message. Open the listing and verify the exact job circular."
+      });
+    }
 
     if (source.kind === "official_guidance" || source.kind === "cyber_advisory") {
       const pageText = htmlToText(html);
