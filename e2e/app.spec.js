@@ -53,6 +53,12 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
           next_steps_en: ['Do not share the OTP.', 'Verify through the official app or website.'],
           next_steps_bn: ['OTP শেয়ার করবেন না।', 'অফিসিয়াল অ্যাপ বা ওয়েবসাইটে যাচাই করুন।']
         },
+        retrievedSources: [{
+          id: 'cirt-smishing',
+          title: 'BGD e-GOV CIRT — Cybersecurity Advisory',
+          summary: 'Official guidance about phishing and suspicious messages.',
+          url: 'https://cirt.gov.bd/advisories/global-campaign-targeting-bd'
+        }],
         officialSearch: {
           status: 'guidance_only',
           category: ['cybersecurity'],
@@ -162,7 +168,7 @@ test('analysis result can be copied and exported as a print-ready PDF', async ({
   const copied = await page.evaluate(() => window.__copiedText);
   expect(copied).toContain('SHONKET AI');
   expect(copied).toContain('You won a prize. Pay a processing fee today.');
-  expect(copied).toContain('upfront payment');
+  expect(copied).toContain('upfront fee');
   expect(copied).toContain('bKash — Security Tips');
 
   await expect(page.locator('#shonket-print-report')).toContainText('Digital Safety Analysis Report');
