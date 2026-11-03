@@ -2336,3 +2336,53 @@
     margin-top:12px;
   }
 }
+
+
+/* Fast official-source feedback: visible immediately while the portal request runs. */
+.evidence-loading-dot,
+.official-search-spinner {
+  display:inline-block;
+  width:9px;
+  min-width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#67e8f9;
+  box-shadow:0 0 0 4px rgba(103,232,249,.1),0 0 15px rgba(103,232,249,.5);
+  animation:evidence-pulse 1.15s ease-in-out infinite;
+}
+.official-search-pending {
+  display:flex;
+  min-width:0;
+  align-items:center;
+  gap:13px;
+  border:1px solid rgba(103,232,249,.22);
+  border-radius:14px;
+  padding:14px;
+  background:linear-gradient(115deg,rgba(8,145,178,.1),rgba(15,23,42,.78));
+}
+.official-search-spinner {
+  width:18px;
+  min-width:18px;
+  height:18px;
+  border:2px solid rgba(103,232,249,.22);
+  border-top-color:#67e8f9;
+  background:transparent;
+  box-shadow:none;
+  animation:evidence-spin .8s linear infinite;
+}
+.official-search-pending > div {
+  min-width:0;
+}
+@keyframes evidence-pulse {
+  0%,100% { opacity:.55; transform:scale(.88); }
+  50% { opacity:1; transform:scale(1.08); }
+}
+@keyframes evidence-spin {
+  to { transform:rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evidence-loading-dot,
+  .official-search-spinner {
+    animation:none !important;
+  }
+}
