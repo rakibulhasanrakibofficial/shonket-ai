@@ -289,3 +289,38 @@ test("public API rejects unsupported methods without calling external services",
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("public API auto-detects Bangla text without a provider call", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => [{ result: [1, 60] }]
+  });
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.15" },
+      body: {
+        message: "আপনি নগদ পুরস্কার জিতেছেন। পুরস্কার পেতে আগে প্রসেসিং ফি পাঠান।",
+        language: "auto"
+      }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(JSON.parse(response.body).responseLanguage, "bn");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
