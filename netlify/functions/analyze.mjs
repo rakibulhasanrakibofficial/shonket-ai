@@ -80,6 +80,17 @@ function languageFor(text, requested) {
   return /[\u0980-\u09FF]/.test(text) ? "bn" : "en";
 }
 
+function getProviderDiagnostic(error) {
+  const message = String(error?.message || "");
+  const statusMatch = message.match(/HTTP\\s+(\\d{3})/i);
+  const codeMatch = message.match(/CODE\\s+(\\d+)/i);
+  if (statusMatch) return `HTTP_${statusMatch[1]}${codeMatch ? `_CF${codeMatch[1]}` : ""}`;
+  if (error?.name === "AbortError") return "TIMEOUT";
+  if (/JSON|json object|usable explanation/i.test(message)) return "INVALID_MODEL_RESPONSE";
+  if (/fetch|network|socket|connect/i.test(message)) return "NETWORK_ERROR";
+  return "PROVIDER_ERROR";
+}
+
 function parseModelJson(content) {
   const text = String(content || "").trim();
   const start = text.indexOf("{");
@@ -176,7 +187,15 @@ async function generateExplanation({ message, language, rules, sources, official
       })
     });
 
-    if (!apiResponse.ok) throw new Error("Cloudflare Workers AI returned HTTP " + apiResponse.status);
+    if (!apiResponse.ok) {
+      let providerCode = "";
+      try {
+        const errorPayload = await apiResponse.json();
+        const code = errorPayload?.errors?.[0]?.code;
+        if (Number.isInteger(code)) providerCode = String(code);
+      } catch {}
+      throw new Error("Cloudflare Workers AI returned HTTP " + apiResponse.status + (providerCode ? " CODE " + providerCode : ""));
+    }
 
     const payload = await apiResponse.json();
     const content = payload && payload.choices && payload.choices[0] && payload.choices[0].message
@@ -289,19 +308,21 @@ export async function handler(event) {
     aiAnalysis = await generateExplanation({
       message, language, rules, sources: retrievedSources, officialSearch
     });
-  } catch {
+  } catch (error) {
+    const diagnosticCode = getProviderDiagnostic(error);
     aiAnalysis = {
       status: "unavailable",
       provider: "Cloudflare Workers AI",
       model: cleanText(process.env.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160),
+      diagnosticCode,
       explanation_bn: "",
       explanation_en: "",
       evidence_comparison_bn: "",
       evidence_comparison_en: "",
       next_steps_bn: [],
       next_steps_en: [],
-      note_bn: "LLM সেবা এখন সাময়িকভাবে পাওয়া যাচ্ছে না। নিচের নিয়মভিত্তিক ফলাফল ও সরকারি অনুসন্ধানের ফল দেখুন।",
-      note_en: "The LLM service is temporarily unavailable. Use the rule-based result below."
+      note_bn: `LLM সেবা সাময়িকভাবে পাওয়া যাচ্ছে না ( ${diagnosticCode} )। নিচের নিয়মভিত্তিক ফলাফল ও সরকারি অনুসন্ধানের ফল দেখুন।`,
+      note_en: `The LLM service is temporarily unavailable ( ${diagnosticCode} ). Use the rule-based result below.`
     };
   }
 
