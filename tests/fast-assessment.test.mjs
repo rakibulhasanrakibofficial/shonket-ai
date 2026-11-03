@@ -161,4 +161,6 @@ test("grounding failure classifier distinguishes quota, permission, and schema e
   assert.equal(classifyGroundingFailure(400, "Invalid responseSchema: unsupported property"), null);
   assert.equal(classifyGroundingFailure(429, "Model output token quota exceeded"), null);
   assert.equal(classifyGroundingFailure(null, "", "timeout"), "timeout");
+  assert.equal(classifyGroundingFailure(503, "This model is currently experiencing high demand"), null);
+  assert.equal(classifyGroundingFailure(503, "Google Search grounding service is unavailable"), "search_service_unavailable");
 });
