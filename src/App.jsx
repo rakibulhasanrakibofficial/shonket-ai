@@ -95,7 +95,7 @@ function beginVoiceRecognition(){
       const result=results?.[resultIndex]||results?.[0];
       const transcript=String(result?.[0]?.transcript||'').trim();
       if(!transcript)return;
-      setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\\n').slice(0,4000));
+      setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\n').slice(0,4000));
       setAnalysis(null);
       setAiError('');
       setVoiceError('');
