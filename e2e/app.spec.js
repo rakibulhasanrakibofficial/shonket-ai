@@ -108,8 +108,9 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 });
 
 
-test('analysis reveals the complete evidence stack at the top of results without manual scrolling', async ({ page }) => {
+test('official source results appear before the AI analysis request finishes', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
+    await new Promise(resolve => setTimeout(resolve, 1600));
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -128,8 +129,8 @@ test('analysis reveals the complete evidence stack at the top of results without
         engine: 'Rule-based',
         webEvidence: {
           searched: true,
-          status: 'evidence_retrieved',
-          officialSourcesFound: 3,
+          status: 'pending',
+          officialSourcesFound: 0,
           sources: [
             { title: 'BGD e-GOV CIRT — Security Alerts', url: 'https://cirt.gov.bd/alerts', domain: 'cirt.gov.bd', id: 'cirt-alerts' },
             { title: 'Global Error524 smishing campaign targeting Bangladesh', url: 'https://cirt.gov.bd/advisories/global-error524', domain: 'cirt.gov.bd', id: 'cirt-smishing' },
@@ -138,10 +139,12 @@ test('analysis reveals the complete evidence stack at the top of results without
         },
         claimVerification: {
           status: 'unverified',
-          officialPortalCount: 3,
-          officialSourceCount: 3,
-          officialEvidenceStatus: 'contextual_guidance',
-          summary_en: 'Three selected official sources were checked, but no exact claim was confirmed.'
+          officialSearchAttempted: true,
+          officialSearchStatus: 'pending',
+          officialPortalCount: 0,
+          officialSourceCount: 0,
+          officialEvidenceStatus: 'pending',
+          summary_en: 'Selected official sources are still being checked.'
         },
         aiAnalysis: {
           status: 'ready',
@@ -157,7 +160,7 @@ test('analysis reveals the complete evidence stack at the top of results without
           url: 'https://cirt.gov.bd/alerts'
         }],
         officialSearch: {
-          status: 'guidance_only',
+          status: 'pending',
           summary_en: 'Relevant official safety guidance was found, but no notice matching this exact message was confirmed.',
           summary_bn: 'প্রাসঙ্গিক নিরাপত্তা নির্দেশনা পাওয়া গেছে।',
           scopeNote_en: 'Selected official sources only.',
@@ -167,10 +170,7 @@ test('analysis reveals the complete evidence stack at the top of results without
             summary_en: 'These references do not prove the exact claim.'
           },
           failedPortalCount: 0,
-          searchedPortals: [
-            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
-            { agency: 'ScamCheck', listingUrl: 'https://scamcheck.gov.bd' }
-          ],
+          searchedPortals: [],
           sources: [
             {
               id: 'cirt-alerts',
@@ -205,12 +205,67 @@ test('analysis reveals the complete evidence stack at the top of results without
     });
   });
 
+  await page.route('**/api/official-search', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        officialSearch: {
+          status: 'guidance_only',
+          summary_en: 'Relevant official guidance was retrieved, but no exact notice was confirmed.',
+          summary_bn: 'প্রাসঙ্গিক নিরাপত্তা নির্দেশনা পাওয়া গেছে।',
+          scopeNote_en: 'Selected official sources only.',
+          scopeNote_bn: 'শুধু নির্বাচিত সরকারি উৎস।',
+          evidenceAssessment: { status: 'contextual_guidance', summary_en: 'General guidance does not confirm this exact claim.' },
+          failedPortalCount: 0,
+          searchedPortals: [
+            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
+            { agency: 'ScamCheck', listingUrl: 'https://scamcheck.gov.bd' }
+          ],
+          sources: [
+            { id: 'cirt-alerts', agency: 'BGD e-GOV CIRT', title: 'Security Alerts', url: 'https://cirt.gov.bd/alerts', evidenceType: 'official_safety_guidance', evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY', excerpt: 'Official cybersecurity guidance for Bangladesh.' },
+            { id: 'cirt-smishing', agency: 'BGD e-GOV CIRT', title: 'Global Error524 smishing campaign targeting Bangladesh', url: 'https://cirt.gov.bd/advisories/global-error524', evidenceType: 'official_safety_guidance', evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY', excerpt: 'A smishing campaign targets mobile users.' },
+            { id: 'scamcheck-common-scams', agency: 'Government of Bangladesh — ScamCheck', title: 'Common Scams in Bangladesh', url: 'https://scamcheck.gov.bd/common-scams', evidenceType: 'official_safety_guidance', evidenceTypeLabel_en: 'OFFICIAL SAFETY GUIDANCE', excerpt: 'Common scam patterns and safety advice.' }
+          ]
+        },
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          status: 'evidence_retrieved',
+          officialSourcesFound: 3,
+          searchedPortals: [
+            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
+            { agency: 'ScamCheck', listingUrl: 'https://scamcheck.gov.bd' }
+          ],
+          sources: [
+            { title: 'BGD e-GOV CIRT — Security Alerts', url: 'https://cirt.gov.bd/alerts', domain: 'cirt.gov.bd' },
+            { title: 'Global Error524 smishing campaign targeting Bangladesh', url: 'https://cirt.gov.bd/advisories/global-error524', domain: 'cirt.gov.bd' },
+            { title: 'Common Scams in Bangladesh', url: 'https://scamcheck.gov.bd/common-scams', domain: 'scamcheck.gov.bd' }
+          ],
+          failedPortalCount: 0
+        },
+        claimVerification: {
+          status: 'unverified',
+          officialSearchAttempted: true,
+          officialSearchStatus: 'guidance_only',
+          officialPortalCount: 2,
+          officialSourceCount: 3,
+          officialEvidenceStatus: 'contextual_guidance',
+          summary_en: 'Two selected official sources were checked. General guidance was retrieved but no exact notice was confirmed.'
+        }
+      })
+    });
+  });
+
   await page.goto('/');
   await page.locator('#message').fill('Pay a processing fee to claim a prize.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
 
   const stack = page.locator('#analysis-evidence-stack');
   await expect(stack).toBeVisible({ timeout: 60_000 });
+  // The official search endpoint finishes while /api/analyze is intentionally delayed.
+  await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
+  await expect(stack.locator('.ai-explanation-panel')).toContainText('AI EXPLANATION PENDING');
   await expect(stack.locator('.web-evidence-source')).toHaveCount(3);
   await expect(stack.locator('.claim-verification-panel')).toBeVisible();
   await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
