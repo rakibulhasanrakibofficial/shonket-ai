@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildFastAssessment } from "../api/fastAssessment.js";
-import { extractGroundingSources, classifyGroundingFailure, inspectGeminiFailure } from "../api/analyze.js";
+import { extractGroundingSources, classifyGroundingFailure, inspectGeminiFailure, getSearchGroundingConfig } from "../api/analyze.js";
 
 test("cash prize plus processing fee returns an instant suspicious assessment", () => {
   const text = "Congratulations! You have won a cash prize. Send a small processing fee now to claim your reward.";
@@ -226,4 +226,34 @@ test("Gemini HTTP Retry-After header is used when RetryInfo is absent", () => {
 
   assert.equal(result.kind, "rate_limited");
   assert.equal(result.retryAfterSeconds, 11);
+});
+
+
+test("Search grounding stays disabled by default when no explicit feature flag is set", () => {
+  const result = getSearchGroundingConfig(
+    "A government scholarship is offering 50,000 BDT. Apply before 30 November 2026."
+  );
+
+  assert.equal(result.claimNeedsExternalVerification, true);
+  assert.equal(result.useWebSearch, false);
+  assert.equal(result.disabledByConfiguration, true);
+});
+
+test("Search grounding can be enabled explicitly for a deployment with access", () => {
+  const result = getSearchGroundingConfig(
+    "A government scholarship is offering 50,000 BDT. Apply before 30 November 2026.",
+    "true"
+  );
+
+  assert.equal(result.claimNeedsExternalVerification, true);
+  assert.equal(result.useWebSearch, true);
+  assert.equal(result.disabledByConfiguration, false);
+});
+
+test("ordinary notices do not call Search even when the feature flag is enabled", () => {
+  const result = getSearchGroundingConfig("Your parcel has been delivered.", "true");
+
+  assert.equal(result.claimNeedsExternalVerification, false);
+  assert.equal(result.useWebSearch, false);
+  assert.equal(result.disabledByConfiguration, false);
 });
