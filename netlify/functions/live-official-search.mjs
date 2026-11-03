@@ -564,14 +564,18 @@ export async function searchOfficialSources(query, options = {}) {
       : hasGuidance
         ? "প্রাসঙ্গিক official safety guidance পাওয়া গেছে; তবে এই নির্দিষ্ট মেসেজ, প্রেরক বা দাবির সঙ্গে মিলে যাওয়া কোনো সরকারি নোটিশ নিশ্চিত করা যায়নি।"
         : searchedPortals.length
-          ? "পরীক্ষা করা official source-গুলোতে মেসেজটির সঙ্গে মিলে যাওয়া কোনো notice পাওয়া যায়নি। এতে দাবিটি মিথ্যা প্রমাণ হয় না।"
+          ? (failedPortalCount
+            ? "কিছু official source পরীক্ষা করা যায়নি। যেসব উৎসে সংযোগ হয়েছে, সেখানে মিলে যাওয়া notice পাওয়া যায়নি; এতে দাবি মিথ্যা প্রমাণ হয় না।"
+            : "পরীক্ষা করা official source-গুলোতে মেসেজটির সঙ্গে মিলে যাওয়া notice পাওয়া যায়নি। এতে দাবিটি মিথ্যা প্রমাণ হয় না।")
           : "এই মুহূর্তে প্রাসঙ্গিক official source-এ সংযোগ করা যায়নি। পরে আবার চেষ্টা করুন।",
     summary_en: hasListingMatch
       ? "Related official notice listings were found. A matching title does not verify the sender, link, amount, or every condition."
       : hasGuidance
         ? "Relevant official safety guidance was retrieved, but no government notice matching this specific message or claim was confirmed."
         : searchedPortals.length
-          ? "No notice matching this message was found in the official sources checked. This does not prove the claim is false."
+          ? (failedPortalCount
+            ? "Some official sources could not be checked. No matching notice was found on the reachable sources; this does not prove the claim is false."
+            : "No notice matching this message was found in the official sources checked. This does not prove the claim is false.")
           : "Relevant official sources could not be reached right now. Try again later."
   };
 
