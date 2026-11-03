@@ -7,8 +7,8 @@ const MAX_TEXT_LENGTH = 4000;
 const MAX_BODY_BYTES = 16 * 1024;
 const rateBuckets = new Map();
 
-function allowedOrigins() {
-  const configured = String(process.env.CORS_ALLOWED_ORIGINS || "")
+function allowedOrigins(runtimeEnv = process.env) {
+  const configured = String(runtimeEnv.CORS_ALLOWED_ORIGINS || "")
     .split(",")
     .map(value => value.trim().replace(/\/+$/, ""))
     .filter(Boolean);
@@ -18,18 +18,18 @@ function allowedOrigins() {
     "http://127.0.0.1:5173",
     ...configured
   ];
-  if (process.env.URL) origins.push(process.env.URL.replace(/\/+$/, ""));
+  if (runtimeEnv.URL) origins.push(String(runtimeEnv.URL).replace(/\/+$/, ""));
   return new Set(origins);
 }
 
-function corsHeaders(origin) {
+function corsHeaders(origin, runtimeEnv = process.env) {
   const headers = {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400"
   };
-  if (origin && allowedOrigins().has(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  if (origin && allowedOrigins(runtimeEnv).has(origin)) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
@@ -90,6 +90,8 @@ function getProviderDiagnostic(error) {
   if (message.includes("LLM_DIAG_OUTPUT_TRUNCATED")) return "OUTPUT_TRUNCATED";
   if (message.includes("LLM_DIAG_MISSING_EXPLANATION")) return "MISSING_EXPLANATION_FIELDS";
   if (message.includes("LLM_DIAG_JSON_PARSE")) return "INVALID_JSON_OUTPUT";
+  if (/free allocation|daily.*neuron|neuron.*limit|quota.*exceeded/i.test(message)) return "AI_QUOTA_EXCEEDED";
+  if (/capacity temporarily exceeded|rejectifbusy/i.test(message)) return "AI_CAPACITY_BUSY";
   if (/fetch|network|socket|connect/i.test(message)) return "NETWORK_ERROR";
   return "PROVIDER_ERROR";
 }
@@ -110,6 +112,7 @@ function extractMessageText(message) {
     if (typeof content.content === "string") return content.content;
   }
   if (typeof message?.text === "string") return message.text;
+  if (typeof message?.response === "string") return message.response;
   return "";
 }
 
@@ -180,15 +183,15 @@ function cleanList(value, maxItems = 3) {
   return value.slice(0, maxItems).map(item => cleanText(item, 240)).filter(Boolean);
 }
 
-async function generateExplanation({ message, language, rules, sources, officialSearch }) {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  const accountId = cleanText(process.env.CLOUDFLARE_ACCOUNT_ID || "", 128);
-  const model = cleanText(process.env.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160);
+async function generateExplanation({ message, language, rules, sources, officialSearch, runtimeEnv = process.env, aiBinding = null }) {
+  const token = runtimeEnv.CLOUDFLARE_API_TOKEN;
+  const accountId = cleanText(runtimeEnv.CLOUDFLARE_ACCOUNT_ID || "", 128);
+  const model = cleanText(runtimeEnv.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160);
   const modelEndpoint = accountId
     ? `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/v1/chat/completions`
     : "";
 
-  if (!token || !accountId) {
+  if (!aiBinding && (!token || !accountId)) {
     return {
       status: "not_configured",
       provider: "Cloudflare Workers AI",
@@ -237,39 +240,48 @@ async function generateExplanation({ message, language, rules, sources, official
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const apiResponse = await fetch(modelEndpoint, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json"
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.15,
-        max_completion_tokens: 240,
-        chat_template_kwargs: { enable_thinking: false }
-      })
-    });
+    const requestBody = {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.15,
+      max_completion_tokens: 240,
+      chat_template_kwargs: { enable_thinking: false }
+    };
 
-    if (!apiResponse.ok) {
-      let providerCode = "";
-      try {
-        const errorPayload = await apiResponse.json();
-        const code = errorPayload?.errors?.[0]?.code;
-        if (Number.isInteger(code)) providerCode = String(code);
-      } catch {}
-      throw new Error("Cloudflare Workers AI returned HTTP " + apiResponse.status + (providerCode ? " CODE " + providerCode : ""));
+    let payload;
+    if (aiBinding) {
+      // Workers AI binding keeps inference inside the Cloudflare account; no
+      // long-lived API token or account ID is needed at runtime.
+      payload = await aiBinding.run(model, requestBody, { rejectIfBusy: true });
+    } else {
+      // Backwards-compatible path for the existing Netlify deployment.
+      const apiResponse = await fetch(modelEndpoint, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        signal: controller.signal,
+        body: JSON.stringify({ model, ...requestBody })
+      });
+
+      if (!apiResponse.ok) {
+        let providerCode = "";
+        try {
+          const errorPayload = await apiResponse.json();
+          const code = errorPayload?.errors?.[0]?.code;
+          if (Number.isInteger(code)) providerCode = String(code);
+        } catch {}
+        throw new Error("Cloudflare Workers AI returned HTTP " + apiResponse.status + (providerCode ? " CODE " + providerCode : ""));
+      }
+      payload = await apiResponse.json();
     }
 
-    const payload = await apiResponse.json();
     const choice = payload?.choices?.[0];
     if (choice?.finish_reason === "length") throw new Error("LLM_DIAG_OUTPUT_TRUNCATED");
-    const content = extractMessageText(choice?.message);
+    const content = extractMessageText(choice?.message) || extractMessageText(payload);
     const parsed = parseModelJson(content);
     const explanationBn = cleanText(parsed.explanation_bn, 900);
     const explanationEn = cleanText(parsed.explanation_en, 900);
@@ -291,24 +303,39 @@ async function generateExplanation({ message, language, rules, sources, official
   }
 }
 
-export async function handler(event) {
+export async function handler(event, runtimeEnv = process.env, aiBinding = null, rateLimiter = null) {
   const origin = event.headers && (event.headers.origin || event.headers.Origin);
-  const headers = corsHeaders(origin || "");
+  const headers = corsHeaders(origin || "", runtimeEnv);
 
   if (event.httpMethod === "OPTIONS") return makeResponse(204, {}, headers);
   if (event.httpMethod !== "POST") {
     return makeResponse(405, { error: "Method not allowed." }, { ...headers, Allow: "POST, OPTIONS" });
   }
-  if (origin && !allowedOrigins().has(origin)) {
+  if (origin && !allowedOrigins(runtimeEnv).has(origin)) {
     return makeResponse(403, { error: "This site is not allowed to use the SHONKET API." }, headers);
   }
 
-  const limit = checkBestEffortRateLimit(event);
-  if (!limit.ok) {
-    return makeResponse(429, { error: "Too many AI requests. Please wait and try again." }, {
-      ...headers,
-      "Retry-After": String(limit.retryAfter)
-    });
+  if (rateLimiter) {
+    const clientKey = String(
+      (event.headers && (event.headers["cf-connecting-ip"] || event.headers["CF-Connecting-IP"])) ||
+      (event.headers && (event.headers["x-nf-client-connection-ip"] || event.headers["X-NF-Client-Connection-IP"])) ||
+      "unknown"
+    ).slice(0, 80);
+    const rate = await rateLimiter.limit({ key: clientKey });
+    if (!rate.success) {
+      return makeResponse(429, { error: "Too many requests. Please wait and try again." }, {
+        ...headers,
+        "Retry-After": "60"
+      });
+    }
+  } else {
+    const limit = checkBestEffortRateLimit(event);
+    if (!limit.ok) {
+      return makeResponse(429, { error: "Too many AI requests. Please wait and try again." }, {
+        ...headers,
+        "Retry-After": String(limit.retryAfter)
+      });
+    }
   }
 
   const declaredLength = Number((event.headers && (event.headers["content-length"] || event.headers["Content-Length"])) || 0);
@@ -335,7 +362,7 @@ export async function handler(event) {
   const language = languageFor(message, body.language);
   const rules = buildRuleAssessment(message, language);
   const retrievedSources = retrieveKnowledge(message, 3);
-  const searchApplies = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED !== "false" && isEducationClaim(message);
+  const searchApplies = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED !== "false" && isEducationClaim(message);
   const searchScope = "Bangladesh education ministry and DSHE public scholarship/notice listings";
   const notApplicableSearch = {
     status: "not_applicable",
@@ -383,13 +410,13 @@ export async function handler(event) {
     : Promise.resolve(notApplicableSearch);
 
   const aiAnalysisTask = generateExplanation({
-    message, language, rules, sources: retrievedSources, officialSearch: modelSearchContext
+    message, language, rules, sources: retrievedSources, officialSearch: modelSearchContext, runtimeEnv, aiBinding
   }).catch(error => {
     const diagnosticCode = getProviderDiagnostic(error);
     return {
       status: "unavailable",
       provider: "Cloudflare Workers AI",
-      model: cleanText(process.env.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160),
+      model: cleanText(runtimeEnv.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160),
       diagnosticCode,
       explanation_bn: "",
       explanation_en: "",
@@ -418,7 +445,7 @@ export async function handler(event) {
     },
     privacy: {
       rawMessageStored: false,
-      modelInputRedacted: Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID),
+      modelInputRedacted: Boolean(aiBinding || (runtimeEnv.CLOUDFLARE_API_TOKEN && runtimeEnv.CLOUDFLARE_ACCOUNT_ID)),
       note: "The function processes the submitted text for this request and does not write it to an application database."
     }
   }, headers);
