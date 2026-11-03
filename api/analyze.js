@@ -126,6 +126,63 @@ export function classifyGroundingFailure(status, message = "", networkFailure = 
 }
 
 
+export function inspectGeminiFailure(errorBody, retryAfterHeader = "") {
+  const error = errorBody?.error || {};
+  const details = Array.isArray(error.details) ? error.details : [];
+  const quotaDetails = details.filter(item =>
+    String(item?.["@type"] || "").includes("QuotaFailure")
+  );
+  const quotaIds = quotaDetails.flatMap(item =>
+    Array.isArray(item?.violations)
+      ? item.violations.flatMap(violation => [
+          String(violation?.quotaId || ""),
+          String(violation?.quotaMetric || "")
+        ])
+      : []
+  );
+  const diagnosticText = [
+    String(error.message || ""),
+    String(error.status || ""),
+    ...quotaIds
+  ].join(" ").toLowerCase();
+
+  const searchQuota =
+    /generate_content_search_request|generatecontentsearch|search.{0,60}quota|quota.{0,60}search/i.test(diagnosticText);
+  const dailyQuota =
+    /per.?day|daily|requestsperday|tokensperday/i.test(diagnosticText);
+  const hasQuotaSignal = quotaDetails.length > 0 || /quota|resource_exhausted/i.test(diagnosticText);
+
+  const retryInfo = details.find(item =>
+    String(item?.["@type"] || "").includes("RetryInfo")
+  );
+  const retryDelayMatch = String(retryInfo?.retryDelay || "").match(/^(\\d+(?:\\.\\d+)?)s$/);
+  let retrySeconds = retryDelayMatch ? Number(retryDelayMatch[1]) : NaN;
+
+  if (!Number.isFinite(retrySeconds)) {
+    const headerValue = String(retryAfterHeader || "").trim();
+    if (/^\\d+(?:\\.\\d+)?$/.test(headerValue)) {
+      retrySeconds = Number(headerValue);
+    } else if (headerValue) {
+      const retryDate = Date.parse(headerValue);
+      if (Number.isFinite(retryDate)) retrySeconds = Math.max(0, (retryDate - Date.now()) / 1000);
+    }
+  }
+
+  return {
+    kind: searchQuota
+      ? "search_quota"
+      : dailyQuota
+        ? "daily_quota"
+        : hasQuotaSignal
+          ? "quota_or_rate_limit"
+          : "rate_limited",
+    retryAfterSeconds: Number.isFinite(retrySeconds)
+      ? Math.min(86400, Math.max(1, Math.ceil(retrySeconds)))
+      : null
+  };
+}
+
+
 const RATE_LIMITS = [
   // Allow a 50+ user shared-network burst while retaining per-IP abuse protection.
   // Gemini project quotas remain the upstream capacity ceiling.
@@ -303,7 +360,7 @@ export default async function handler(req, res) {
     // explicitly tell the model that no external verification took place.
     if (useWebSearch && (!upstream || !upstream.ok)) {
       const firstError = upstream ? await upstream.clone().json().catch(() => ({})) : {};
-      const firstMessage = String(firstError?.error?.message || "");
+      const firstMessage = [String(firstError?.error?.message || ""), JSON.stringify(firstError?.error?.details || [])].join(" ");
       searchFallbackReason = classifyGroundingFailure(
         upstream?.status ?? null,
         firstMessage,
@@ -374,7 +431,7 @@ export default async function handler(req, res) {
             const fallbackError = await upstream.clone().json().catch(() => ({}));
             const fallbackReason = classifyGroundingFailure(
               upstream.status,
-              String(fallbackError?.error?.message || "")
+              [String(fallbackError?.error?.message || ""), JSON.stringify(fallbackError?.error?.details || [])].join(" ")
             );
             if (fallbackReason) {
               searchFallbackUsed = true;
@@ -463,15 +520,37 @@ export default async function handler(req, res) {
         });
       }
       if (status === 429) {
-        const quotaExhausted = /quota|limit: 0|per day|per minute|resource_exhausted/.test(providerMessage.toLowerCase());
-        const retryAfterSeconds = quotaExhausted ? 60 : 30;
-        res.setHeader("Retry-After", String(retryAfterSeconds));
+        const quotaInfo = inspectGeminiFailure(
+          upstreamBody,
+          upstream?.headers?.get?.("retry-after") || ""
+        );
+        const retryAfterSeconds = quotaInfo.retryAfterSeconds ??
+          (quotaInfo.kind === "rate_limited" ? 30 : null);
+
+        if (retryAfterSeconds != null) {
+          res.setHeader("Retry-After", String(retryAfterSeconds));
+        }
+
+        const dailyQuota = quotaInfo.kind === "daily_quota";
+        const searchQuota = quotaInfo.kind === "search_quota";
+        const errorMessage = dailyQuota
+          ? "Gemini's daily quota appears to be exhausted. Check Google AI Studio for the quota reset time."
+          : searchQuota
+            ? "Google Search grounding quota appears to be exhausted. External verification is unavailable until that quota resets."
+            : quotaInfo.kind === "quota_or_rate_limit"
+              ? "Gemini reports a quota or rate limit. Check Google AI Studio usage and rate limits before retrying."
+              : "Gemini is rate-limiting requests. Wait for the indicated retry time before trying again.";
+
         return send(res, 429, {
-          error: quotaExhausted
-            ? "Gemini model quota is exhausted for the available models. Check usage and limits in Google AI Studio, then retry after the quota resets."
-            : "Gemini is rate-limiting requests. Wait briefly before trying again.",
-          code: quotaExhausted ? "AI_QUOTA_EXHAUSTED" : "AI_RATE_LIMITED",
-          retryAfterSeconds,
+          error: errorMessage,
+          code: dailyQuota
+            ? "AI_DAILY_QUOTA_EXHAUSTED"
+            : searchQuota
+              ? "AI_SEARCH_QUOTA_EXHAUSTED"
+              : quotaInfo.kind === "quota_or_rate_limit"
+                ? "AI_QUOTA_OR_RATE_LIMITED"
+                : "AI_RATE_LIMITED",
+          ...(retryAfterSeconds != null ? { retryAfterSeconds } : {}),
           upstreamAttempts
         });
       }
