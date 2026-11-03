@@ -86,7 +86,10 @@ export default async function handler(req, res) {
       return send(res, 400, { error: "Add the message text you want to check." });
     }
 
-    const language = body.language === "en" ? "en" : "bn";
+    const requestedLanguage = body.language === "en" || body.language === "bn" ? body.language : "auto";
+    const language = requestedLanguage === "auto"
+      ? (/[\\u0980-\\u09FF]/.test(cleanText) ? "bn" : "en")
+      : requestedLanguage;
     const result = buildRuleAssessment(cleanText, language);
     return send(res, 200, {
       ...result,
