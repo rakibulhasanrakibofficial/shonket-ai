@@ -12,14 +12,14 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - Claims about scholarships, jobs, grants, benefits, or prizes remain **unverified** because this version does not search the web.
 - Deterministic URL structure inspection. Submitted URLs are never fetched by the backend.
 - Fictional scam-awareness simulator with feedback and session score.
-- Optional microphone dictation. It uses on-device recognition when supported, and offers a separately confirmed browser-managed speech service otherwise. Existing result narration includes Listen, Pause, Resume, Stop and voice selection controls.
+- Microphone dictation with separate English/Bangla language controls, an explicit first-use privacy prompt, and clear listening/error states. Result narration includes Listen, Pause, Resume, Stop and voice selection controls.
 - Responsive interface with accessible reduced-motion support.
 
 ## Important scope
 
-Message analysis still runs on text. Optional microphone dictation uses on-device recognition when the browser supports `SpeechRecognition.processLocally` and the selected language pack. If local recognition is unavailable, users may explicitly opt in to their browser-managed speech service; that service may process microphone audio outside the device under the browser provider's terms. There is no silent cloud fallback. Screenshot reading remains unavailable.
+Message analysis still runs on text. Microphone dictation uses the browser's `SpeechRecognition` or `webkitSpeechRecognition` service in the selected language (English or Bangla). The app shows a first-use disclosure and requires the user to allow browser voice before opening the microphone. The browser provider may process audio outside the device under its terms; SHONKET does not receive raw microphone audio. Screenshot reading remains unavailable.
 
-This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. SHONKET does not receive or store microphone audio. On-device voice recognition keeps audio local; if the user explicitly chooses browser-managed voice after seeing a disclosure, their browser may send audio to its speech provider under that provider's terms. The resulting transcript appears in the message box and is submitted for checking only when the user selects Analyze. Server-side rate limiting still uses Upstash Redis.
+This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. SHONKET does not receive or store raw microphone audio. The browser's speech provider may process microphone audio outside the device after the user's explicit first-use consent. Only the resulting transcript is placed in the message box; it is submitted for checking only when the user selects Analyze. Server-side rate limiting still uses Upstash Redis.
 
 ## Stack
 
