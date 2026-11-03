@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
+import analyzeHandler from "../api/analyze.js";
 
 test("a prize claim combined with an upfront fee is suspicious", () => {
   const result = buildRuleAssessment(
@@ -146,4 +147,145 @@ test("an anti-scam sentence cannot hide a contradictory payment request", () => 
   );
   assert.equal(result.verdict, "suspicious");
   assert.ok(result.matchedSignals.includes("upfront_payment"));
+});
+
+
+function createMockResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: "",
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    setHeader(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
+    end(body) {
+      this.body = String(body || "");
+      return this.body;
+    }
+  };
+}
+
+test("public API checks text with deterministic rules and only calls Redis for rate limits", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    return {
+      ok: true,
+      json: async () => [{ result: [1, 60] }]
+    };
+  };
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.12" },
+      body: {
+        message: "You have won a cash prize. Send a processing fee now to claim it.",
+        language: "en"
+      }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.body);
+    assert.equal(body.engine, "Rule-based");
+    assert.equal(body.model, "deterministic-rules");
+    assert.equal(body.claimVerification.status, "unverified");
+    assert.equal(body.webEvidence.searchExecuted, false);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every(call => call.url === "https://redis.example.invalid/pipeline"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API fails closed when rate-limit storage is not configured", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.13" },
+      body: { message: "Your parcel has been delivered.", language: "en" }
+    }, response);
+    assert.equal(response.statusCode, 503);
+    assert.match(JSON.parse(response.body).error, /Rate limiting is not configured/i);
+  } finally {
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API rejects screenshots instead of pretending to analyse images", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => [{ result: [1, 60] }]
+  });
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.14" },
+      body: {
+        message: "Please check this screenshot",
+        imageBase64: "dGVzdA==",
+        imageMimeType: "image/png"
+      }
+    }, response);
+    assert.equal(response.statusCode, 422);
+    assert.equal(JSON.parse(response.body).code, "IMAGE_ANALYSIS_UNAVAILABLE");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API rejects unsupported methods without calling external services", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    throw new Error("fetch should not be called");
+  };
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({ method: "GET", headers: {}, body: {} }, response);
+    assert.equal(response.statusCode, 405);
+    assert.equal(called, false);
+    assert.equal(response.headers.Allow, "POST");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
