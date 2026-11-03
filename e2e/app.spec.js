@@ -45,6 +45,37 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
           status: 'unverified',
           summary_bn: 'এই দাবির পক্ষে কোনো বাহ্যিক সরকারি উৎস খোঁজা হয়নি।',
           summary_en: 'No external source was searched for this claim.'
+        },
+        aiAnalysis: {
+          status: 'ready',
+          explanation_en: 'A direct OTP request tied to a prize claim is a strong warning sign.',
+          explanation_bn: 'পুরস্কারের দাবির সঙ্গে OTP চাওয়া একটি শক্তিশালী সতর্কসংকেত।',
+          next_steps_en: ['Do not share the OTP.', 'Verify through the official app or website.'],
+          next_steps_bn: ['OTP শেয়ার করবেন না।', 'অফিসিয়াল অ্যাপ বা ওয়েবসাইটে যাচাই করুন।']
+        },
+        officialSearch: {
+          status: 'guidance_only',
+          category: ['cybersecurity'],
+          summary_en: 'Relevant official safety guidance was found, but no notice matching this specific message was confirmed.',
+          summary_bn: 'প্রাসঙ্গিক official safety guidance পাওয়া গেছে; তবে এই নির্দিষ্ট বার্তার সঙ্গে মিলে যাওয়া নোটিশ নিশ্চিত হয়নি।',
+          scopeNote_en: 'Selected Bangladesh cybersecurity sources only; not a whole-web search.',
+          scopeNote_bn: 'নির্বাচিত বাংলাদেশি সাইবার নিরাপত্তা উৎস; পুরো ওয়েবে অনুসন্ধান নয়।',
+          evidenceAssessment: {
+            status: 'contextual_guidance',
+            summary_en: 'The guidance does not authenticate this specific sender or message.',
+            summary_bn: 'এই নির্দেশনা নির্দিষ্ট প্রেরক বা বার্তার সত্যতা নিশ্চিত করে না।'
+          },
+          searchedPortals: [{ agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' }],
+          sources: [{
+            id: 'cirt-alerts',
+            agency: 'BGD e-GOV CIRT',
+            title: 'Security Alerts',
+            url: 'https://cirt.gov.bd/alerts',
+            evidenceType: 'official_safety_guidance',
+            evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY',
+            evidenceTypeLabel_bn: 'সরকারি সাইবার নিরাপত্তা সতর্কতা',
+            excerpt: 'Official cybersecurity guidance for Bangladesh.'
+          }]
         }
       })
     });
@@ -56,10 +87,10 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
   await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
   await expect(page.getByText('UNVERIFIED', { exact: true })).toBeVisible();
-  await expect(page.getByText('LLM NOT CONFIGURED')).toBeVisible();
-  await expect(page.getByText('BACKEND NOT CONNECTED')).toBeVisible();
+  await expect(page.getByText('LLM ACTIVE')).toBeVisible();
+  await expect(page.getByText('OFFICIAL CYBERSECURITY ADVISORY')).toBeVisible();
   await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toBeVisible();
-  await expect(page.getByText(/Connect the Netlify backend/i).first()).toBeVisible();
+  await expect(page.getByText(/Selected Bangladesh cybersecurity sources only/i)).toBeVisible();
   await expect(page.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toBeVisible();
 });
 
