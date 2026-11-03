@@ -43,8 +43,13 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
         },
         claimVerification: {
           status: 'unverified',
-          summary_bn: 'এই দাবির পক্ষে কোনো বাহ্যিক সরকারি উৎস খোঁজা হয়নি।',
-          summary_en: 'No external source was searched for this claim.'
+          officialSearchAttempted: true,
+          officialSearchStatus: 'guidance_only',
+          officialPortalCount: 1,
+          officialSourceCount: 1,
+          officialEvidenceStatus: 'contextual_guidance',
+          summary_bn: 'প্রাসঙ্গিক নিরাপত্তা নির্দেশনা পাওয়া গেছে, তবে এই নির্দিষ্ট দাবির সঙ্গে মিলে যাওয়া সরকারি নোটিশ নিশ্চিত হয়নি।',
+          summary_en: 'The live search checked 1 selected official or institutional portal and retrieved general official safety guidance, but did not confirm a notice matching this specific claim.'
         },
         aiAnalysis: {
           status: 'ready',
