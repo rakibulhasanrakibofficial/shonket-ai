@@ -111,7 +111,9 @@ export function classifyGroundingFailure(status, message = "", networkFailure = 
   const detail = String(message || "").toLowerCase();
   if (status == null) return networkFailure === "timeout" ? "timeout" : "network_error";
   if (status === 408) return "timeout";
-  if ([500, 502, 503, 504].includes(status)) return "temporary_upstream";
+  if ([500, 502, 503, 504].includes(status) && /(google.?search|grounding|search tool)/i.test(detail)) {
+    return "search_service_unavailable";
+  }
   if (status === 429 && /(google.?search|grounding|generate_content_search_request|search.{0,30}quota|quota.{0,30}search)/i.test(detail)) {
     return "search_quota";
   }
@@ -249,9 +251,10 @@ export default async function handler(req, res) {
       }
     }
 
-    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || (MODEL === "gemini-3.5-flash-lite" ? "gemini-3.8-flash" : "gemini-3.5-flash-lite");
+    const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || (MODEL === "gemini-3.5-flash-lite" ? "gemini-3.6-flash" : "gemini-3.5-flash-lite");
     const upstreamAttempts = [];
     let activeModel = MODEL;
+    let activeSearchEnabled = useWebSearch;
     let searchFallbackUsed = false;
     let searchFallbackReason = null;
 
@@ -310,6 +313,7 @@ export default async function handler(req, res) {
 
       if (searchUnavailable) {
         searchFallbackUsed = true;
+        activeSearchEnabled = false;
         const fallbackParts = parts.map(part => part?.text
           ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
           : part
@@ -333,19 +337,15 @@ export default async function handler(req, res) {
       }
     }
 
-    // A different lightweight model is a second-line availability fallback.
-    // It is never used to claim that a failed web search supplied evidence.
+    // If the primary model is busy, the alternate model must still receive
+    // Google Search when Search itself did not fail. Drop Search only after a
+    // Search-specific error or timeout has been classified.
     if ((!upstream || !upstream.ok) && FALLBACK_MODEL && FALLBACK_MODEL !== MODEL) {
       const lastStatus = upstream?.status;
       const canRetry = !upstream || retryableStatus(lastStatus);
       if (canRetry) {
         await wait(700);
-        // A model fallback must never receive a prompt claiming Search was
-        // enabled when the fallback request is sent without the Search tool.
-        if (useWebSearch && !searchFallbackUsed) {
-          searchFallbackUsed = true;
-          searchFallbackReason = searchFallbackReason || (lastStatus === 429 ? "model_quota_or_rate_limit" : "primary_model_fallback");
-        }
+        const fallbackEnableSearch = useWebSearch && !searchFallbackUsed;
         const fallbackParts = searchFallbackUsed
           ? parts.map(part => part?.text
             ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
@@ -360,16 +360,58 @@ export default async function handler(req, res) {
         try {
           upstream = await requestGemini({
             model: FALLBACK_MODEL,
-            enableSearch: false,
+            enableSearch: fallbackEnableSearch,
             requestParts: fallbackParts,
-            timeoutMs: 9000
+            timeoutMs: fallbackEnableSearch ? 15000 : 9000
           });
           activeModel = FALLBACK_MODEL;
+          activeSearchEnabled = fallbackEnableSearch;
           if (!upstream.ok) upstreamAttempts.push({ model: FALLBACK_MODEL, status: upstream.status });
+
+          // A backup model can reject Search independently. In that case,
+          // retry once without Search and force the claim to remain unverified.
+          if (!upstream.ok && fallbackEnableSearch) {
+            const fallbackError = await upstream.clone().json().catch(() => ({}));
+            const fallbackReason = classifyGroundingFailure(
+              upstream.status,
+              String(fallbackError?.error?.message || "")
+            );
+            if (fallbackReason) {
+              searchFallbackUsed = true;
+              searchFallbackReason = fallbackReason;
+              activeSearchEnabled = false;
+              const noSearchParts = parts.map(part => part?.text
+                ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
+                : part
+              );
+              noSearchParts.push({
+                text: "IMPORTANT: Google Search did not run successfully. Do not claim external verification. Set claim_verification_status to unverified."
+              });
+              try {
+                upstream = await requestGemini({
+                  model: FALLBACK_MODEL,
+                  enableSearch: false,
+                  requestParts: noSearchParts,
+                  timeoutMs: 9000
+                });
+                if (!upstream.ok) upstreamAttempts.push({ model: FALLBACK_MODEL, status: upstream.status });
+              } catch (error) {
+                if (error?.name !== "AbortError" && !(error instanceof TypeError)) throw error;
+                upstream = null;
+                upstreamAttempts.push({ model: FALLBACK_MODEL, status: error?.name === "AbortError" ? "timeout" : "network_error" });
+              }
+            }
+          }
         } catch (error) {
           if (error?.name !== "AbortError" && !(error instanceof TypeError)) throw error;
           upstream = null;
-          upstreamAttempts.push({ model: FALLBACK_MODEL, status: error?.name === "AbortError" ? "timeout" : "network_error" });
+          const failureKind = error?.name === "AbortError" ? "timeout" : "network_error";
+          upstreamAttempts.push({ model: FALLBACK_MODEL, status: failureKind });
+          if (fallbackEnableSearch) {
+            searchFallbackUsed = true;
+            searchFallbackReason = failureKind;
+            activeSearchEnabled = false;
+          }
         }
       }
     }
@@ -429,7 +471,7 @@ export default async function handler(req, res) {
     const webEvidence = {
       searched: useWebSearch,
       searchExecuted,
-      status: !useWebSearch ? "not_searched" : searchFallbackUsed ? "search_unavailable_fallback" : activeModel !== MODEL ? "model_fallback_without_search" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
+      status: !useWebSearch ? "not_searched" : searchFallbackUsed ? "search_unavailable_fallback" : !activeSearchEnabled ? "model_fallback_without_search" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
       failureReason: searchFallbackReason,
       officialSourcesFound: groundingSources.filter(source => source.officialDomain).length,
       sources: groundingSources
@@ -484,7 +526,7 @@ export default async function handler(req, res) {
       : !officialGroundingSourceFound
         ? "unverified"
         : modelClaimStatus === "not_applicable" ? "unverified" : modelClaimStatus;
-    const forcedUnverified = useWebSearch && (searchFallbackUsed || activeModel !== MODEL || !officialGroundingSourceFound);
+    const forcedUnverified = useWebSearch && (searchFallbackUsed || !activeSearchEnabled || !officialGroundingSourceFound);
     const claimVerification = {
       status: claimVerificationStatus,
       summary_bn: forcedUnverified
