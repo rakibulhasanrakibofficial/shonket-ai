@@ -2292,3 +2292,47 @@
     transition:none !important;
   }
 }
+
+
+/* Keep all post-analysis evidence in one normal-flow stack (never scroll-gated). */
+.analysis-evidence-stack {
+  position:relative;
+  display:block;
+  width:100%;
+  min-width:0;
+  margin:18px 0 0;
+  clear:both;
+  scroll-margin-block-start:12px;
+  overflow-anchor:none;
+  opacity:1;
+  visibility:visible;
+  content-visibility:visible;
+}
+.analysis-evidence-stack > section,
+.analysis-evidence-stack > div {
+  position:relative;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  opacity:1;
+  visibility:visible;
+  content-visibility:visible;
+}
+.analysis-evidence-stack > section + section,
+.analysis-evidence-stack > div + section,
+.analysis-evidence-stack > section + div,
+.analysis-evidence-stack > div + div {
+  margin-top:16px;
+}
+@media(max-width:640px) {
+  .analysis-evidence-stack {
+    margin-top:14px;
+    scroll-margin-block-start:8px;
+  }
+  .analysis-evidence-stack > section + section,
+  .analysis-evidence-stack > div + section,
+  .analysis-evidence-stack > section + div,
+  .analysis-evidence-stack > div + div {
+    margin-top:12px;
+  }
+}
