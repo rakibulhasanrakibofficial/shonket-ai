@@ -12,13 +12,14 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - Claims about scholarships, jobs, grants, benefits, or prizes remain **unverified** because this version does not search the web.
 - Deterministic URL structure inspection. Submitted URLs are never fetched by the backend.
 - Fictional scam-awareness simulator with feedback and session score.
+- Optional microphone dictation using on-device speech recognition where the browser and selected language support it. Existing result narration includes Listen, Pause, Resume, Stop and voice selection controls.
 - Responsive interface with accessible reduced-motion support.
 
 ## Important scope
 
-The checker is text-only in this version. Screenshot reading and microphone speech recognition are unavailable and are not simulated.
+Message analysis still runs on text. Optional microphone dictation converts speech to text on the device when the browser supports `SpeechRecognition.processLocally` and the selected language pack. There is no cloud speech-recognition fallback. Screenshot reading remains unavailable.
 
-This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. Server-side rate limiting still uses Upstash Redis.
+This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. Optional voice dictation requires local on-device recognition; microphone audio is not sent to the SHONKET backend or a cloud speech recognizer by this feature. The resulting transcript appears in the message box and is submitted for checking only when the user selects Analyze. Server-side rate limiting still uses Upstash Redis.
 
 ## Stack
 
