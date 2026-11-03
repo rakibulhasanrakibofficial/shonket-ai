@@ -141,7 +141,7 @@ test("an anti-scam sentence cannot hide a contradictory direct OTP request", () 
 
 test("an anti-scam sentence cannot hide a contradictory payment request", () => {
   const result = buildRuleAssessment(
-    "Never pay unexpected fees. Send the processing fee now to release your prize.",
+    "You have won a prize. Never pay unexpected fees. Send the processing fee now to release your prize.",
     "en"
   );
   assert.equal(result.verdict, "suspicious");
