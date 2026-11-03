@@ -22,7 +22,7 @@ const RULES = [
   {
     id: "prize_claim",
     weight: 22,
-    regex: /\b(?:you have won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
+    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
     tactic: "unverified_prize_claim",
     quoteBn: "পুরস্কার জেতার দাবি করা হয়েছে",
     quoteEn: "A prize or winnings claim is made",
@@ -32,7 +32,7 @@ const RULES = [
   {
     id: "job_offer",
     weight: 16,
-    regex: /\b(?:guaranteed job|work from home|high salary|job offer|easy income|daily income|hiring now)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে/i,
+    regex: /\b(?:guaranteed job|work from home|high salary|job offer|remote job|your cv (?:has been )?selected|selected for (?:a )?remote job|easy income|daily income|hiring now)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে/i,
     tactic: "unverified_job_offer",
     quoteBn: "চাকরি বা আয়ের প্রস্তাব দেওয়া হয়েছে",
     quoteEn: "A job or income opportunity is offered",
