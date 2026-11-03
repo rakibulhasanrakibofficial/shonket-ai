@@ -175,6 +175,7 @@ export default async function handler(req, res) {
     return send(res, 200, {
       ...assessment,
       extractedText,
+      combinedText,
       screenshotRead: true,
       screenshotUncertainty: String(extracted.uncertainty || "").slice(0, 400),
       uncertainty: requestedLanguage === "bn"
