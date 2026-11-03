@@ -82,8 +82,8 @@ function languageFor(text, requested) {
 
 function getProviderDiagnostic(error) {
   const message = String(error?.message || "");
-  const statusMatch = message.match(/HTTP\\s+(\\d{3})/i);
-  const codeMatch = message.match(/CODE\\s+(\\d+)/i);
+  const statusMatch = message.match(/HTTP\s+(\d{3})/i);
+  const codeMatch = message.match(/CODE\s+(\d+)/i);
   if (statusMatch) return `HTTP_${statusMatch[1]}${codeMatch ? `_CF${codeMatch[1]}` : ""}`;
   if (error?.name === "AbortError") return "TIMEOUT";
   if (/JSON|json object|usable explanation/i.test(message)) return "INVALID_MODEL_RESPONSE";
