@@ -422,3 +422,7 @@
   #shonket-print-report a{color:#2456a6!important;text-decoration:underline!important;overflow-wrap:anywhere}
   .shonket-print-footer{border-top:2px solid #ddd;margin-top:18px;padding-top:10px;font-size:9pt}
 }
+
+/* Keep native speech-voice menus readable on dark browsers and Windows. */
+.voice-select{color-scheme:dark;font-size:13px;line-height:1.35;min-height:40px;cursor:pointer}
+.voice-select option{background:#101426;color:#f5f6ff;font-size:14px;padding:8px 10px}
