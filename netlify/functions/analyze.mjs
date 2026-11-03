@@ -324,7 +324,7 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     ).slice(0, 80);
     const rate = await rateLimiter.limit({ key: clientKey });
     if (!rate.success) {
-      return makeResponse(429, { error: "Too many requests. Please wait and try again." }, {
+      return makeResponse(429, { error: "Too many checks from this network. Please wait a little and try again." }, {
         ...headers,
         "Retry-After": "60"
       });
