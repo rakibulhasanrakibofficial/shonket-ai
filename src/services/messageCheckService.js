@@ -20,7 +20,21 @@ function localAssessment(message, language, status = "not_configured") {
     : status === "not_configured"
       ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
       : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
-  const officialSearch = status === "pending" ? null : {
+  const officialSearch = status === "pending" ? {
+    status: "pending",
+    scope: "Selected Bangladesh official and institutional sources based on message category",
+    searchedAt: null,
+    searchedPortals: [],
+    sources: [],
+    failedPortalCount: 0,
+    evidenceAssessment: {
+      status: "pending",
+      summary_bn: "নির্বাচিত সরকারি ও প্রাতিষ্ঠানিক উৎসে অনুসন্ধান চলছে।",
+      summary_en: "Searching selected official and institutional sources."
+    },
+    summary_bn: "নির্বাচিত সরকারি ও প্রাতিষ্ঠানিক উৎসে অনুসন্ধান চলছে।",
+    summary_en: "Searching selected official and institutional sources."
+  } : {
     status: "backend_not_connected",
     scope: "Bangladesh education ministry and DSHE public scholarship/notice listings",
     searchedAt: null,
@@ -51,6 +65,23 @@ function localAssessment(message, language, status = "not_configured") {
     },
     retrievedSources,
     officialSearch,
+    webEvidence: status === "pending" ? {
+      searched: true,
+      searchExecuted: false,
+      status: "pending",
+      officialSourcesFound: 0,
+      sources: [],
+      searchedPortals: [],
+      failedPortalCount: 0
+    } : {
+      searched: false,
+      searchExecuted: false,
+      status: officialSearch?.status || "unavailable",
+      officialSourcesFound: 0,
+      sources: [],
+      searchedPortals: [],
+      failedPortalCount: 0
+    },
     apiUnavailable: status === "unavailable"
   };
 }
@@ -77,7 +108,8 @@ export async function analyzeMessage({
   message,
   imageFile = null,
   language = "bn",
-  ocrExtractor = extractScreenshotText
+  ocrExtractor = extractScreenshotText,
+  onOfficialSearch = null
 }) {
   const cleanMessage = String(message || "").trim();
   if (!cleanMessage && !imageFile) throw new Error("Add a message or screenshot to check.");
@@ -88,6 +120,58 @@ export async function analyzeMessage({
     extractedText = await ocrExtractor(imageFile);
     requestMessage = [cleanMessage, extractedText].filter(Boolean).join("\n").slice(0, 4000);
     if (!requestMessage) throw new Error("No readable message text was found in the screenshot.");
+  }
+
+  // Start official-source retrieval independently so the UI can show its
+  // pending panel immediately and populate it as soon as the portals respond.
+  if (API_BASE_URL && typeof onOfficialSearch === "function") {
+    const searchEndpoint = API_BASE_URL + "/api/official-search";
+    fetch(searchEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: requestMessage,
+        language: language === "bn" || language === "en" ? language : "auto"
+      })
+    })
+      .then(parseResponse)
+      .then(payload => onOfficialSearch(payload))
+      .catch(() => onOfficialSearch({
+        officialSearch: {
+          status: "unavailable",
+          scope: "Selected Bangladesh official and institutional sources based on message category",
+          searchedAt: new Date().toISOString(),
+          searchedPortals: [],
+          sources: [],
+          failedPortalCount: 3,
+          evidenceAssessment: {
+            status: "search_unavailable",
+            summary_bn: "নির্বাচিত সরকারি উৎসে সংযোগ করা যায়নি।",
+            summary_en: "The selected official sources could not be reached."
+          },
+          summary_bn: "এই মুহূর্তে সরকারি উৎসে সংযোগ করা যায়নি।",
+          summary_en: "The selected official sources could not be reached right now."
+        },
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          status: "unavailable",
+          officialSourcesFound: 0,
+          sources: [],
+          searchedPortals: [],
+          failedPortalCount: 3
+        },
+        claimVerification: {
+          status: "unverified",
+          officialSearchAttempted: true,
+          officialEvidenceStatus: "search_unavailable",
+          officialSearchStatus: "unavailable",
+          officialPortalCount: 0,
+          officialSourceCount: 0,
+          summary_en: "The official-source lookup could not be completed. The claim remains unverified.",
+          summary_bn: "সরকারি উৎস অনুসন্ধান সম্পন্ন করা যায়নি। দাবিটি এখনো অযাচাইকৃত।"
+        }
+      }));
   }
 
   let assessment;
