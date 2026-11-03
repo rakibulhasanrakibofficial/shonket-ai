@@ -38,10 +38,10 @@ const SOURCE_GROUPS = {
       kind: "official_guidance"
     },
     {
-      id: "nagad-help",
-      agency: "Nagad — official Help centre",
-      title: "Nagad — Help and customer support",
-      listingUrl: "https://frontend.nagad.com.bd/en/help/",
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     },
     {
