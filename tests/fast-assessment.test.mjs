@@ -6,10 +6,10 @@ import analyzeHandler from "../api/analyze.js";
 
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
-test("all 22 scam-checker sample inputs match relevance and expected verdicts", () => {
+test("all scam-checker evaluation cases match relevance and expected verdicts", () => {
   const mismatches = [];
   for (const sample of sampleCases) {
-    const result = buildRuleAssessment(sample.text, /[\\u0980-\\u09FF]/.test(sample.text) ? "bn" : "en");
+    const result = buildRuleAssessment(sample.text, sample.language || (/[\\u0980-\\u09FF]/.test(sample.text) ? "bn" : "en"));
     if (result.isRelevant !== sample.relevant) {
       mismatches.push(sample.id + " relevance expected " + sample.relevant + " but received " + result.isRelevant);
       continue;
