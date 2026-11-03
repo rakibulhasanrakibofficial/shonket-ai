@@ -64,6 +64,80 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 });
 
 
+test('analysis result can be copied and exported as a print-ready PDF', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__copiedText = '';
+    window.__printCalled = false;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async text => { window.__copiedText = text; } }
+    });
+    window.print = () => { window.__printCalled = true; };
+  });
+  await page.route('**/api/analyze', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'suspicious',
+        riskLevel: 'high',
+        riskScore: 70,
+        summary_en: 'The message requests an upfront fee to claim a prize.',
+        summary_bn: 'পুরস্কার পেতে আগাম ফি চাওয়া হয়েছে।',
+        evidence: [{
+          quote_en: 'Pay a processing fee',
+          quote_bn: 'প্রসেসিং ফি দিন',
+          reason_en: 'An unexpected upfront fee is a warning sign.',
+          reason_bn: 'অপ্রত্যাশিত আগাম ফি সতর্কতার সংকেত।'
+        }],
+        tactics: ['upfront_fee', 'urgency'],
+        safe_actions: ['Do not pay the fee.', 'Verify the offer independently.'],
+        uncertainty: 'The sender and claim have not been independently verified.',
+        confidence: 'medium',
+        engine: 'Rule-based',
+        aiAnalysis: {
+          status: 'ready',
+          explanation_en: 'The message combines a prize claim with an advance-fee request.',
+          explanation_bn: 'বার্তাটি পুরস্কারের দাবির সঙ্গে আগাম ফি চাইছে।',
+          next_steps_en: ['Do not pay.', 'Verify through an official channel.'],
+          next_steps_bn: ['টাকা দেবেন না।', 'অফিসিয়াল চ্যানেলে যাচাই করুন।']
+        },
+        retrievedSources: [{
+          id: 'bkash-security-tips',
+          title: 'bKash — Security Tips',
+          summary: 'Do not respond to unexpected prize communications.',
+          url: 'https://www.bkash.com/index.php/en/page/security-tips'
+        }],
+        officialSearch: {
+          status: 'not_applicable',
+          summary_en: 'Official education-portal search was not applicable to this message.',
+          summary_bn: 'এই বার্তার জন্য সরকারি শিক্ষা-পোর্টালে অনুসন্ধান প্রযোজ্য নয়.',
+          sources: []
+        }
+      })
+    });
+  });
+
+  await page.goto('/');
+  await page.locator('#message').fill('You won a prize. Pay a processing fee today.');
+  await page.getByRole('button', { name: /Analyze message/i }).click();
+  await expect(page.getByRole('button', { name: 'Copy result' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Generate PDF' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Copy result' }).click();
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
+  const copied = await page.evaluate(() => window.__copiedText);
+  expect(copied).toContain('SHONKET AI');
+  expect(copied).toContain('You won a prize. Pay a processing fee today.');
+  expect(copied).toContain('advance-fee request');
+  expect(copied).toContain('bKash — Security Tips');
+
+  await expect(page.locator('#shonket-print-report')).toContainText('Digital Safety Analysis Report');
+  await expect(page.locator('#shonket-print-report')).toContainText('You won a prize. Pay a processing fee today.');
+  await page.getByRole('button', { name: 'Generate PDF' }).click();
+  expect(await page.evaluate(() => window.__printCalled)).toBe(true);
+});
 test('screenshot upload keeps its preview and can be removed', async ({ page }) => {
   await page.goto('/');
   await page.locator('#screenshot-upload').setInputFiles({
