@@ -78,11 +78,17 @@ test('microphone dictation uses on-device recognition and fills the message fiel
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
 });
 
-test('voice input does not fall back to a cloud recognizer when local language support is unavailable', async ({ page }) => {
+test('browser voice requires explicit consent when on-device language support is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
     class MockSpeechRecognition {
       constructor() { this.processLocally = false; }
-      start() { window.__speechStarted = true; }
+      start() {
+        window.__speechStarted = true;
+        window.__speechWasLocal = this.processLocally;
+        this.onstart?.();
+        this.onresult?.({ results: [[{ transcript: 'A Bangla voice transcript.' }]] });
+        this.onend?.();
+      }
       stop() {}
       abort() {}
     }
@@ -92,8 +98,11 @@ test('voice input does not fall back to a cloud recognizer when local language s
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Speak' }).click();
-  await expect(page.getByText(/Offline voice typing is not available/i)).toBeVisible();
+  await expect(page.getByText(/Optional browser voice/i)).toBeVisible();
   expect(await page.evaluate(() => window.__speechStarted || false)).toBe(false);
+  await page.getByRole('button', { name: /Continue with browser voice/i }).click();
+  await expect(page.locator('#message')).toHaveValue('A Bangla voice transcript.');
+  await expect.poll(() => page.evaluate(() => window.__speechWasLocal)).toBe(false);
 });
 
 test('link inspector identifies a known official domain without opening it', async ({ page }) => {
