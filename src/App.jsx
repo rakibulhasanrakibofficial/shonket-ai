@@ -243,7 +243,8 @@ async function analyze(){
       message,
       imageFile,
       language:analysisLanguage,
-      onOfficialSearch
+      onOfficialSearch,
+      onLocalPreview:pendingPreview=>setAnalysis(current=>({...pendingPreview,...(officialSearchRef.current||{})}))
     });
     setAnalysis({...result,...(officialSearchRef.current||{})});
     if(result.extractedText){setMessage(result.combinedText||result.extractedText);removeImage()}
