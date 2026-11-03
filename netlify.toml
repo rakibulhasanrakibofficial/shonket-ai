@@ -14,3 +14,9 @@
   to = "/.netlify/functions/analyze"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/official-search"
+  to = "/.netlify/functions/official-search"
+  status = 200
+  force = true
