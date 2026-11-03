@@ -178,5 +178,185 @@
     "text": "I like football, music, and reading books in my free time.",
     "relevant": false,
     "expected": []
+  },
+  {
+    "id": "bn-scam-01",
+    "language": "bn",
+    "text": "আপনার বিকাশ অ্যাকাউন্ট বন্ধ হয়ে যাবে। যাচাই করতে OTP ও PIN এখনই দিন।",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-01",
+    "language": "bn",
+    "text": "Apnar Nagad account bondho hoye jabe. OTP ta ekhoni bolun.",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bn-scam-02",
+    "language": "bn",
+    "text": "আপনি 50,000 টাকা পুরস্কার পেয়েছেন। পুরস্কার তুলতে আগে 500 টাকা পাঠান।",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-02",
+    "language": "bn",
+    "text": "Apni prize peyecho. Prize nite age 500 taka pathan.",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-03",
+    "language": "bn",
+    "text": "Remote job paben. Registration fee 800 taka age pathan.",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bn-scam-03",
+    "language": "bn",
+    "text": "চাকরি পেতে আগে 800 টাকা রেজিস্ট্রেশন ফি পাঠান।",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-04",
+    "language": "bn",
+    "text": "Parcel release korte ajkei 120 taka pathan.",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bn-scam-04",
+    "language": "bn",
+    "text": "নগদ অ্যাকাউন্ট বন্ধ হবে। এখনই লিংকে ক্লিক করে যাচাই করুন: https://example.invalid/nagad",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-05",
+    "language": "bn",
+    "text": "Apnar bKash account bondho hobe. Link e click kore account verify korun ekhoni: https://example.invalid/bkash",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bn-scam-05",
+    "language": "bn",
+    "text": "বিকাশ কাস্টমার কেয়ার বলছে, অ্যানিডেস্ক ইনস্টল করে স্ক্রিন শেয়ার করুন।",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bx-scam-06",
+    "language": "bn",
+    "text": "Bkash support bolchi, install AnyDesk for remote access.",
+    "relevant": true,
+    "expected": [
+      "suspicious"
+    ]
+  },
+  {
+    "id": "bn-legit-01",
+    "language": "bn",
+    "text": "বিকাশে 1,000 টাকা ক্যাশ ইন সফল হয়েছে। অ্যাপে লেনদেনের তথ্য দেখুন।",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "bx-legit-01",
+    "language": "bn",
+    "text": "Apnar Nagad cash-out request successful. App e details dekhen.",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "bn-legit-02",
+    "language": "bn",
+    "text": "নগদে 500 টাকা ক্যাশ আউট সম্পন্ন হয়েছে।",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "en-legit-01",
+    "language": "en",
+    "text": "Your bKash bill payment was successful. View the receipt in the app you normally use.",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "en-legit-02",
+    "language": "en",
+    "text": "Your job interview is scheduled for Monday. No registration fee is required.",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "bn-legit-03",
+    "language": "bn",
+    "text": "চাকরির সাক্ষাৎকার সোমবার সকাল ১০টায়। আবেদন বা সাক্ষাৎকারের জন্য কোনো ফি লাগবে না।",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "en-legit-03",
+    "language": "en",
+    "text": "The university scholarship application deadline has been extended. Apply through the official portal. No application fee is required.",
+    "relevant": true,
+    "expected": [
+      "uncertain"
+    ]
+  },
+  {
+    "id": "bx-safe-01",
+    "language": "bn",
+    "text": "Scam theke sabdhan. Kokhono OTP share korben na.",
+    "relevant": true,
+    "expected": [
+      "likely_safe"
+    ]
+  },
+  {
+    "id": "bn-safe-01",
+    "language": "bn",
+    "text": "প্রতারণা থেকে সাবধান। কখনো OTP বা PIN কাউকে দেবেন না।",
+    "relevant": true,
+    "expected": [
+      "likely_safe"
+    ]
   }
 ]
