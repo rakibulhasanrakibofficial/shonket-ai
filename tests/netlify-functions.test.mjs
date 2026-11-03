@@ -1,9 +1,81 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { handler, redactForModel } from "../netlify/functions/analyze.mjs";
+import { handler, redactForModel, enrichClaimVerification, buildWebEvidence } from "../netlify/functions/analyze.mjs";
 import { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const allowedOrigin = "https://rakibulhasanrakibofficial.github.io";
+
+test("claim verification explains a completed search that found guidance but no matching notice", () => {
+  const result = enrichClaimVerification(
+    { status: "unverified", summary_en: "stale", summary_bn: "পুরোনো" },
+    {
+      status: "guidance_only",
+      searchedPortals: [{ agency: "BGD e-GOV CIRT" }, { agency: "ScamCheck" }],
+      sources: [{ evidenceType: "official_safety_guidance" }],
+      evidenceAssessment: { status: "contextual_guidance" },
+      summary_en: "Relevant safety guidance was retrieved, but no matching government notice was confirmed.",
+      summary_bn: "নিরাপত্তা নির্দেশনা পাওয়া গেছে, তবে মিলে যাওয়া নোটিশ নিশ্চিত হয়নি।"
+    }
+  );
+
+  assert.equal(result.status, "unverified");
+  assert.equal(result.officialSearchAttempted, true);
+  assert.equal(result.officialPortalCount, 2);
+  assert.equal(result.officialSourceCount, 1);
+  assert.match(result.summary_en, /checked 2 selected official or institutional portals/i);
+  assert.match(result.summary_en, /general official safety guidance/i);
+  assert.doesNotMatch(result.summary_en, /No external.*was searched/i);
+});
+
+test("claim verification explains a matching notice without claiming the sender is authenticated", () => {
+  const result = enrichClaimVerification(
+    { status: "unverified", summary_en: "stale", summary_bn: "পুরোনো" },
+    {
+      status: "results_found",
+      searchedPortals: [{ agency: "SHED" }, { agency: "DSHE" }],
+      sources: [{ evidenceType: "government_listing_match" }],
+      evidenceAssessment: { status: "related_official_notice" }
+    }
+  );
+
+  assert.equal(result.status, "unverified");
+  assert.equal(result.officialEvidenceStatus, "related_official_notice");
+  assert.match(result.summary_en, /found a related official notice listing/i);
+  assert.match(result.summary_en, /does not authenticate the sender/i);
+});
+
+test("claim verification distinguishes an attempted but unavailable search", () => {
+  const result = enrichClaimVerification(
+    { status: "unverified", summary_en: "stale", summary_bn: "পুরোনো" },
+    {
+      status: "unavailable",
+      searchedPortals: [],
+      sources: [],
+      evidenceAssessment: { status: "search_unavailable" }
+    }
+  );
+
+  assert.equal(result.status, "unverified");
+  assert.equal(result.officialSearchAttempted, true);
+  assert.match(result.summary_en, /search could not be completed/i);
+  assert.match(result.summary_en, /not a negative finding/i);
+});
+
+test("web evidence reports whether portals were actually checked", () => {
+  const checked = buildWebEvidence({
+    status: "guidance_only",
+    searchedPortals: [{ agency: "CIRT" }],
+    sources: [{ evidenceType: "official_safety_guidance" }]
+  });
+  assert.equal(checked.searched, true);
+  assert.equal(checked.searchExecuted, true);
+  assert.equal(checked.searchedPortals.length, 1);
+  assert.equal(checked.officialSourcesFound, 1);
+
+  const notApplicable = buildWebEvidence({ status: "not_applicable", searchedPortals: [], sources: [] });
+  assert.equal(notApplicable.searched, false);
+  assert.equal(notApplicable.searchExecuted, false);
+});
 process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "false";
 process.env.CLOUDFLARE_ACCOUNT_ID = "cf_test_account_id";
 
