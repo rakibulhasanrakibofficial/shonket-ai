@@ -22,7 +22,7 @@ const RULES = [
   {
     id: "prize_claim",
     weight: 22,
-    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen|peyechen|peyেছেন)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen|peyechen)\b|\blottery\s+te\s+(?:jitsen|jitse|paisen|paichen|peyechen)\b|\b(?:apni\s+)?(?:prize|puraskar)\s+(?:peyechen|peyেছেন|jitsen|jitse)\b|\bwinner\s+(?:hoyechen|hoyecho|hoyesen)\b|পুরস্কার জিতেছেন|পুরস্কার পেয়েছেন|পুরস্কার পেয়েছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
+    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen|peyechen|peyেছেন)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen|peyechen)\b|\blottery\s+te\s+(?:jitsen|jitse|paisen|paichen|peyechen)\b|\b(?:apni\s+)?(?:prize|puraskar)\s+(?:peyechen|peyেছেন|peyecho|peycho|jitsen|jitse|paichen|paisen)\b|\bwinner\s+(?:hoyechen|hoyecho|hoyesen)\b|পুরস্কার জিতেছেন|পুরস্কার পেয়েছেন|পুরস্কার পেয়েছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
     tactic: "unverified_prize_claim",
     quoteBn: "পুরস্কার জেতার দাবি করা হয়েছে",
     quoteEn: "A prize or winnings claim is made",
@@ -106,10 +106,12 @@ const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(
 
 function stripNegatedInstructions(text) {
   return String(text || "")
-    .replace(/\b(?:never|do not|don't)\s+(?:share|disclose|give|send|provide|pay|click|open)\b[^.!?\n]{0,110}/gi, " ")
-    .replace(/\b(?:we|your bank|the bank|the service)?\s*will never ask\b[^.!?\n]{0,90}/gi, " ")
-    .replace(/(?:কখনো|কোনোভাবেই)?\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\n]{0,110}/gi, " ")
-    .replace(/\b(?:kokhono|kono somoy|kono obosthay)\s+(?:otp|pin|password|taka|fee)\s+(?:share korben na|diben na|pathaben na|bolben na)\b[^.!?\n]{0,110}/gi, " ");
+    .replace(/\b(?:never|do not|don't)\s+(?:share|disclose|give|send|provide|pay|click|open)\b[^.!?\n]{0,110}/gi, match => " ".repeat(match.length))
+    .replace(/\b(?:we|your bank|the bank|the service)?\s*will never ask\b[^.!?\n]{0,90}/gi, match => " ".repeat(match.length))
+    .replace(/(?:কখনো|কোনোভাবেই)?\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\n]{0,110}/gi, match => " ".repeat(match.length))
+    .replace(/\b(?:kokhono|kono somoy|kono obosthay)\s+(?:otp|pin|password|taka|fee)\s+(?:share korben na|diben na|pathaben na|bolben na)\b[^.!?\n]{0,110}/gi, match => " ".repeat(match.length))
+    .replace(/\b(?:no|kono|kono rokom|not)\s+(?:(?:processing|registration|application|joining|training)\s+)?fee\s+(?:is\s+)?(?:required|needed|charged|lagbe na|dite hobe na|proyojon nei)\b[^.!?\n]{0,80}/gi, match => " ".repeat(match.length))
+    .replace(/(?:কোনো|কোনও)?\s*(?:প্রসেসিং|রেজিস্ট্রেশন|আবেদন)?\s*ফি\s*(?:লাগবে না|দিতে হবে না|প্রয়োজন নেই|প্রয়োজন নেই|নেওয়া হবে না|নেওয়া হবে না)[^।!?\n]{0,80}/gi, match => " ".repeat(match.length));
 }
 
 function isCredentialWarning(text, actionableText) {
@@ -129,8 +131,8 @@ export function buildRuleAssessment(inputText, responseLanguage = "bn") {
   const matches = RULES.flatMap(rule => {
     if (rule.id === "credential_request" && credentialWarning) return [];
     if (warningContext && rule.id !== "url_present") return [];
-    const match = text.match(rule.regex);
-    return match ? [{ ...rule, quote: match[0].slice(0, 180) }] : [];
+    const match = actionableText.match(rule.regex);
+    return match ? [{ ...rule, quote: text.slice(match.index, match.index + match[0].length).slice(0, 180) }] : [];
   });
 
   const ids = new Set(matches.map(item => item.id));
