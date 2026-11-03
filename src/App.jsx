@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from 'react';
+import {Component,useEffect,useRef,useState} from 'react';
 import {analyzeMessage} from './services/messageCheckService';
 import {motion,AnimatePresence} from 'framer-motion';
 import {ShieldCheck,ScanSearch,BrainCircuit,ArrowUpRight,ArrowRight,Menu,X,Sparkles,Link2,MessageSquareText,LockKeyhole,Activity,Fingerprint,CheckCircle2,AlertTriangle,Globe2,ChevronRight,Users,History,Trash2,Clock3,Trophy,Mic,MicOff,Upload} from 'lucide-react';
@@ -17,9 +17,11 @@ const scenarioBn=[
 {tag:'অ্যাকাউন্ট নিরাপত্তা',title:'একজন কলার বলছে সে আপনার অ্যাকাউন্ট নিরাপদ করবে',detail:'কলার অজানা অ্যাপ ইনস্টল করতে এবং একবার ব্যবহারযোগ্য কোড দিতে বলছে।',choices:['অ্যাপ ইনস্টল করে কোড দেব','কল কেটে নিজে অফিসিয়াল সাপোর্টে যোগাযোগ করব','তাকে দূর থেকে অ্যাক্সেস দেব'],explain:'অযাচিত কলারের সঙ্গে কোড শেয়ার বা দূরবর্তী অ্যাক্সেস দেবেন না। নিজে অফিসিয়াল সাপোর্ট চ্যানেল ব্যবহার করুন।',realSteps:['অযাচিত কলারের কথায় রিমোট-অ্যাক্সেস অ্যাপ ইনস্টল করবেন না।','কল কেটে নিজে অফিসিয়াল অ্যাপ বা প্রকাশিত সাপোর্ট নম্বরে যোগাযোগ করুন।','অ্যাপ ইনস্টল বা কোড শেয়ার করে ফেললে দ্রুত সেবা প্রদানকারীর সাহায্য নিন।']},{"tag":"অনলাইন মার্কেটপ্লেস","title":"বিক্রেতা প্ল্যাটফর্মের বাইরে অগ্রিম টাকা চাইছে","detail":"সোশ্যাল মিডিয়ায় ফোন বা গ্যাজেট দেখে যোগাযোগ করলেন। বিক্রেতা বলছে অনেক ক্রেতা অপেক্ষায় আছে, তাই পণ্য দেখার আগেই ব্যক্তিগত ওয়ালেটে অগ্রিম পাঠাতে হবে।","choices":["পণ্যটি ধরে রাখতে অগ্রিম পাঠাব","সম্ভব হলে পণ্য দেখে এবং নিরাপদ প্ল্যাটফর্ম বা ক্যাশ-অন-ডেলিভারিতে লেনদেন করব","পরিচয় প্রমাণ করতে ওয়ালেট PIN দেব"],"explain":"প্ল্যাটফর্মের বাইরে তাড়াহুড়ো করে টাকা দিলে ক্রেতার সুরক্ষা কমে যায়। বিক্রেতা যাচাই করুন, সম্ভব হলে পণ্য দেখে নিন এবং সুরক্ষিত পেমেন্ট পদ্ধতি ব্যবহার করুন।","realSteps":["অপরিচিত কাউকে তাড়াহুড়ো করে অগ্রিম দেবেন না।","বিক্রেতার পুরোনো কার্যক্রম, স্বাধীন রিভিউ এবং পণ্যের সত্যতা যাচাই করুন।","সম্ভব হলে প্ল্যাটফর্মের সুরক্ষিত পেমেন্ট বা পণ্য দেখে ক্যাশ-অন-ডেলিভারি বেছে নিন।"]},{"tag":"স্কলারশিপ বা ভর্তি","title":"একজন এজেন্ট আজ টাকা দিলে স্কলারশিপ নিশ্চিত বলছে","detail":"সোশ্যাল মিডিয়ার একটি পেজ বিশেষ বিশ্ববিদ্যালয় কোটা থাকার দাবি করছে। প্রসেসিং ফি ও সার্টিফিকেট পাঠালে নিশ্চিত স্কলারশিপ বা ভর্তি করিয়ে দেওয়ার প্রতিশ্রুতি দিচ্ছে।","choices":["আজই শেষ সময় বলে টাকা দেব","বিশ্ববিদ্যালয়ের অফিসিয়াল স্কলারশিপ ও ভর্তি তথ্য দেখে অফিসে যোগাযোগ করব","পেজটিতে সব পরিচয়পত্রের স্ক্যান পাঠাব"],"explain":"বিশ্ববিদ্যালয়ের সিদ্ধান্ত কোনো এজেন্ট নিশ্চিত করে দিতে পারে না। জরুরি চাপ, ব্যক্তিগত অ্যাকাউন্টে টাকা এবং অপ্রয়োজনীয় নথি চাওয়া সতর্কতার লক্ষণ।","realSteps":["এজেন্টের লিংক নয়, নিজে বিশ্ববিদ্যালয়ের অফিসিয়াল ওয়েবসাইট খুঁজুন।","সেখানে দেওয়া যোগাযোগের তথ্য দিয়ে ভর্তি বা স্কলারশিপ অফিসে কথা বলুন।","যাচাই ছাড়া আসল নথি, পাসওয়ার্ড, OTP বা ফি দেবেন না।"]},{"tag":"QR কোড / পেমেন্ট রিকোয়েস্ট","title":"একজন ক্রেতা টাকা পাওয়ার জন্য QR কোড পাঠিয়েছে","detail":"আপনি কিছু বিক্রি করছেন। ক্রেতা বলছে সে টাকা পাঠিয়েছে, কিন্তু টাকা পেতে আপনাকে QR কোড স্ক্যান বা ওয়ালেটের collect request অনুমোদন করতে হবে।","choices":["QR কোড স্ক্যান করে অনুরোধ অনুমোদন করব","নিজের ওয়ালেটের ব্যালেন্স ও লেনদেন দেখব; অচেনা collect request অনুমোদন করব না","ক্রেতাকে OTP দিয়ে পেমেন্ট সম্পন্ন করব"],"explain":"টাকা গ্রহণ করতে OTP দেওয়া বা অপ্রত্যাশিত টাকা পাঠানোর অনুরোধ অনুমোদন করা লাগে না। ক্রেতার স্ক্রিনশট পেমেন্টের প্রমাণ নয়।","realSteps":["নিজে অফিসিয়াল ওয়ালেট বা ব্যাংক অ্যাপ খুলুন।","ব্যালেন্স বা transaction history-তে টাকা জমা হয়েছে কি না নিশ্চিত না হয়ে পণ্য দেবেন না।","PIN/OTP দেবেন না এবং নিজে শুরু করেননি এমন collect request অনুমোদন করবেন না।"]},{"tag":"বন্ধু বা পরিবারের পরিচয় নকল","title":"পরিচিত অ্যাকাউন্ট থেকে জরুরি টাকা চাওয়া হয়েছে","detail":"বন্ধুর মেসেজিং অ্যাকাউন্ট থেকে বলা হচ্ছে ফোন হারিয়েছে, এখনই টাকা দরকার। ব্যস্ততার অজুহাতে কল না করতে বলা হচ্ছে।","choices":["দেরি না করে টাকা পাঠাব","আগে থেকে জানা ফোন নম্বর বা পরিবারের সদস্যের মাধ্যমে আলাদাভাবে যাচাই করব","মেসেজটি গ্রুপে পাঠিয়ে কাউকে টাকা দিতে বলব"],"explain":"পরিচিত প্রোফাইলও হ্যাক বা নকল হতে পারে। জরুরি চাপ এবং যাচাই করতে নিষেধ করা প্রতারণার সংকেত।","realSteps":["শুধু চ্যাটের ভিত্তিতে টাকা পাঠাবেন না।","মেসেজে দেওয়া নম্বর নয়, আগে থেকে জানা নম্বরে কল করুন।","যাচাই না হলে পরিবারের বিশ্বস্ত সদস্যকে জানান এবং সন্দেহজনক অ্যাকাউন্ট রিপোর্ট করুন।"]}
 ];
 function Brand(){return <a href="#home" aria-label="SHONKET AI home" className="brand-lockup group flex items-center gap-3 text-white no-underline"><span className="brand-mark relative grid h-11 w-11 place-items-center rounded-[15px]"><span className="brand-mark-inner absolute inset-[3px] rounded-[12px]"/><svg viewBox="0 0 48 48" className="relative z-10 h-7 w-7 overflow-visible" fill="none" aria-hidden="true"><path d="M24 3.5 40 9v12.2c0 10.2-6.4 17.8-16 23.1C14.4 39 8 31.4 8 21.2V9L24 3.5Z" stroke="url(#brandStroke)" strokeWidth="2.8" strokeLinejoin="round"/><path d="M30.5 16.5c-1.6-1.7-3.5-2.5-6.1-2.5-3.5 0-6 1.9-6 4.7 0 2.6 2 3.8 6 4.7 3.8.9 5.7 2 5.7 4.8 0 2.9-2.6 4.9-6.3 4.9-2.8 0-5.1-1-7-3" stroke="white" strokeWidth="3.1" strokeLinecap="round"/><defs><linearGradient id="brandStroke" x1="8" y1="4" x2="40" y2="44"><stop stopColor="#7DEBFF"/><stop offset=".52" stopColor="#A78BFA"/><stop offset="1" stopColor="#F0A6FF"/></linearGradient></defs></svg><span className="brand-mark-spark absolute right-[7px] top-[6px] z-20 h-1.5 w-1.5 rounded-full bg-cyan-200"/></span><span className="brand-wordmark flex items-baseline gap-1"><span className="font-display text-[19px] font-extrabold tracking-[-.055em]">SHONKET</span><span className="brand-ai text-[10px] font-extrabold tracking-[.14em]">AI</span></span></a>}
-export default function App(){
+function AppContent(){
 const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[message,setMessage]=useState(''),[analysis,setAnalysis]=useState(null),[busy,setBusy]=useState(false),[analysisError,setAiError]=useState(''),[language,setLanguage]=useState('en'),[analysisLanguage,setAnalysisLanguage]=useState('en'),[url,setUrl]=useState(''),[urlResult,setUrlResult]=useState(null),[scenario,setScenario]=useState(0),[choice,setChoice]=useState(null),[simScore,setSimScore]=useState(0),[simDone,setSimDone]=useState([]),[simFinished,setSimFinished]=useState(false),[speaking,setSpeaking]=useState(false),[speechPaused,setSpeechPaused]=useState(false),[voiceOptions,setVoiceOptions]=useState([]),[selectedVoice,setSelectedVoice]=useState(''),[voiceInputLanguage,setVoiceInputLanguage]=useState('bn'),[voiceListening,setVoiceListening]=useState(false),[voiceError,setVoiceError]=useState(''),[imageFile,setImageFile]=useState(null),[imagePreview,setImagePreview]=useState(''),[historyRecords,setHistoryRecords]=useState(()=>{try{return JSON.parse(localStorage.getItem('shonket-history-v1')||'[]')}catch{return []}});
 const recognitionRef=useRef(null);
+const voiceSessionRef=useRef(0);
+const voiceStopRequestedRef=useRef(false);
 const resultLanguage=analysis?.responseLanguage || (analysisLanguage==='bn'?'bn':'en');
 const isBn=language==='bn';
 const autoVoiceLanguage=language;
@@ -30,7 +32,13 @@ useEffect(()=>{if(!imagePreview)return;return()=>URL.revokeObjectURL(imagePrevie
 useEffect(()=>{document.documentElement.lang=resultLanguage;},[resultLanguage]);
 useEffect(()=>{if(!('speechSynthesis'in window))return;const load=()=>setVoiceOptions(window.speechSynthesis.getVoices());load();window.speechSynthesis.onvoiceschanged=load;return()=>{window.speechSynthesis.onvoiceschanged=null}},[]);
 const nav=[['checker',t('Scam Checker','স্ক্যাম চেকার')],['links',t('Link Inspector','লিংক পরিদর্শক')],['simulator',t('Simulator','সিমুলেটর')],['history',t('History','ইতিহাস')]];
-useEffect(()=>()=>{recognitionRef.current?.abort();window.speechSynthesis?.cancel()},[]);
+useEffect(()=>()=>{
+  voiceSessionRef.current+=1;
+  const recognition=recognitionRef.current;
+  recognitionRef.current=null;
+  try{recognition?.abort()}catch(error){console.warn('SHONKET voice cleanup:',error)}
+  try{window.speechSynthesis?.cancel()}catch(error){console.warn('SHONKET speech cleanup:',error)}
+},[]);
 const go=id=>{setActive(id);setMobile(false);document.getElementById('tools')?.scrollIntoView({behavior:'smooth'});window.setTimeout(()=>document.getElementById('workspace-panel')?.scrollIntoView({behavior:'smooth',block:'center'}),220)};
 async function analyze(){if((!message.trim()&&!imageFile)||busy)return;setBusy(true);setAnalysis(null);setAiError('');try{const result=await analyzeMessage({message,imageFile,language:analysisLanguage});setAnalysis(result);if(result.extractedText){setMessage(result.combinedText||result.extractedText);removeImage()}addHistory({type:'Scam Checker',title:result.screenshotRead?'Screenshot analysis':'Message analysis',verdict:result.verdict||'unknown',riskLevel:result.riskLevel||'unknown',riskScore:result.riskScore==null?null:(Number.isFinite(Number(result.riskScore))?Number(result.riskScore):null)});}catch(error){setAiError(String(error?.message||'Could not check this message. Please try again.'))}finally{setBusy(false)}}
 function handleImage(file){if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)){setAiError(t('Upload a PNG, JPG, or WebP screenshot.','PNG, JPG অথবা WebP স্ক্রিনশট দিন।'));return}if(file.size>2.5*1024*1024){setAiError(t('Screenshot must be 2.5 MB or smaller.','স্ক্রিনশটের আকার ২.৫ MB বা কম হতে হবে।'));return}setImageFile(file);setImagePreview(URL.createObjectURL(file));setAnalysis(null);setAiError('')}
@@ -40,81 +48,113 @@ function pauseResumeSpeech(){if(!('speechSynthesis'in window))return;if(window.s
 function stopSpeaking(){window.speechSynthesis?.cancel();setSpeaking(false);setSpeechPaused(false)}
 function beginVoiceRecognition(){
   setVoiceError('');
+  if(recognitionRef.current)return;
+
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Recognition){
     setVoiceError(t('Voice input is not supported in this browser. Try Chrome or use your device keyboard dictation.','এই ব্রাউজারে ভয়েস ইনপুট সমর্থিত নয়। Chrome অথবা ডিভাইসের কিবোর্ড ডিকটেশন ব্যবহার করুন।'));
     return;
   }
-  const recognition=new Recognition();
+
+  let recognition;
+  try{
+    recognition=new Recognition();
+  }catch(error){
+    console.error('SHONKET voice setup error:',error);
+    setVoiceListening(false);
+    setVoiceError(t('Could not initialise voice input. Please refresh the page or type the message.','ভয়েস ইনপুট চালু করা যায়নি। পেজ রিফ্রেশ করুন অথবা লিখে দিন।'));
+    return;
+  }
+
+  const sessionId=voiceSessionRef.current+1;
+  voiceSessionRef.current=sessionId;
+  const isCurrentSession=()=>voiceSessionRef.current===sessionId&&recognitionRef.current===recognition;
+
   recognition.lang=voiceInputLanguage==='bn'?'bn-BD':'en-US';
   recognition.continuous=false;
   recognition.interimResults=false;
   recognition.maxAlternatives=1;
+  voiceStopRequestedRef.current=false;
+  recognitionRef.current=recognition;
+
   recognition.onstart=()=>{
+    if(!isCurrentSession())return;
     setVoiceError('');
     setVoiceListening(true);
   };
   recognition.onnomatch=()=>{
+    if(!isCurrentSession())return;
     setVoiceListening(false);
     setVoiceError(t('No clear speech was recognised. Please try again or type the message.','স্পষ্ট কোনো কথা শনাক্ত হয়নি। আবার চেষ্টা করুন অথবা লিখে দিন।'));
   };
   recognition.onresult=event=>{
+    if(!isCurrentSession())return;
     try{
-      const resultIndex=Number.isInteger(event?.resultIndex)?event.resultIndex:0;
       const results=event?.results;
+      const resultIndex=Number.isInteger(event?.resultIndex)?event.resultIndex:0;
       const result=results?.[resultIndex]||results?.[0];
       const transcript=String(result?.[0]?.transcript||'').trim();
       if(!transcript)return;
-      setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\n').slice(0,4000));
+      setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\\n').slice(0,4000));
       setAnalysis(null);
       setAiError('');
       setVoiceError('');
     }catch(error){
       console.error('SHONKET voice transcript error:',error);
-      setVoiceListening(false);
       setVoiceError(t('Speech was received but could not be added to the message. Please type it instead.','কথা শনাক্ত হলেও বার্তায় যোগ করা যায়নি। অনুগ্রহ করে লিখে দিন।'));
     }
   };
   recognition.onerror=event=>{
-    try{
-      const error=event?.error||'';
-      const messages={
-        'not-allowed':t('Microphone permission was denied. Allow microphone access in browser settings.','মাইক্রোফোনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংসে অনুমতি দিন।'),
-        'service-not-allowed':t('The browser blocked its speech service. Check browser permissions or type the message.','ব্রাউজার speech service ব্লক করেছে। browser permission পরীক্ষা করুন অথবা লিখে দিন।'),
-        'audio-capture':t('No microphone was found. Check your device microphone.','মাইক্রোফোন পাওয়া যায়নি। ডিভাইসের মাইক্রোফোন পরীক্ষা করুন।'),
-        'no-speech':t('No speech was detected. Press Speak and try again.','কোনো কথা শনাক্ত হয়নি। Speak চেপে আবার চেষ্টা করুন।'),
-        'language-not-supported':t('This voice language is not supported by your browser.','আপনার ব্রাউজারে এই ভাষার voice input সমর্থিত নয়।'),
-        'network':t('The browser speech service could not connect. Check your connection or type the message instead.','ব্রাউজারের speech service-এ সংযোগ হয়নি। ইন্টারনেট পরীক্ষা করুন অথবা লিখে দিন।'),
-        'aborted':t('Voice input was stopped. You can press Speak to try again.','ভয়েস ইনপুট বন্ধ করা হয়েছে। আবার চেষ্টা করতে Speak চাপুন।')
-      };
-      setVoiceError(messages[error]||t('Voice input stopped. Please try again or type the message.','ভয়েস ইনপুট বন্ধ হয়েছে। আবার চেষ্টা করুন অথবা লিখে দিন।'));
-    }catch(error){
-      console.error('SHONKET voice recognition error:',error);
-      setVoiceError(t('Voice input encountered an error. Please type the message instead.','ভয়েস ইনপুটে সমস্যা হয়েছে। অনুগ্রহ করে লিখে দিন।'));
-    }
+    if(!isCurrentSession())return;
+    const error=event?.error||'';
+    const messages={
+      'not-allowed':t('Microphone permission was denied. Allow microphone access in browser settings.','মাইক্রোফোনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংসে অনুমতি দিন।'),
+      'service-not-allowed':t('The browser blocked its speech service. Check browser permissions or type the message.','ব্রাউজার speech service ব্লক করেছে। browser permission পরীক্ষা করুন অথবা লিখে দিন।'),
+      'audio-capture':t('No microphone was found. Check your device microphone.','মাইক্রোফোন পাওয়া যায়নি। ডিভাইসের মাইক্রোফোন পরীক্ষা করুন।'),
+      'no-speech':t('No speech was detected. Press Speak and try again.','কোনো কথা শনাক্ত হয়নি। Speak চেপে আবার চেষ্টা করুন।'),
+      'language-not-supported':t('This voice language is not supported by your browser.','আপনার ব্রাউজারে এই ভাষার voice input সমর্থিত নয়।'),
+      'network':t('The browser speech service could not connect. Check your connection or type the message instead.','ব্রাউজারের speech service-এ সংযোগ হয়নি। ইন্টারনেট পরীক্ষা করুন অথবা লিখে দিন।')
+    };
+    setVoiceListening(false);
+    if(error==='aborted'&&voiceStopRequestedRef.current)return;
+    setVoiceError(messages[error]||t('Voice input stopped. Please try again or type the message.','ভয়েস ইনপুট বন্ধ হয়েছে। আবার চেষ্টা করুন অথবা লিখে দিন।'));
   };
   recognition.onend=()=>{
+    if(!isCurrentSession())return;
+    recognitionRef.current=null;
+    voiceStopRequestedRef.current=false;
     setVoiceListening(false);
-    if(recognitionRef.current===recognition)recognitionRef.current=null;
   };
-  recognitionRef.current=recognition;
+
   try{
     recognition.start();
   }catch(error){
-    recognitionRef.current=null;
-    setVoiceListening(false);
-    setVoiceError(t('Microphone could not start. Check its permission and try again.','মাইক্রোফোন চালু হয়নি। অনুমতি পরীক্ষা করে আবার চেষ্টা করুন।'));
+    console.error('SHONKET voice start error:',error);
+    if(isCurrentSession()){
+      recognitionRef.current=null;
+      voiceSessionRef.current+=1;
+      voiceStopRequestedRef.current=false;
+      setVoiceListening(false);
+      setVoiceError(t('Microphone could not start. Check its permission and try again.','মাইক্রোফোন চালু হয়নি। অনুমতি পরীক্ষা করে আবার চেষ্টা করুন।'));
+    }
   }
 }
 function startVoice(){
-  if(recognitionRef.current){
-    recognitionRef.current.stop();
-    return;
-  }
-  setVoiceError('');
-  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Recognition){
-    setVoiceError(t('Voice input is not supported in this browser. Try Chrome or use your device keyboard dictation.','এই ব্রাউজারে ভয়েস ইনপুট সমর্থিত নয়। Chrome অথবা ডিভাইসের কিবোর্ড ডিকটেশন ব্যবহার করুন।'));
+  const activeRecognition=recognitionRef.current;
+  if(activeRecognition){
+    voiceStopRequestedRef.current=true;
+    try{
+      activeRecognition.stop();
+    }catch(stopError){
+      console.warn('SHONKET voice stop fallback:',stopError);
+      try{activeRecognition.abort()}catch(abortError){console.warn('SHONKET voice abort fallback:',abortError)}
+      if(recognitionRef.current===activeRecognition){
+        recognitionRef.current=null;
+        voiceSessionRef.current+=1;
+        voiceStopRequestedRef.current=false;
+        setVoiceListening(false);
+      }
+    }
     return;
   }
   beginVoiceRecognition();
@@ -178,4 +218,35 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 </div>
 </motion.section></main>
 <footer className="relative z-10 border-t border-white/[.08]"><div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-5 py-8 sm:px-8 md:flex-row md:items-center md:justify-between"><Brand/><p className="max-w-lg text-xs leading-5 text-slate-500">{t('Rule-based guidance, not a guarantee. Verify important requests through official channels. Never share OTPs or passwords.','নিয়মভিত্তিক নির্দেশনা, নিশ্চয়তা নয়। গুরুত্বপূর্ণ অনুরোধ অফিসিয়াল মাধ্যমে যাচাই করুন। কখনো OTP বা পাসওয়ার্ড শেয়ার করবেন না।')}</p></div></footer></div>
+}
+
+class AppErrorBoundary extends Component{
+  constructor(props){
+    super(props);
+    this.state={hasError:false};
+  }
+  static getDerivedStateFromError(){
+    return {hasError:true};
+  }
+  componentDidCatch(error,info){
+    console.error('SHONKET application render error:',error,info);
+  }
+  render(){
+    if(this.state.hasError){
+      return <main className="flex min-h-screen items-center justify-center bg-[#080914] px-6 text-slate-100">
+        <section className="w-full max-w-lg rounded-3xl border border-violet-300/20 bg-white/[.04] p-8 text-center shadow-2xl">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-violet-400/10 text-violet-200"><ShieldCheck size={28}/></div>
+          <h1 className="mt-5 text-2xl font-extrabold">SHONKET AI</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">Something went wrong while displaying the app. Your page has not been permanently damaged. Refresh and try again.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-400">অ্যাপ দেখাতে সমস্যা হয়েছে। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।</p>
+          <button type="button" onClick={()=>window.location.reload()} className="mt-6 rounded-full bg-violet-500 px-6 py-3 text-sm font-bold text-white hover:bg-violet-400">Refresh page · রিফ্রেশ করুন</button>
+        </section>
+      </main>;
+    }
+    return this.props.children;
+  }
+}
+
+export default function App(){
+  return <AppErrorBoundary><AppContent/></AppErrorBoundary>;
 }
