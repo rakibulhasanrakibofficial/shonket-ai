@@ -13,7 +13,7 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - Claims about scholarships, jobs, grants, benefits, or prizes remain **unverified** because this version does not search the web.
 - Deterministic URL structure inspection. Submitted URLs are never fetched by the backend.
 - Fictional scam-awareness simulator with feedback and session score.
-- Microphone dictation with separate English/Bangla language controls, an explicit first-use privacy prompt, and clear listening/error states. Result narration includes Listen, Pause, Resume, Stop and voice selection controls.
+- Microphone dictation with separate English/Bangla language controls, the browser's native microphone permission, and clear listening/error states. Result narration includes Listen, Pause, Resume, Stop and voice selection controls.
 - Responsive interface with accessible reduced-motion support.
 
 ## Important scope
