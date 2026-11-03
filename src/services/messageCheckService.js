@@ -16,6 +16,20 @@ function localAssessment(message, language, status = "not_configured") {
   const noteEn = status === "not_configured"
     ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
     : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
+  const officialSearch = {
+    status: "backend_not_connected",
+    scope: "Bangladesh education ministry and DSHE public scholarship/notice listings",
+    searchedAt: null,
+    searchedPortals: [],
+    sources: [],
+    evidenceAssessment: {
+      status: "not_checked",
+      summary_bn: "লাইভ সরকারি-নোটিশ অনুসন্ধানের জন্য Netlify backend সংযুক্ত করতে হবে।",
+      summary_en: "Connect the Netlify backend to search live official government notice listings."
+    },
+    summary_bn: "লাইভ সরকারি-নোটিশ অনুসন্ধানের জন্য Netlify backend সংযুক্ত করতে হবে।",
+    summary_en: "Connect the Netlify backend to search live official government notice listings."
+  };
 
   return {
     ...result,
@@ -32,6 +46,7 @@ function localAssessment(message, language, status = "not_configured") {
       note_en: noteEn
     },
     retrievedSources,
+    officialSearch,
     apiUnavailable: status === "unavailable"
   };
 }
