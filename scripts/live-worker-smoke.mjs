@@ -67,9 +67,17 @@ if (!String(analysis.aiAnalysis.explanation_en || "").trim()) {
   throw new Error("The AI returned an empty English explanation.");
 }
 
+if (!Array.isArray(analysis.officialSearch?.category) ||
+    !analysis.officialSearch.category.includes("cybersecurity") ||
+    analysis.officialSearch.status === "not_applicable") {
+  throw new Error("Category-aware official-source search did not run for the prize-plus-fee test message.");
+}
+
 console.log("Worker health: OK");
 console.log("AI binding: configured");
 console.log("Rate limiter: configured");
 console.log("Rule engine: " + analysis.verdict + " · risk " + analysis.riskScore + "/100");
 console.log("Live Workers AI: ACTIVE");
+console.log("Official-source search: " + analysis.officialSearch.status + " · " + analysis.officialSearch.category.join(", "));
+console.log("Official sources checked: " + (analysis.officialSearch.searchedPortals || []).length);
 console.log("Explanation received: " + analysis.aiAnalysis.explanation_en.slice(0, 220));
