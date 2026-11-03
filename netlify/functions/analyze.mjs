@@ -4,7 +4,6 @@ import { searchOfficialSources } from "./live-official-search.mjs";
 
 const MAX_TEXT_LENGTH = 4000;
 const MAX_BODY_BYTES = 16 * 1024;
-const MODEL_ENDPOINT = "https://router.huggingface.co/v1/chat/completions";
 const rateBuckets = new Map();
 
 function allowedOrigins() {
@@ -101,20 +100,24 @@ function cleanList(value, maxItems = 3) {
 }
 
 async function generateExplanation({ message, language, rules, sources, officialSearch }) {
-  const token = process.env.HF_TOKEN;
-  const model = cleanText(process.env.HF_MODEL || "Qwen/Qwen2.5-7B-Instruct:cheapest", 160);
+  const token = process.env.CLOUDFLARE_API_TOKEN;
+  const accountId = cleanText(process.env.CLOUDFLARE_ACCOUNT_ID || "", 128);
+  const model = cleanText(process.env.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160);
+  const modelEndpoint = accountId
+    ? `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/v1/chat/completions`
+    : "";
 
-  if (!token) {
+  if (!token || !accountId) {
     return {
       status: "not_configured",
-      provider: "Hugging Face Inference Providers",
+      provider: "Cloudflare Workers AI",
       model,
       explanation_bn: "",
       explanation_en: "",
       next_steps_bn: [],
       next_steps_en: [],
-      note_bn: "LLM এখনো সংযুক্ত হয়নি। নিয়মভিত্তিক ফলাফল ও প্রাসঙ্গিক নিরাপত্তা-গাইডলাইন দেখানো হচ্ছে।",
-      note_en: "The LLM is not configured yet. The rule-based result and any retrieved safety guidance are still available."
+      note_bn: "Cloudflare Workers AI এখনো সংযুক্ত হয়নি। নিয়মভিত্তিক ফলাফল ও প্রাসঙ্গিক নিরাপত্তা-গাইডলাইন দেখানো হচ্ছে।",
+      note_en: "Cloudflare Workers AI is not configured yet. The rule-based result and any retrieved safety guidance are still available."
     };
   }
 
@@ -152,9 +155,9 @@ async function generateExplanation({ message, language, rules, sources, official
   });
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4500);
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const apiResponse = await fetch(MODEL_ENDPOINT, {
+    const apiResponse = await fetch(modelEndpoint, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,
@@ -169,11 +172,10 @@ async function generateExplanation({ message, language, rules, sources, official
         ],
         temperature: 0.15,
         max_tokens: 420,
-        response_format: { type: "json_object" }
       })
     });
 
-    if (!apiResponse.ok) throw new Error("Inference provider returned HTTP " + apiResponse.status);
+    if (!apiResponse.ok) throw new Error("Cloudflare Workers AI returned HTTP " + apiResponse.status);
 
     const payload = await apiResponse.json();
     const content = payload && payload.choices && payload.choices[0] && payload.choices[0].message
@@ -186,7 +188,7 @@ async function generateExplanation({ message, language, rules, sources, official
 
     return {
       status: "ready",
-      provider: "Hugging Face Inference Providers",
+      provider: "Cloudflare Workers AI",
       model,
       explanation_bn: explanationBn,
       explanation_en: explanationEn,
@@ -289,8 +291,8 @@ export async function handler(event) {
   } catch {
     aiAnalysis = {
       status: "unavailable",
-      provider: "Hugging Face Inference Providers",
-      model: cleanText(process.env.HF_MODEL || "Qwen/Qwen2.5-7B-Instruct:cheapest", 160),
+      provider: "Cloudflare Workers AI",
+      model: cleanText(process.env.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160),
       explanation_bn: "",
       explanation_en: "",
       evidence_comparison_bn: "",
@@ -318,7 +320,7 @@ export async function handler(event) {
     },
     privacy: {
       rawMessageStored: false,
-      modelInputRedacted: Boolean(process.env.HF_TOKEN),
+      modelInputRedacted: Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID),
       note: "The function processes the submitted text for this request and does not write it to an application database."
     }
   }, headers);
