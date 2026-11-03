@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { handler, redactForModel, enrichClaimVerification, buildWebEvidence } from "../netlify/functions/analyze.mjs";
+import { handler, officialSearchHandler, redactForModel, enrichClaimVerification, buildWebEvidence } from "../netlify/functions/analyze.mjs";
 import { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const allowedOrigin = "https://rakibulhasanrakibofficial.github.io";
@@ -141,6 +141,43 @@ test("Netlify API returns deterministic rule result and RAG sources without an L
     if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
     else process.env.CLOUDFLARE_API_TOKEN = previousToken;
   }
+});
+
+test("analysis endpoint returns a pending official search rather than waiting for portal retrieval", async () => {
+  const result = await handler(makeEvent({
+    message: "A Bangladesh government scholarship offers 50,000 BDT for university students. Pay a processing fee to claim it.",
+    language: "en"
+  }), {
+    OFFICIAL_SOURCE_SEARCH_ENABLED: "true",
+    CORS_ALLOWED_ORIGINS: allowedOrigin
+  });
+  const body = JSON.parse(result.body);
+  assert.equal(result.statusCode, 200);
+  assert.equal(body.officialSearch.status, "pending");
+  assert.equal(body.webEvidence.status, "pending");
+  assert.equal(body.webEvidence.searched, true);
+  assert.equal(body.claimVerification.officialSearchStatus, "pending");
+});
+
+test("official search endpoint returns portal results independently", async () => {
+  const html = "<html><body><table><tr><th>Title</th><th>Published</th></tr><tr><td>Government Scholarship 2026</td><td>04-11-2026</td></tr></table></body></html>";
+  const result = await officialSearchHandler(
+    makeEvent({
+      message: "A Bangladesh government scholarship offers 50,000 BDT for university students. Pay a processing fee to claim it.",
+      language: "en"
+    }),
+    {
+      OFFICIAL_SOURCE_SEARCH_ENABLED: "true",
+      CORS_ALLOWED_ORIGINS: allowedOrigin
+    },
+    null,
+    async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } })
+  );
+  const body = JSON.parse(result.body);
+  assert.equal(result.statusCode, 200);
+  assert.notEqual(body.officialSearch.status, "pending");
+  assert.equal(body.webEvidence.searchExecuted, true);
+  assert.ok(body.webEvidence.searchedPortals.length > 0);
 });
 
 test("Netlify API handles preflight only for a configured allowed origin", async () => {
