@@ -108,6 +108,70 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 });
 
 
+test('analysis completion auto-reveals web evidence and eagerly loads source logos', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__scrolledTargets = [];
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.id) window.__scrolledTargets.push({ id: this.id, options });
+      return originalScrollIntoView?.call(this, options);
+    };
+  });
+  await page.route('**/api/analyze', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'suspicious',
+        riskLevel: 'high',
+        riskScore: 72,
+        summary_en: 'The message asks for an advance fee.',
+        summary_bn: 'বার্তাটিতে আগাম ফি চাওয়া হয়েছে।',
+        evidence: [],
+        tactics: ['upfront_fee'],
+        safe_actions: ['Verify independently before paying.'],
+        uncertainty: 'The sender and claim have not been independently verified.',
+        confidence: 'medium',
+        engine: 'Rule-based',
+        webEvidence: {
+          searched: true,
+          status: 'evidence_retrieved',
+          officialSourcesFound: 1,
+          sources: [{
+            title: 'BGD e-GOV CIRT — Security Alerts',
+            url: 'https://cirt.gov.bd/alerts',
+            domain: 'cirt.gov.bd'
+          }]
+        },
+        claimVerification: { status: 'unverified', officialPortalCount: 1, officialSourceCount: 1 },
+        aiAnalysis: {
+          status: 'ready',
+          explanation_en: 'An advance fee is a warning sign.',
+          explanation_bn: 'আগাম ফি সতর্কতার সংকেত।',
+          next_steps_en: [],
+          next_steps_bn: []
+        },
+        retrievedSources: [],
+        officialSearch: null
+      })
+    });
+  });
+  await page.goto('/');
+  await page.locator('#message').fill('Pay a processing fee to claim a prize.');
+  await page.getByRole('button', { name: /Analyze message/i }).click();
+
+  const evidencePanel = page.locator('#web-evidence-panel');
+  await expect(evidencePanel).toBeVisible({ timeout: 60_000 });
+  await expect(evidencePanel.getByText('BGD e-GOV CIRT — Security Alerts')).toBeVisible();
+
+  await expect.poll(async () => page.evaluate(() =>
+    window.__scrolledTargets.some(item => item.id === 'web-evidence-panel')
+  )).toBe(true);
+
+  await expect.poll(async () => page.locator('#web-evidence-panel img').first().getAttribute('loading')).toBe('eager');
+});
+
 test('analysis result can be copied and exported as a print-ready PDF', async ({ page }) => {
   await page.addInitScript(() => {
     window.__copiedText = '';
