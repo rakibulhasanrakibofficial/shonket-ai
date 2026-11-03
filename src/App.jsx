@@ -221,20 +221,23 @@ function handleImage(file){
   if(!file)return;
   const input=document.getElementById('screenshot-upload');
   const resetInput=()=>{if(input)input.value=''};
+  const rejectImage=message=>{
+    setImageFile(null);
+    setImagePreview('');
+    resetInput();
+    setAiError(message);
+  };
   const supportedTypes=['image/png','image/jpeg','image/webp'];
   if(!supportedTypes.includes(file.type)){
-    resetInput();
-    setAiError(t('Unsupported image type. Upload a PNG, JPG, or WebP screenshot.','এই ছবির ধরন সমর্থিত নয়। PNG, JPG অথবা WebP স্ক্রিনশট দিন।'));
+    rejectImage(t('Unsupported image type. Upload a PNG, JPG, or WebP screenshot.','এই ছবির ধরন সমর্থিত নয়। PNG, JPG অথবা WebP স্ক্রিনশট দিন।'));
     return;
   }
   if(!Number.isFinite(file.size)||file.size<=0){
-    resetInput();
-    setAiError(t('This screenshot is empty. Choose a valid image file.','স্ক্রিনশটটি খালি। একটি সঠিক ছবির ফাইল বেছে নিন।'));
+    rejectImage(t('This screenshot is empty. Choose a valid image file.','স্ক্রিনশটটি খালি। একটি সঠিক ছবির ফাইল বেছে নিন।'));
     return;
   }
   if(file.size>2.5*1024*1024){
-    resetInput();
-    setAiError(t('Screenshot must be 2.5 MB or smaller.','স্ক্রিনশটের আকার ২.৫ MB বা কম হতে হবে।'));
+    rejectImage(t('Screenshot must be 2.5 MB or smaller.','স্ক্রিনশটের আকার ২.৫ MB বা কম হতে হবে।'));
     return;
   }
   try{
@@ -245,8 +248,7 @@ function handleImage(file){
     setAiError('');
     resetInput();
   }catch(error){
-    resetInput();
-    setAiError(t('The screenshot preview could not be opened. Try another image or paste the text.','স্ক্রিনশটের preview খোলা যায়নি। অন্য ছবি দিন অথবা লেখা পেস্ট করুন।'));
+    rejectImage(t('The screenshot preview could not be opened. Try another image or paste the text.','স্ক্রিনশটের preview খোলা যায়নি। অন্য ছবি দিন অথবা লেখা পেস্ট করুন।'));
   }
 }
 function removeImage(){setImageFile(null);setImagePreview('');const input=document.getElementById('screenshot-upload');if(input)input.value='';setAiError('')}
