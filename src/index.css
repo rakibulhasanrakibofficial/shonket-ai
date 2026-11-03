@@ -2088,3 +2088,207 @@
     transform:none !important;
   }
 }
+
+
+/* Scam checker: limitations card must remain readable at narrow widths. */
+.limitations-card {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  margin-top:16px;
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:15px;
+  padding:15px 16px;
+  background:
+    radial-gradient(ellipse at 100% 0%,rgba(99,102,241,.09),transparent 42%),
+    linear-gradient(135deg,rgba(20,29,49,.96),rgba(12,18,33,.98));
+  box-shadow:0 8px 20px rgba(0,0,0,.17),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.limitations-card::before {
+  content:"";
+  position:absolute;
+  inset:0 0 auto;
+  height:2px;
+  background:linear-gradient(90deg,rgba(56,189,248,.55),rgba(129,140,248,.45),transparent 86%);
+}
+.limitations-heading {
+  margin:0;
+  color:#dbeafe;
+  font-size:11px;
+  font-weight:850;
+  line-height:1.5;
+  letter-spacing:.1em;
+}
+.limitations-body {
+  margin:8px 0 0;
+  color:#d3dced !important;
+  font-size:13px !important;
+  font-weight:500;
+  line-height:1.7 !important;
+  overflow-wrap:anywhere;
+}
+.limitations-meta {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  gap:9px 14px;
+  margin-top:11px;
+  border-top:1px solid rgba(148,163,184,.15);
+  padding-top:10px;
+}
+.limitations-confidence {
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  gap:6px;
+  color:#aab9d0;
+  font-size:11px;
+  line-height:1.55;
+}
+.limitations-confidence strong {
+  color:#e2e8f0;
+  font-size:11px;
+  font-weight:850;
+}
+.limitations-footnote {
+  min-width:0;
+  flex:1 1 250px;
+  color:#aab8ce;
+  font-size:11px;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+
+/* Screenshot upload and preview states inside Scam Checker. */
+.screenshot-upload-area {
+  min-width:0;
+}
+.screenshot-upload-control {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+}
+.screenshot-upload-trigger {
+  min-height:44px;
+  box-shadow:0 3px 0 rgba(8,47,73,.42),inset 0 1px 0 rgba(255,255,255,.14);
+}
+.screenshot-upload-trigger:focus-within,
+.screenshot-upload-trigger:focus-visible {
+  outline:3px solid rgba(103,232,249,.55);
+  outline-offset:3px;
+}
+.screenshot-upload-hint {
+  color:#91a1bb;
+  font-size:11px;
+  line-height:1.55;
+}
+.screenshot-preview-card {
+  display:flex;
+  min-width:0;
+  align-items:center;
+  gap:12px;
+  border:1px solid rgba(52,211,153,.28);
+  border-radius:15px;
+  padding:12px;
+  background:linear-gradient(120deg,rgba(16,85,68,.14),rgba(11,22,35,.82));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.screenshot-preview-image {
+  display:block;
+  width:76px;
+  min-width:76px;
+  height:76px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:11px;
+  background:rgba(0,0,0,.24);
+  object-fit:contain;
+}
+.screenshot-preview-details {
+  min-width:0;
+  flex:1 1 auto;
+}
+.screenshot-preview-name {
+  color:#f8fafc;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.screenshot-preview-size {
+  margin-top:4px;
+  color:#aebbd0;
+  font-size:10px;
+  line-height:1.5;
+}
+.screenshot-preview-ready {
+  margin-top:4px;
+  color:#86efac;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.5;
+}
+.screenshot-remove-button {
+  display:inline-flex;
+  min-height:40px;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(248,113,113,.28);
+  border-radius:10px;
+  padding:8px 12px;
+  color:#fecaca;
+  background:rgba(127,29,29,.15);
+  font-size:11px;
+  font-weight:800;
+  transition:background .18s ease,border-color .18s ease;
+}
+.screenshot-remove-button:hover {
+  border-color:rgba(248,113,113,.5);
+  background:rgba(127,29,29,.28);
+}
+.screenshot-remove-button:focus-visible {
+  outline:3px solid rgba(248,113,113,.5);
+  outline-offset:3px;
+}
+@media(max-width:520px) {
+  .limitations-card {
+    padding:13px;
+    border-radius:13px;
+  }
+  .limitations-body {
+    font-size:12px !important;
+    line-height:1.7 !important;
+  }
+  .limitations-meta {
+    gap:7px 11px;
+  }
+  .limitations-footnote {
+    flex-basis:100%;
+  }
+  .screenshot-preview-card {
+    flex-wrap:wrap;
+    align-items:flex-start;
+    gap:10px;
+    padding:10px;
+  }
+  .screenshot-preview-image {
+    width:62px;
+    min-width:62px;
+    height:62px;
+  }
+  .screenshot-preview-details {
+    flex:1 1 calc(100% - 84px);
+  }
+  .screenshot-remove-button {
+    width:100%;
+    min-height:42px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .screenshot-remove-button,
+  .screenshot-upload-trigger {
+    transition:none !important;
+  }
+}
