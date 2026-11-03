@@ -185,6 +185,70 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
 });
 
 
+test("LLM explanation starts while official education portals are still being checked", async () => {
+  const originalFetch = globalThis.fetch;
+  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
+  const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
+  process.env.CLOUDFLARE_API_TOKEN = "cf_test_token";
+  process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "true";
+
+  let modelStarted = false;
+  const officialUrls = [];
+  const releaseOfficial = [];
+  const officialHtml = "<html><body><table><tr><td>No matching notice in this test.</td></tr></table></body></html>";
+
+  globalThis.fetch = async (url) => {
+    const address = String(url);
+    if (address.includes("/ai/v1/chat/completions")) {
+      modelStarted = true;
+      return new Response(JSON.stringify({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              explanation_bn: "বার্তাটির দাবি আলাদাভাবে যাচাই করতে হবে।",
+              explanation_en: "The claim needs independent verification.",
+              next_steps_bn: ["অফিসিয়াল নোটিশ দেখুন।"],
+              next_steps_en: ["Check the official notice."]
+            })
+          }
+        }]
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    officialUrls.push(address);
+    return new Promise(resolve => {
+      releaseOfficial.push(() => resolve(new Response(officialHtml, {
+        status: 200,
+        headers: { "Content-Type": "text/html" }
+      })));
+    });
+  };
+
+  try {
+    const pending = handler(makeEvent({
+      message: "Government scholarship for university agriculture students in 2031, rural research bursary 71QZ.",
+      language: "en"
+    }));
+
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(officialUrls.length, 3);
+    assert.equal(modelStarted, true, "LLM request should start before official portal requests finish");
+
+    releaseOfficial.forEach(release => release());
+    const response = await pending;
+    const body = JSON.parse(response.body);
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.aiAnalysis.status, "ready");
+    assert.equal(body.officialSearch.searchedPortals.length, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
+    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
+    if (previousSearchFlag === undefined) delete process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
+    else process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = previousSearchFlag;
+  }
+});
+
 test("Netlify API returns live official scholarship listings and conservative evidence status", async () => {
   const originalFetch = globalThis.fetch;
   const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
