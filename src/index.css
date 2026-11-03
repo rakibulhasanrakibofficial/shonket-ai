@@ -502,3 +502,62 @@
     font-size: 0.9rem;
   }
 }
+
+
+/* Consistent source-logo presentation: only rendered for mapped, verified publishers. */
+.source-brand-mark {
+  display: flex;
+  width: 68px;
+  min-width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  overflow: hidden;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.source-brand-mark-compact {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  flex-basis: 42px;
+  padding: 5px;
+  border-radius: 11px;
+}
+.source-brand-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.web-evidence-source,
+.retrieved-source-card {
+  min-height: 76px;
+}
+.retrieved-source-card .source-brand-mark {
+  align-self: center;
+}
+@media (max-width: 560px) {
+  .source-brand-mark {
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    padding: 5px;
+  }
+  .source-brand-mark-compact {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+  .web-evidence-source,
+  .retrieved-source-card {
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
