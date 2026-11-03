@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildFastAssessment } from "../api/fastAssessment.js";
+import { extractGroundingSources, classifyGroundingFailure } from "../api/analyze.js";
 
 test("cash prize plus processing fee returns an instant suspicious assessment", () => {
   const text = "Congratulations! You have won a cash prize. Send a small processing fee now to claim your reward.";
@@ -108,4 +109,56 @@ test("a prize claim without fees or urgent links is returned as unverified, not 
 test("a prize claim with urgency is not treated as a safe prize-only case", () => {
   const text = "You have won a cash prize. Act now, the offer expires today.";
   assert.equal(buildFastAssessment(text, "en", { score: 40, matched: ["Unexpected prize or reward", "Urgency or pressure"] }), null);
+});
+
+
+test("Google Search redirect chunks retain an exact government publisher domain", () => {
+  const result = extractGroundingSources({
+    groundingChunks: [
+      { web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/example", title: "dshe.gov.bd" } }
+    ]
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].domain, "dshe.gov.bd");
+  assert.equal(result[0].sourceType, "government");
+  assert.equal(result[0].officialDomain, true);
+});
+
+test("publisher titles are not mined for domains embedded in arbitrary page-title text", () => {
+  const result = extractGroundingSources({
+    groundingChunks: [
+      { web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/example", title: "Fake notice mentions example.gov.bd but is not hosted there" } }
+    ]
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].domain, "publisher domain unavailable");
+  assert.equal(result[0].officialDomain, false);
+});
+
+test("direct HTTPS publisher URLs are classified by their actual hostname", () => {
+  const result = extractGroundingSources({
+    groundingChunks: [
+      { web: { uri: "https://scholarship.education.gov.bd/notices/2026", title: "Scholarship notice" } }
+    ]
+  });
+  assert.equal(result[0].domain, "scholarship.education.gov.bd");
+  assert.equal(result[0].sourceType, "government");
+});
+
+test("non-HTTPS and invalid grounding source URLs are ignored", () => {
+  const result = extractGroundingSources({
+    groundingChunks: [
+      { web: { uri: "http://example.gov.bd/notice", title: "example.gov.bd" } },
+      { web: { uri: "not a URL", title: "example.gov.bd" } }
+    ]
+  });
+  assert.deepEqual(result, []);
+});
+
+test("grounding failure classifier distinguishes quota, permission, and schema errors", () => {
+  assert.equal(classifyGroundingFailure(429, "generate_content_search_request quota exceeded"), "search_quota");
+  assert.equal(classifyGroundingFailure(403, "Google Search grounding is not enabled for this project"), "search_tool_rejected");
+  assert.equal(classifyGroundingFailure(400, "Invalid responseSchema: unsupported property"), null);
+  assert.equal(classifyGroundingFailure(429, "Model output token quota exceeded"), null);
+  assert.equal(classifyGroundingFailure(null, "", "timeout"), "timeout");
 });
