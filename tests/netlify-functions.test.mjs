@@ -170,6 +170,7 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
     assert.equal(result.statusCode, 200);
     assert.equal(body.verdict, "suspicious");
     assert.equal(body.aiAnalysis.status, "unavailable");
+    assert.equal(body.aiAnalysis.diagnosticCode, "HTTP_503");
     assert.equal(body.engine, "Rule-based");
   } finally {
     globalThis.fetch = originalFetch;
