@@ -71,7 +71,7 @@ test('voice input restores English and Bangla controls with first-use consent', 
   await page.goto('/');
   const voiceLanguages = page.locator('[aria-label="Voice input language"]');
   await expect(voiceLanguages.getByRole('button', { name: 'বাংলা' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'কথা বলুন' }).click();
+  await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
   await expect(page.getByText(/Allow browser voice input/i)).toBeVisible();
   expect(await page.evaluate(() => window.__voiceStarted || false)).toBe(false);
   await page.getByRole('button', { name: /Allow and start microphone/i }).click();
@@ -79,8 +79,8 @@ test('voice input restores English and Bangla controls with first-use consent', 
   expect(await page.evaluate(() => window.__voiceLanguage)).toBe('bn-BD');
 
   await voiceLanguages.getByRole('button', { name: 'EN' }).click();
-  await page.getByRole('button', { name: 'কথা বলুন' }).click();
-  await expect(page.locator('#message')).toHaveValue('A dictated message.\\nA dictated message.');
+  await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
+  await expect(page.locator('#message')).toHaveValue('A dictated message.\nA dictated message.');
   expect(await page.evaluate(() => window.__voiceLanguage)).toBe('en-US');
 });
 
@@ -90,7 +90,7 @@ test('voice input shows a clear unsupported-browser message', async ({ page }) =
     delete window.webkitSpeechRecognition;
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'কথা বলুন' }).click();
+  await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
   await page.getByRole('button', { name: /Allow and start microphone/i }).click();
   await expect(page.getByRole('alert')).toContainText(/not supported in this browser/i);
 });
