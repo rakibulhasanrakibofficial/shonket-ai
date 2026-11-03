@@ -48,7 +48,7 @@ const SOURCE_GROUPS = {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
       kind: "cyber_advisory"
     }
   ],
@@ -64,7 +64,7 @@ const SOURCE_GROUPS = {
       id: "bfiu-circulars",
       agency: "Bangladesh Financial Intelligence Unit (BFIU)",
       title: "BFIU — official circulars",
-      listingUrl: "https://www.bfiu.org.bd/index.php/legislation/circular",
+      listingUrl: "https://bfiu.org.bd/index.php/legislation/circular",
       kind: "government_listing"
     },
     {
@@ -80,14 +80,14 @@ const SOURCE_GROUPS = {
       id: "cirt-alerts",
       agency: "BGD e-GOV CIRT — alerts",
       title: "BGD e-GOV CIRT — Security Alerts",
-      listingUrl: "https://www.cirt.gov.bd/alerts",
+      listingUrl: "https://cirt.gov.bd/alerts",
       kind: "cyber_advisory"
     },
     {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
       kind: "cyber_advisory"
     },
     {
@@ -110,7 +110,7 @@ const SOURCE_GROUPS = {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
       kind: "cyber_advisory"
     },
     {
@@ -126,14 +126,14 @@ const SOURCE_GROUPS = {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
       kind: "cyber_advisory"
     },
     {
       id: "cirt-alerts",
       agency: "BGD e-GOV CIRT — alerts",
       title: "BGD e-GOV CIRT — Security Alerts",
-      listingUrl: "https://www.cirt.gov.bd/alerts",
+      listingUrl: "https://cirt.gov.bd/alerts",
       kind: "cyber_advisory"
     }
   ],
@@ -149,7 +149,7 @@ const SOURCE_GROUPS = {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
       kind: "cyber_advisory"
     }
   ],
@@ -158,7 +158,7 @@ const SOURCE_GROUPS = {
       id: "bfiu-circulars",
       agency: "Bangladesh Financial Intelligence Unit (BFIU)",
       title: "BFIU — official circulars",
-      listingUrl: "https://www.bfiu.org.bd/index.php/legislation/circular",
+      listingUrl: "https://bfiu.org.bd/index.php/legislation/circular",
       kind: "government_listing"
     },
     {
