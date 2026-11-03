@@ -7,7 +7,7 @@ const MAX_TEXT_LENGTH = 4000;
 const MAX_BODY_BYTES = 16 * 1024;
 const rateBuckets = new Map();
 
-function allowedOrigins(runtimeEnv = process.env) {
+function allowedOrigins(runtimeEnv) {
   const configured = String(runtimeEnv.CORS_ALLOWED_ORIGINS || "")
     .split(",")
     .map(value => value.trim().replace(/\/+$/, ""))
@@ -22,7 +22,7 @@ function allowedOrigins(runtimeEnv = process.env) {
   return new Set(origins);
 }
 
-function corsHeaders(origin, runtimeEnv = process.env) {
+function corsHeaders(origin, runtimeEnv) {
   const headers = {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -183,7 +183,7 @@ function cleanList(value, maxItems = 3) {
   return value.slice(0, maxItems).map(item => cleanText(item, 240)).filter(Boolean);
 }
 
-async function generateExplanation({ message, language, rules, sources, officialSearch, runtimeEnv = process.env, aiBinding = null }) {
+async function generateExplanation({ message, language, rules, sources, officialSearch, runtimeEnv, aiBinding = null }) {
   const token = runtimeEnv.CLOUDFLARE_API_TOKEN;
   const accountId = cleanText(runtimeEnv.CLOUDFLARE_ACCOUNT_ID || "", 128);
   const model = cleanText(runtimeEnv.CLOUDFLARE_AI_MODEL || "@cf/google/gemma-4-26b-a4b-it", 160);
@@ -303,7 +303,8 @@ async function generateExplanation({ message, language, rules, sources, official
   }
 }
 
-export async function handler(event, runtimeEnv = process.env, aiBinding = null, rateLimiter = null) {
+export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter = null) {
+  runtimeEnv = runtimeEnv || (typeof process !== "undefined" ? process.env : {});
   const origin = event.headers && (event.headers.origin || event.headers.Origin);
   const headers = corsHeaders(origin || "", runtimeEnv);
 
