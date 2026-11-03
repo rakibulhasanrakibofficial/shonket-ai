@@ -55,7 +55,7 @@ export default function AnalysisExportActions({ analysis, message = "", language
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(false);
   const bn = language === "bn";
-  if (!analysis || analysis.isRelevant === false) return null;
+  if (!analysis || analysis.isRelevant === false || analysis.aiAnalysis?.status === "pending") return null;
 
   async function copyResult() {
     const text = makeCopyText(analysis, String(message || "").trim(), bn);
