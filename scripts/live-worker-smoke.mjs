@@ -23,8 +23,12 @@ const health = await readJson(healthResponse, "Worker health");
 if (!healthResponse.ok || health.ok !== true) {
   throw new Error("Worker health check failed (HTTP " + healthResponse.status + ").");
 }
-if (health.aiBindingConfigured !== true || health.rateLimitConfigured !== true) {
-  throw new Error("Worker is missing its AI or rate-limit binding.");
+if (
+  health.aiBindingConfigured !== true ||
+  health.rateLimitConfigured !== true ||
+  health.officialSearchRateLimitConfigured !== true
+) {
+  throw new Error("Worker is missing its AI, analysis rate-limit, or official-search rate-limit binding.");
 }
 
 const sampleMessage =
@@ -67,17 +71,40 @@ if (!String(analysis.aiAnalysis.explanation_en || "").trim()) {
   throw new Error("The AI returned an empty English explanation.");
 }
 
-if (!Array.isArray(analysis.officialSearch?.category) ||
-    !analysis.officialSearch.category.includes("cybersecurity") ||
-    analysis.officialSearch.status === "not_applicable") {
+if (analysis.officialSearch?.status !== "pending" || analysis.webEvidence?.status !== "pending") {
+  throw new Error("Analysis endpoint should return its rule/AI result without waiting for the separate official search.");
+}
+
+const officialSearchResponse = await fetch(baseUrl + "/api/official-search", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Origin: origin
+  },
+  body: JSON.stringify({
+    message: sampleMessage,
+    language: "en"
+  }),
+  signal: timeout(30000)
+});
+const officialSearch = await readJson(officialSearchResponse, "Official-source search API");
+if (!officialSearchResponse.ok || officialSearch.officialSearch?.status === "pending") {
+  throw new Error("The separate official-source search endpoint did not complete successfully.");
+}
+if (!Array.isArray(officialSearch.officialSearch?.category) ||
+    !officialSearch.officialSearch.category.includes("cybersecurity")) {
   throw new Error("Category-aware official-source search did not run for the prize-plus-fee test message.");
+}
+if (officialSearch.webEvidence?.searchExecuted !== true) {
+  throw new Error("The official-source endpoint did not confirm that a live search was executed.");
 }
 
 console.log("Worker health: OK");
 console.log("AI binding: configured");
-console.log("Rate limiter: configured");
+console.log("Analysis rate limiter: configured");
+console.log("Official-search rate limiter: configured");
 console.log("Rule engine: " + analysis.verdict + " · risk " + analysis.riskScore + "/100");
 console.log("Live Workers AI: ACTIVE");
-console.log("Official-source search: " + analysis.officialSearch.status + " · " + analysis.officialSearch.category.join(", "));
-console.log("Official sources checked: " + (analysis.officialSearch.searchedPortals || []).length);
+console.log("Official-source search: " + officialSearch.officialSearch.status + " · " + officialSearch.officialSearch.category.join(", "));
+console.log("Official sources checked: " + (officialSearch.officialSearch.searchedPortals || []).length);
 console.log("Explanation received: " + analysis.aiAnalysis.explanation_en.slice(0, 220));
