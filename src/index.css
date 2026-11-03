@@ -426,3 +426,79 @@
 /* Keep native speech-voice menus readable on dark browsers and Windows. */
 .voice-select{color-scheme:dark;font-size:13px;line-height:1.35;min-height:40px;cursor:pointer}
 .voice-select option{background:#101426;color:#f5f6ff;font-size:14px;padding:8px 10px}
+
+
+/* Global readability pass: increase UI text without scaling layout spacing */
+#root .text-xs {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+#root .text-sm {
+  font-size: 1rem !important;
+  line-height: 1.55 !important;
+}
+#root .text-base {
+  font-size: 1.0625rem !important;
+  line-height: 1.6 !important;
+}
+#root .text-\\[10px\\] {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+#root .text-\\[11px\\] {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+#root .text-\\[12px\\] {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+#root .nav-link,
+#root .nav-cta {
+  font-size: 14px;
+}
+#root .hero-cta {
+  font-size: 15px;
+}
+#root .language-option {
+  font-size: 13px;
+}
+#workspace-panel button:not(.language-option) {
+  font-size: 14px;
+  line-height: 1.45;
+}
+#workspace-panel label,
+#workspace-panel label[for] {
+  font-size: 14px;
+}
+#workspace-panel input,
+#workspace-panel textarea {
+  font-size: 16px;
+}
+#workspace-panel .text-xs {
+  font-size: 14px !important;
+}
+#workspace-panel .text-sm {
+  font-size: 15px !important;
+}
+.about-feature p {
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.7;
+}
+.about-loop-label {
+  font-size: clamp(0.8rem, 0.9vw, 0.9rem);
+}
+@media (max-width: 640px) {
+  #root .text-xs {
+    font-size: 0.875rem !important;
+  }
+  #root .text-sm {
+    font-size: 0.9375rem !important;
+  }
+  #workspace-panel button:not(.language-option) {
+    font-size: 14px;
+  }
+  .about-feature p {
+    font-size: 0.9rem;
+  }
+}
