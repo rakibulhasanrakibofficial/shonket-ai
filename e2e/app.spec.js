@@ -170,6 +170,26 @@ test('link inspector identifies a known official domain without opening it', asy
   await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
 });
 
+test('link inspector recognises the official multi-part Nagad domain', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://www.nagad.com.bd');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+  await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
+  await expect(page.getByText(/nagad.com.bd/i).first()).toBeVisible();
+  await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
+  await expect(page.getByText(/Possible brand impersonation/i)).toHaveCount(0);
+});
+
+test('link inspector detects a brand placed before a fake multi-part country domain', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://nagad.com.bd.fake.co.uk');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+  await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
+  await expect(page.getByText(/nagad.com.bd.fake.co.uk/i).first()).toBeVisible();
+});
+
 test('link inspector flags a brand lookalike domain', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
