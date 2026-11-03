@@ -120,7 +120,7 @@ export default function AnalysisExportActions({ analysis, message = "", language
         {(bn ? analysis.aiAnalysis.next_steps_bn : analysis.aiAnalysis.next_steps_en)?.length > 0 && <ul>{(bn ? analysis.aiAnalysis.next_steps_bn : analysis.aiAnalysis.next_steps_en).map((x, i) => <li key={i}>{x}</li>)}</ul>}
       </section>}
       {analysis.officialSearch && <section className="shonket-print-section">
-        <h2>{bn ? "লাইভ সরকারি উৎস অনুসন্ধান" : "Live Official-Source Search"} · {String(analysis.officialSearch.status || "unknown").toUpperCase()}</h2>
+        <h2>{bn ? "সরকারি উৎস অনুসন্ধানের সারাংশ" : "Official Search Summary"} · {String(analysis.officialSearch.status || "unknown").toUpperCase()}</h2>
         <p>{bn ? analysis.officialSearch.summary_bn : analysis.officialSearch.summary_en}</p>
         {(analysis.officialSearch.sources || []).map(s => <p key={s.id}><a href={s.url}>{s.title}</a> — {s.agency}{s.publishedDate ? " · " + s.publishedDate : ""}</p>)}
       </section>}
