@@ -82,8 +82,8 @@ export function buildWebEvidence(officialSearch) {
   const portals = Array.isArray(search.searchedPortals) ? search.searchedPortals : [];
   const sources = Array.isArray(search.sources) ? search.sources : [];
   return {
-    searched: portals.length > 0,
-    searchExecuted: status !== "not_applicable" && status !== "disabled",
+    searched: status === "pending" || portals.length > 0,
+    searchExecuted: status !== "pending" && status !== "not_applicable" && status !== "disabled",
     status,
     officialSourcesFound: sources.length,
     sources,
@@ -141,7 +141,7 @@ function checkBestEffortRateLimit(event) {
     rateBuckets.set(ip, { windowStart: now, count: 1 });
     return { ok: true };
   }
-  if (entry.count >= 10) return { ok: false, retryAfter: Math.max(1, Math.ceil((60000 - (now - entry.windowStart)) / 1000)) };
+  if (entry.count >= 20) return { ok: false, retryAfter: Math.max(1, Math.ceil((60000 - (now - entry.windowStart)) / 1000)) };
   entry.count += 1;
   if (rateBuckets.size > 1000) {
     for (const [key, value] of rateBuckets) {
@@ -388,6 +388,128 @@ async function generateExplanation({ message, language, rules, sources, official
   }
 }
 
+export async function officialSearchHandler(event, runtimeEnv, rateLimiter = null) {
+  runtimeEnv = runtimeEnv || (typeof process !== "undefined" ? process.env : {});
+  const origin = event.headers && (event.headers.origin || event.headers.Origin);
+  const headers = corsHeaders(origin || "", runtimeEnv);
+
+  if (event.httpMethod === "OPTIONS") return makeResponse(204, {}, headers);
+  if (event.httpMethod !== "POST") {
+    return makeResponse(405, { error: "Method not allowed." }, { ...headers, Allow: "POST, OPTIONS" });
+  }
+  if (origin && !allowedOrigins(runtimeEnv).has(origin)) {
+    return makeResponse(403, { error: "This site is not allowed to use the SHONKET API." }, headers);
+  }
+
+  if (rateLimiter) {
+    const clientKey = String(
+      (event.headers && (event.headers["cf-connecting-ip"] || event.headers["CF-Connecting-IP"])) ||
+      (event.headers && (event.headers["x-nf-client-connection-ip"] || event.headers["X-NF-Client-Connection-IP"])) ||
+      "unknown"
+    ).slice(0, 80);
+    const rate = await rateLimiter.limit({ key: clientKey });
+    if (!rate.success) {
+      return makeResponse(429, { error: "Too many checks from this network. Please wait a little and try again." }, {
+        ...headers,
+        "Retry-After": "60"
+      });
+    }
+  } else {
+    const limit = checkBestEffortRateLimit(event);
+    if (!limit.ok) {
+      return makeResponse(429, { error: "Too many checks. Please wait and try again." }, {
+        ...headers,
+        "Retry-After": String(limit.retryAfter)
+      });
+    }
+  }
+
+  const declaredLength = Number((event.headers && (event.headers["content-length"] || event.headers["Content-Length"])) || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return makeResponse(413, { error: "Request is too large." }, headers);
+  }
+
+  let body;
+  try {
+    body = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return makeResponse(400, { error: "Request body must be valid JSON." }, headers);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return makeResponse(400, { error: "Request body must be a JSON object." }, headers);
+  }
+
+  const message = String(body.message || "").trim();
+  if (!message) return makeResponse(400, { error: "Add the message text you want to check." }, headers);
+  if (message.length > MAX_TEXT_LENGTH) {
+    return makeResponse(413, { error: "Message must be 4,000 characters or fewer." }, headers);
+  }
+
+  const language = languageFor(message, body.language);
+  const rules = buildRuleAssessment(message, language);
+  const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
+  const searchApplies = !searchDisabled && isOfficialSourceSearchApplicable(message);
+  let officialSearch;
+
+  if (searchDisabled) {
+    officialSearch = {
+      status: "disabled",
+      scope: "Selected Bangladesh official and institutional sources based on message category",
+      searchedAt: new Date().toISOString(),
+      searchedPortals: [],
+      sources: [],
+      evidenceAssessment: {
+        status: "not_checked",
+        summary_bn: "এই deployment-এ live official-source search বন্ধ আছে।",
+        summary_en: "Live official-source search is disabled for this deployment."
+      },
+      summary_bn: "এই deployment-এ live official-source search বন্ধ আছে।",
+      summary_en: "Live official-source search is disabled for this deployment."
+    };
+  } else if (!searchApplies) {
+    officialSearch = {
+      status: "not_applicable",
+      scope: "Selected Bangladesh official and institutional sources based on message category",
+      searchedAt: new Date().toISOString(),
+      searchedPortals: [],
+      sources: [],
+      evidenceAssessment: {
+        status: "not_applicable",
+        summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+        summary_en: "No supported official-source category matched this message."
+      },
+      summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+      summary_en: "No supported official-source category matched this message."
+    };
+  } else {
+    try {
+      officialSearch = await searchOfficialSources(message);
+    } catch {
+      officialSearch = {
+        status: "unavailable",
+        scope: "Selected Bangladesh official and institutional sources based on message category",
+        searchedAt: new Date().toISOString(),
+        searchedPortals: [],
+        failedPortalCount: 3,
+        sources: [],
+        evidenceAssessment: {
+          status: "search_unavailable",
+          summary_bn: "সরকারি পোর্টালগুলোতে সংযোগ করা যায়নি।",
+          summary_en: "The official portals could not be reached."
+        },
+        summary_bn: "এই মুহূর্তে সরকারি পোর্টালগুলোতে সংযোগ করা যায়নি।",
+        summary_en: "The official portals could not be reached right now."
+      };
+    }
+  }
+
+  return makeResponse(200, {
+    officialSearch,
+    webEvidence: buildWebEvidence(officialSearch),
+    claimVerification: enrichClaimVerification(rules.claimVerification, officialSearch)
+  }, headers);
+}
+
 export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter = null) {
   runtimeEnv = runtimeEnv || (typeof process !== "undefined" ? process.env : {});
   const origin = event.headers && (event.headers.origin || event.headers.Origin);
@@ -486,23 +608,7 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     summary_bn: "সরকারি পোর্টালে আলাদা অনুসন্ধান এখনো চলছে।"
   } : notApplicableSearch;
 
-  const officialSearchTask = searchApplies
-    ? searchOfficialSources(message).catch(() => ({
-        status: "unavailable",
-        scope: searchScope,
-        searchedAt: new Date().toISOString(),
-        searchedPortals: [],
-        failedPortalCount: 3,
-        sources: [],
-        evidenceAssessment: {
-          status: "search_unavailable",
-          summary_bn: "সরকারি পোর্টালগুলোতে সংযোগ করা যায়নি।",
-          summary_en: "The official portals could not be reached."
-        },
-        summary_bn: "এই মুহূর্তে সরকারি পোর্টালগুলোতে সংযোগ করা যায়নি।",
-        summary_en: "The official portals could not be reached right now."
-      }))
-    : Promise.resolve(notApplicableSearch);
+
 
   const aiAnalysisTask = generateExplanation({
     message, language, rules, sources: retrievedSources, officialSearch: modelSearchContext, runtimeEnv, aiBinding
@@ -522,7 +628,24 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     };
   });
 
-  const [officialSearch, aiAnalysis] = await Promise.all([officialSearchTask, aiAnalysisTask]);
+  const aiAnalysis = await aiAnalysisTask;
+  // Official-source retrieval is handled by /api/official-search so its
+  // results can reach the browser without waiting for LLM inference.
+  const officialSearch = searchApplies ? {
+    status: "pending",
+    scope: searchScope,
+    searchedAt: null,
+    searchedPortals: [],
+    failedPortalCount: 0,
+    sources: [],
+    evidenceAssessment: {
+      status: "pending",
+      summary_bn: "নির্বাচিত সরকারি/প্রাতিষ্ঠানিক উৎস অনুসন্ধান চলছে।",
+      summary_en: "Selected official and institutional sources are being checked."
+    },
+    summary_bn: "নির্বাচিত সরকারি/প্রাতিষ্ঠানিক উৎস অনুসন্ধান চলছে।",
+    summary_en: "Selected official and institutional sources are being checked."
+  } : notApplicableSearch;
 
   return makeResponse(200, {
     ...rules,
