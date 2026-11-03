@@ -237,7 +237,7 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 <p className="mt-3 text-[10px] leading-5 text-slate-500">{resultLanguage==='bn'?(analysis.officialSearch.scopeNote_bn||'অনুসন্ধানটি নির্বাচিত official source-এ সীমাবদ্ধ। উৎসের বাইরে কোনো দাবি যাচাই করা হয়নি।'):(analysis.officialSearch.scopeNote_en||'Search is limited to selected official sources. Claims outside those sources were not verified.')}</p>
 </div>
 </div>
-</section>}
+</section></div>}
 {analysis.retrievedSources?.length>0&&<section className="rounded-2xl border border-violet-300/25 bg-[linear-gradient(145deg,rgba(28,20,56,.5),rgba(10,15,31,.96)_50%,rgba(14,26,43,.82))] p-4 shadow-[0_16px_38px_rgba(0,0,0,.2)] sm:p-5">
 <div className="flex flex-wrap items-center justify-between gap-3">
 <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl border border-violet-300/25 bg-violet-300/10 text-violet-200"><FileText size={20}/></span><div><p className="text-[10px] font-extrabold tracking-[.16em] text-violet-100">{resultLanguage==='bn'?'RAG থেকে পাওয়া নিরাপত্তা নির্দেশনা':'RETRIEVED SAFETY GUIDANCE'}</p><p className="mt-1 text-[11px] text-slate-400">{resultLanguage==='bn'?'SHONKET-এর curated knowledge base থেকে':'From SHONKET AI’s curated knowledge base'}</p></div></div>
