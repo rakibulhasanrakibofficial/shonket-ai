@@ -6,87 +6,114 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 
 ## Features
 
-- Bangla and English scam checks using the existing deterministic rule engine.
+- Bangla and English scam checks using a deterministic rule engine.
 - Optional LLM-assisted explanations. The LLM cannot change the deterministic verdict or risk score.
-- Lexical RAG over a small, curated knowledge base of official Bangladesh safety guidance. Original source links are displayed.
+- Lexical RAG over a curated knowledge base of Bangladesh digital-safety guidance.
 - Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js in English and Bangla; image files are not uploaded.
-- Microphone dictation, link-structure inspector, screenshot preview, and scam-awareness simulator.
-- Education-related scholarship, stipend, grant, and recruitment claims can trigger a live search of three allowlisted Bangladesh education-government listings (SHED scholarships, SHED notices, and DSHE notices). This is **not whole-web search**. Results contain listing titles, publication dates, and original government notice links; attached PDFs are not parsed. A related title is not proof that the sender or every claim detail is genuine. No match does not prove the claim is false. Other claim types remain unverified unless independently checked.
+- Microphone dictation, link-structure inspector, result copy/PDF export, and scam-awareness simulator.
+- Education-related scholarship, stipend, grant, and recruitment claims can trigger a live search of three allowlisted Bangladesh education-government listings (SHED scholarships, SHED notices, and DSHE notices). This is **not whole-web search**. Results contain listing titles, publication dates, and original government notice links; attached PDFs are not parsed. A related title is not proof that the sender or every claim detail is genuine. No match does not prove the claim is false.
 - AI-generated explanations are advisory and do not authenticate senders, domains, notices, or offers.
 
 ## Architecture
 
 - **Frontend:** React + Vite, deployed to GitHub Pages.
-- **Backend:** Netlify Function at `POST /api/analyze`.
-- **LLM:** Hugging Face Inference Providers, called only from the server-side Netlify Function.
-- **RAG:** Small lexical retrieval over curated sources in `netlify/functions/knowledge-base.mjs`.
-- **Live official-source search:** `netlify/functions/live-official-search.mjs` checks only `shed.gov.bd` scholarship/notices and `dshe.gov.bd` notices for education-related claims. It reads titles and published dates from listing tables, provides original notice links, and labels partial portal outages. It does not crawl the full web, read notice PDFs, or independently verify a sender.
-- **Screenshot OCR:** Tesseract.js in the browser. The screenshot image itself is not sent to Netlify or the LLM provider.
-- **Rule engine:** `api/ruleAssessment.js`; used by the backend and by the browser as an offline fallback.
+- **API:** Cloudflare Worker at \`POST /api/analyze\`; health check at \`GET /health\`.
+- **LLM:** Cloudflare Workers AI through the native \`env.AI\` binding. Runtime API tokens are not required for inference.
+- **Rule engine:** \`api/ruleAssessment.js\`.
+- **RAG:** Lexical retrieval over curated sources in \`netlify/functions/knowledge-base.mjs\`.
+- **Live official-source search:** \`netlify/functions/live-official-search.mjs\` checks only \`shed.gov.bd\` scholarship/notices and \`dshe.gov.bd\` notices for education-related claims.
+- **Shared analysis handler:** \`netlify/functions/analyze.mjs\` is reused by the Cloudflare Worker and remains compatible with the legacy Netlify function adapter.
+- **Screenshot OCR:** Tesseract.js in the browser. The screenshot itself is not sent to the API or LLM provider.
 
-The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The live official-source search is a separate server-side retrieval step over three allowlisted education-government listings, not unrestricted web search. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
+The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The official-source search is a separate retrieval step over three allowlisted education-government listings, not unrestricted web search. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
 
-## Deploy the backend to Netlify
+## Cloudflare Worker deployment
 
-Connect the GitHub repository `rakibulhasanrakibofficial/shonket-ai` to Netlify.
+The repository already contains the Worker entry point and configuration:
 
-Build settings:
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Functions directory: `netlify/functions`
+- Worker entry: \`src/worker.js\`
+- Wrangler config: \`wrangler.toml\`
+- Workers AI binding: \`AI\`
+- Per-IP request protection: \`ANALYZE_RATE_LIMITER\`
+- Static asset directory: \`dist\`
 
-The `netlify.toml` file configures the function and routes `/api/analyze` to it.
+### 1. Add a GitHub Actions secret
 
-### Netlify environment variables
+In GitHub, open **Settings → Secrets and variables → Actions → Secrets → New repository secret**.
 
-Configure these in **Site configuration → Environment variables**. Never put `HF_TOKEN` in the repository or a frontend variable.
+Create:
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `HF_TOKEN` | Optional | Hugging Face token with Inference Providers permission. Without it, deterministic results and RAG sources still work, but no LLM explanation is generated. |
-| `HF_MODEL` | Optional | Model and provider routing preference. Default: `Qwen/Qwen2.5-7B-Instruct:cheapest`. |
-| `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated permitted frontend origins. The GitHub Pages origin, Netlify's own `URL`, and local Vite origins are allowed by default. |
-| `OFFICIAL_SOURCE_SEARCH_ENABLED` | Optional | Defaults to enabled. Set to `false` to disable the allowlisted Bangladesh education-portal search. No API key is needed for this limited source retrieval. |
+| Secret | Value |
+|---|---|
+| \`CLOUDFLARE_API_TOKEN\` | A Cloudflare API token created from the **Edit Cloudflare Workers** template, scoped to the Cloudflare account that owns this Worker. |
 
-Hugging Face currently provides **$0.10/month** in Inference Providers credit for free accounts, subject to change. This is a small trial allowance, not unlimited usage. Additional usage requires separately purchased credits. Review the current provider/model availability, pricing, terms and data-handling conditions before enabling hosted inference.
+This token is used only by GitHub Actions to deploy the Worker. It is not used by the application at runtime and must never be committed to the repository or shared in chat. The Cloudflare account ID is already configured in the deployment workflow.
 
-A best-effort per-IP request limit is applied in each warm function instance when LLM is enabled. Serverless instances do not share this in-memory counter, so it is not a substitute for a distributed production rate limiter.
+### 2. Deploy the Worker
 
-### Privacy and data handling
+After adding the secret, open **Actions → Deploy Cloudflare Worker API → Run workflow**. The workflow runs the fast test suite, builds the static assets, and deploys with Wrangler.
 
-The message is sent to the Netlify Function for rule assessment and RAG retrieval. When `HF_TOKEN` is configured, a redacted copy is sent to the selected Hugging Face Inference Provider for an explanation. The redaction removes common email addresses, URLs, Bangladeshi mobile numbers, and long digit strings, but it cannot guarantee removal of every personal detail. The function does not write messages to an application database. Provider-side processing is governed by the provider's own terms and privacy rules.
+The account must have its \`workers.dev\` subdomain enabled. Cloudflare assigns the actual Worker URL after deployment; it follows this pattern:
 
-The checker shows a notice before submission. Do not enter passwords, OTPs, PINs, account numbers, private documents, or other sensitive personal information.
+\`https://shonket-ai.<your-workers-subdomain>.workers.dev\`
 
-## Deploy the frontend to GitHub Pages
+Open \`/health\` on that URL. The response should report:
 
-1. In repository **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**.
-2. In **Settings → Secrets and variables → Actions → Variables**, add:
-   - Name: `VITE_API_BASE_URL`
-   - Value: your Netlify site origin, for example `https://your-site-name.netlify.app` (no trailing slash).
-3. Ensure the Netlify site's allowed CORS origin includes `https://rakibulhasanrakibofficial.github.io`. The default configuration already includes it.
-4. Push to `main` or manually run the **Deploy GitHub Pages** workflow.
-5. The workflow builds with the project base path `/shonket-ai/` and publishes `dist`.
-6. Open `https://rakibulhasanrakibofficial.github.io/shonket-ai/`.
+- \`ok: true\`
+- \`aiBindingConfigured: true\`
+- \`rateLimitConfigured: true\`
 
-If `VITE_API_BASE_URL` is not configured, the UI remains usable with local deterministic rules and browser-side screenshot OCR. A new Pages build is required after changing this variable.
+### 3. Connect GitHub Pages to the Worker
+
+After the first successful Worker deployment, copy the exact Worker origin (no trailing slash).
+
+In GitHub, open **Settings → Secrets and variables → Actions → Variables → New repository variable**.
+
+Create:
+
+| Variable | Value |
+|---|---|
+| \`SHONKET_API_BASE_URL\` | The exact Worker origin, for example \`https://shonket-ai.<your-workers-subdomain>.workers.dev\` |
+
+Then run **Actions → Deploy GitHub Pages → Run workflow**. The frontend build will use this Worker origin for \`/api/analyze\`.
+
+Until this variable is configured, the frontend can still use its local deterministic rule engine and browser-side screenshot OCR; hosted LLM and live portal search will not be available through the frontend.
+
+### 4. Cloudflare free-plan limits
+
+Cloudflare Workers Free currently includes 100,000 Worker requests per day. Workers AI has a separate free allocation of 10,000 Neurons per day, resetting at 00:00 UTC. These are independent limits: the API can remain reachable after the AI allocation is exhausted, but LLM inference will fail until the allocation resets. This is a finite free tier, not unlimited usage.
+
+The built-in Cloudflare rate-limiting binding is approximate and can allow some bursts beyond its configured threshold; it is an abuse-control layer, not a strict global quota ledger. The current configuration is 12 requests per minute per client IP key.
+
+Official details:
+- [Workers Free plan pricing](https://developers.cloudflare.com/workers/platform/pricing/)
+- [Workers account limits](https://developers.cloudflare.com/workers/platform/limits/)
+- [Workers AI pricing and daily free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+- [Workers AI errors and quota exhaustion](https://developers.cloudflare.com/workers-ai/platform/errors/)
 
 ## Local development and tests
 
-- `npm install`
-- `npm run dev` starts the Vite frontend.
-- `npm run test:fast` runs rule-engine, RAG, redaction and Netlify Function tests.
-- `npm run build` creates a root-path build.
-- `npm run build:github-pages` builds with the GitHub Pages subpath.
-- Use `npx netlify dev` to run the frontend and Netlify Function together locally.
+- \`npm install\`
+- \`npm run dev\` starts the Vite frontend.
+- \`npm run test:fast\` runs rule-engine, RAG, redaction, Netlify compatibility, and Cloudflare Worker tests.
+- \`npm run test:e2e\` runs desktop/mobile Playwright checks.
+- \`npm run build\` creates a root-path build.
+- \`npm run build:github-pages\` builds with the GitHub Pages subpath.
+- \`npm run deploy\` builds and deploys the Cloudflare Worker with Wrangler (requires Cloudflare authentication).
 
 ## API behavior
 
-- `POST /api/analyze` accepts up to 4,000 characters. Request bodies are capped at 16 KB.
-- The response includes the deterministic rule assessment, `aiAnalysis`, and `retrievedSources`.
-- If `HF_TOKEN` is absent or the provider is unavailable, the endpoint still returns rule-based results and retrieved safety guidance.
+- \`POST /api/analyze\` accepts up to 4,000 characters. Request bodies are capped at 16 KB.
+- The response includes deterministic rule assessment, \`aiAnalysis\`, \`retrievedSources\`, and official-search status.
+- If Workers AI is unavailable or its free allocation is exhausted, the endpoint still returns the rule-based result and retrieved safety guidance.
 - LLM explanations never override the deterministic verdict or risk score.
-- Screenshot binaries are never accepted by the backend; OCR runs in the browser and only extracted text is sent to the checker.
+- Screenshot binaries are not accepted by the API; OCR runs in the browser and only extracted text is sent to the checker.
+
+## Privacy and data handling
+
+The message is sent to the Cloudflare Worker for rule assessment and RAG retrieval. When Workers AI is configured, the handler redacts common email addresses, URLs, Bangladeshi mobile numbers, and long digit strings before sending a copy to the AI model. Redaction cannot guarantee removal of every personal detail. The handler does not write submitted messages to an application database.
+
+Do not enter passwords, OTPs, PINs, account numbers, private documents, or other sensitive personal information.
 
 ## Curated knowledge sources
 
@@ -99,7 +126,8 @@ If `VITE_API_BASE_URL` is not configured, the UI remains usable with local deter
 
 - Risk scores are deterministic heuristics, not calibrated probabilities.
 - A suspicious result is a warning for further checking, not proof of fraud. A low-risk result is not a guarantee of safety.
-- The curated RAG corpus can become outdated; it does not run live web searches.
+- The curated RAG corpus can become outdated; it is not a live web search.
+- Official-source search is limited to three allowlisted education-government listings. It does not crawl the full web or parse attached notice PDFs.
 - URL inspection checks URL structure only. It does not resolve redirects, check domain reputation, or visit the submitted URL.
 - Screenshot OCR can misread blurry or cropped text. Always review extracted text.
 - The browser's speech-recognition provider may process audio under its own terms. SHONKET does not receive raw microphone audio.
