@@ -11,11 +11,32 @@ function json(status, payload) {
 }
 
 export async function handleAnalyzeRequest(request, env) {
+  const clientIp = String(request.headers.get("CF-Connecting-IP") || "").trim();
+  if (!clientIp || clientIp.length > 64) {
+    return json(503, { error: "Could not establish a trusted client address." });
+  }
+
+  const limiter = env?.ANALYZE_RATE_LIMITER;
+  if (!limiter || typeof limiter.limit !== "function") {
+    return json(503, { error: "The built-in rate limiter is not configured." });
+  }
+
   const headers = Object.fromEntries(request.headers.entries());
+  let body = null;
+  if (request.method === "POST") {
+    const declaredLength = Number(headers["content-length"] || 0);
+    if (declaredLength > 16 * 1024) {
+      body = "";
+    } else {
+      body = await request.text();
+      headers["content-length"] = String(new TextEncoder().encode(body).byteLength);
+    }
+  }
+
   const event = {
     httpMethod: request.method,
     headers,
-    body: request.method === "POST" ? await request.text() : null
+    body
   };
 
   const result = await analyzeHandler(
