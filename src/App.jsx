@@ -107,24 +107,24 @@ function LiveSourceLogo({ source, compact = false }) {
 
 const WORKSPACE_TOOL_STYLES = {
   checker: {
-    background: 'linear-gradient(135deg, #ec4899 0%, #c026d3 48%, #6d28d9 100%)',
-    border: '1px solid #f9a8d4',
-    shadow: '0 6px 0 #4c1d95, 0 12px 24px rgba(217,70,239,.32), inset 0 1px 0 rgba(255,255,255,.58)'
+    background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 52%, #4c1d95 100%)',
+    border: '1px solid #c4b5fd',
+    shadow: '0 5px 0 #312e81, 0 8px 16px rgba(139,92,246,.17), inset 0 1px 0 rgba(255,255,255,.4)'
   },
   links: {
-    background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 48%, #1e40af 100%)',
+    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 52%, #1e40af 100%)',
     border: '1px solid #93c5fd',
-    shadow: '0 6px 0 #1e3a8a, 0 12px 24px rgba(59,130,246,.32), inset 0 1px 0 rgba(255,255,255,.58)'
+    shadow: '0 5px 0 #1e3a8a, 0 8px 16px rgba(59,130,246,.17), inset 0 1px 0 rgba(255,255,255,.4)'
   },
   simulator: {
-    background: 'linear-gradient(135deg, #2dd4bf 0%, #0d9488 48%, #047857 100%)',
+    background: 'linear-gradient(135deg, #5eead4 0%, #0f988c 52%, #115e59 100%)',
     border: '1px solid #99f6e4',
-    shadow: '0 6px 0 #064e3b, 0 12px 24px rgba(20,184,166,.3), inset 0 1px 0 rgba(255,255,255,.58)'
+    shadow: '0 5px 0 #134e4a, 0 8px 16px rgba(20,184,166,.15), inset 0 1px 0 rgba(255,255,255,.4)'
   },
   history: {
-    background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 52%, #c2410c 100%)',
-    border: '1px solid #fde68a',
-    shadow: '0 6px 0 #7c2d12, 0 12px 24px rgba(249,115,22,.3), inset 0 1px 0 rgba(255,255,255,.58)'
+    background: 'linear-gradient(135deg, #fdba74 0%, #ea580c 52%, #9a3412 100%)',
+    border: '1px solid #fed7aa',
+    shadow: '0 5px 0 #7c2d12, 0 8px 16px rgba(249,115,22,.15), inset 0 1px 0 rgba(255,255,255,.4)'
   }
 };
 
