@@ -24,6 +24,36 @@ test("all scam-checker evaluation cases match relevance and expected verdicts", 
   assert.deepEqual(mismatches, [], mismatches.join("\\n"));
 });
 
+test("Bangla and Banglish OTP, prize-fee, job-fee and phishing cases are detected", () => {
+  const targeted = sampleCases.filter(sample => sample.id.startsWith("bn-scam-") || sample.id.startsWith("bx-scam-"));
+  assert.ok(targeted.length >= 10);
+  for (const sample of targeted) {
+    const result = buildRuleAssessment(sample.text, sample.language || "bn");
+    assert.equal(result.verdict, "suspicious", sample.id + ": " + result.summary_en);
+    assert.equal(result.responseLanguage, "bn");
+  }
+});
+
+test("legitimate mobile-money, job and scholarship notices are not flagged for upfront fees", () => {
+  const targeted = sampleCases.filter(sample => sample.id.includes("-legit-"));
+  assert.ok(targeted.length >= 7);
+  for (const sample of targeted) {
+    const result = buildRuleAssessment(sample.text, sample.language || "en");
+    assert.equal(result.verdict, "uncertain", sample.id + ": " + result.summary_en);
+    assert.ok(!result.matchedSignals.includes("upfront_payment"), sample.id + " incorrectly matched an upfront payment");
+  }
+});
+
+test("Bangla and Banglish anti-scam warnings are not treated as credential theft", () => {
+  const warnings = sampleCases.filter(sample => sample.id.startsWith("bn-safe-") || sample.id.startsWith("bx-safe-"));
+  assert.equal(warnings.length, 2);
+  for (const sample of warnings) {
+    const result = buildRuleAssessment(sample.text, "bn");
+    assert.equal(result.verdict, "likely_safe", sample.id + ": " + result.summary_en);
+    assert.ok(!result.matchedSignals.includes("credential_request"));
+  }
+});
+
 test("a prize claim combined with an upfront fee is suspicious", () => {
   const result = buildRuleAssessment(
     "You have won a cash prize. Pay the processing fee now to release it.",
