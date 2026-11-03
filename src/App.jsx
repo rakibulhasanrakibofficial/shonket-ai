@@ -21,8 +21,8 @@ const SOURCE_BRANDS = [
     ids: ['bgd-cirt-error524', 'cirt-alerts', 'cirt-smishing'],
     name: 'BGD e-GOV CIRT',
     logos: [
-      'https://pbs.twimg.com/profile_images/1712349752086691840/OHEHnX1H.jpg',
-      'https://commons.wikimedia.org/wiki/Special:FilePath/BGD_e-Gov_CIRT_Emblem.svg'
+      'https://cirt.gov.bd/assets/images/CIRT-Main-Logo.png',
+      'https://www.cirt.gov.bd/assets/images/CIRT-Main-Logo.png'
     ],
     surface: 'source-brand-surface-light'
   },
@@ -33,7 +33,7 @@ const SOURCE_BRANDS = [
     name: 'ScamCheck',
     logos: [
       'https://scamcheck.gov.bd/wp-content/uploads/2025/01/Copy-of-ScamCheck.png',
-      'https://www.google.com/s2/favicons?domain=scamcheck.gov.bd&sz=128'
+      'https://www.scamcheck.gov.bd/wp-content/uploads/2025/01/Copy-of-ScamCheck.png'
     ],
     surface: 'source-brand-surface-light'
   }
