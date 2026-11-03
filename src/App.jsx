@@ -47,25 +47,48 @@ function beginVoiceRecognition(){
   recognition.continuous=false;
   recognition.interimResults=false;
   recognition.maxAlternatives=1;
-  recognition.onstart=()=>setVoiceListening(true);
-  recognition.onresult=event=>{
-    const transcript=Array.from(event.results||[]).map(result=>result?.[0]?.transcript||'').join(' ').trim();
-    if(!transcript)return;
-    setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\n').slice(0,2000));
-    setAnalysis(null);
-    setAiError('');
+  recognition.onstart=()=>{
     setVoiceError('');
+    setVoiceListening(true);
+  };
+  recognition.onnomatch=()=>{
+    setVoiceListening(false);
+    setVoiceError(t('No clear speech was recognised. Please try again or type the message.','স্পষ্ট কোনো কথা শনাক্ত হয়নি। আবার চেষ্টা করুন অথবা লিখে দিন।'));
+  };
+  recognition.onresult=event=>{
+    try{
+      const resultIndex=Number.isInteger(event?.resultIndex)?event.resultIndex:0;
+      const results=event?.results;
+      const result=results?.[resultIndex]||results?.[0];
+      const transcript=String(result?.[0]?.transcript||'').trim();
+      if(!transcript)return;
+      setMessage(current=>[current.trim(),transcript].filter(Boolean).join('\n').slice(0,2000));
+      setAnalysis(null);
+      setAiError('');
+      setVoiceError('');
+    }catch(error){
+      console.error('SHONKET voice transcript error:',error);
+      setVoiceListening(false);
+      setVoiceError(t('Speech was received but could not be added to the message. Please type it instead.','কথা শনাক্ত হলেও বার্তায় যোগ করা যায়নি। অনুগ্রহ করে লিখে দিন।'));
+    }
   };
   recognition.onerror=event=>{
-    const error=event?.error||'';
-    const messages={
-      'not-allowed':t('Microphone permission was denied. Allow microphone access in browser settings.','মাইক্রোফোনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংসে অনুমতি দিন।'),
-      'audio-capture':t('No microphone was found. Check your device microphone.','মাইক্রোফোন পাওয়া যায়নি। ডিভাইসের মাইক্রোফোন পরীক্ষা করুন।'),
-      'no-speech':t('No speech was detected. Press Speak and try again.','কোনো কথা শনাক্ত হয়নি। Speak চেপে আবার চেষ্টা করুন।'),
-      'language-not-supported':t('This voice language is not supported by your browser.','আপনার ব্রাউজারে এই ভাষার voice input সমর্থিত নয়।'),
-      'network':t('The browser speech service could not connect. Check your connection or type the message instead.','ব্রাউজারের speech service-এ সংযোগ হয়নি। ইন্টারনেট পরীক্ষা করুন অথবা লিখে দিন।')
-    };
-    setVoiceError(messages[error]||t('Voice input stopped. Please try again or type the message.','ভয়েস ইনপুট বন্ধ হয়েছে। আবার চেষ্টা করুন অথবা লিখে দিন।'));
+    try{
+      const error=event?.error||'';
+      const messages={
+        'not-allowed':t('Microphone permission was denied. Allow microphone access in browser settings.','মাইক্রোফোনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংসে অনুমতি দিন।'),
+        'service-not-allowed':t('The browser blocked its speech service. Check browser permissions or type the message.','ব্রাউজার speech service ব্লক করেছে। browser permission পরীক্ষা করুন অথবা লিখে দিন।'),
+        'audio-capture':t('No microphone was found. Check your device microphone.','মাইক্রোফোন পাওয়া যায়নি। ডিভাইসের মাইক্রোফোন পরীক্ষা করুন।'),
+        'no-speech':t('No speech was detected. Press Speak and try again.','কোনো কথা শনাক্ত হয়নি। Speak চেপে আবার চেষ্টা করুন।'),
+        'language-not-supported':t('This voice language is not supported by your browser.','আপনার ব্রাউজারে এই ভাষার voice input সমর্থিত নয়।'),
+        'network':t('The browser speech service could not connect. Check your connection or type the message instead.','ব্রাউজারের speech service-এ সংযোগ হয়নি। ইন্টারনেট পরীক্ষা করুন অথবা লিখে দিন।'),
+        'aborted':t('Voice input was stopped. You can press Speak to try again.','ভয়েস ইনপুট বন্ধ করা হয়েছে। আবার চেষ্টা করতে Speak চাপুন।')
+      };
+      setVoiceError(messages[error]||t('Voice input stopped. Please try again or type the message.','ভয়েস ইনপুট বন্ধ হয়েছে। আবার চেষ্টা করুন অথবা লিখে দিন।'));
+    }catch(error){
+      console.error('SHONKET voice recognition error:',error);
+      setVoiceError(t('Voice input encountered an error. Please type the message instead.','ভয়েস ইনপুটে সমস্যা হয়েছে। অনুগ্রহ করে লিখে দিন।'));
+    }
   };
   recognition.onend=()=>{
     setVoiceListening(false);
