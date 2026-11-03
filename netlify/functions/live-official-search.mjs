@@ -133,7 +133,7 @@ export function parseListingRows(html, portal) {
   return records;
 }
 
-function isEducationClaim(query) {
+export function isEducationClaim(query) {
   // This search is scoped to Ministry of Education and DSHE listings.
   // Generic private-sector job/recruitment messages are outside that scope.
   return /\b(scholarship|stipend|fellowship|grant|education|university|student|study|academic|school|college|teacher)\b|বৃত্তি|উপবৃত্তি|ফেলোশিপ|অনুদান|শিক্ষা|বিশ্ববিদ্যালয়|বিশ্ববিদ্যালয়|শিক্ষার্থী|নিয়োগ|নিয়োগ|শিক্ষক/i.test(query);
