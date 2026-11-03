@@ -384,3 +384,41 @@
 @media(prefers-reduced-motion:reduce){
   .hero-orbit{animation:none!important}
 }
+
+
+/* Analysis report export: kept out of the app screen and shown only for printing. */
+.shonket-print-only{display:none}
+@media print{
+  @page{size:A4;margin:15mm}
+  html,body{background:#fff!important;color:#111!important;min-width:0!important}
+  body{margin:0!important}
+  body>*:not(#shonket-print-report){display:none!important}
+  #shonket-print-report{
+    display:block!important;
+    position:static!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    color:#171717!important;
+    font-family:Arial,"Noto Sans Bengali","Noto Sans",sans-serif!important;
+    font-size:10pt!important;
+    line-height:1.55!important;
+    overflow:visible!important;
+  }
+  #shonket-print-report *{color:#171717!important;box-shadow:none!important;text-shadow:none!important}
+  .shonket-print-header{border-bottom:2px solid #5b4acb;padding-bottom:12px;margin-bottom:18px}
+  .shonket-print-brand{font-size:11pt;font-weight:800;letter-spacing:.16em;color:#4d3ca9!important;margin:0 0 5px}
+  .shonket-print-header h1{font-size:20pt;line-height:1.25;margin:0 0 7px}
+  .shonket-print-header p:last-child{font-size:8.5pt;color:#555!important;margin:0}
+  .shonket-print-section{margin:0 0 15px;break-inside:avoid-page}
+  .shonket-print-section h2,.shonket-print-footer h2{font-size:11pt;font-weight:800;margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid #ddd}
+  .shonket-print-section p,.shonket-print-footer p{margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+  .shonket-print-section ul{margin:5px 0 0;padding-left:22px}
+  .shonket-print-section li{margin:3px 0;overflow-wrap:anywhere}
+  .shonket-print-message{padding:10px;border:1px solid #ddd;border-radius:5px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .shonket-print-verdict{font-size:14pt;font-weight:800;margin:4px 0}
+  #shonket-print-report a{color:#2456a6!important;text-decoration:underline!important;overflow-wrap:anywhere}
+  .shonket-print-footer{border-top:2px solid #ddd;margin-top:18px;padding-top:10px;font-size:9pt}
+}
