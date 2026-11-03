@@ -88,7 +88,12 @@ export default async function handler(req, res) {
 
     const imageData = String(body.imageBase64 || "");
     const raw = imageData.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/i, "");
-    if (!raw || raw.length > Math.ceil(MAX_IMAGE_BYTES * 1.4) || !/^[A-Za-z0-9+/]+={0,2}$/.test(raw)) {
+    const validBase64 = raw.length > 0
+      && raw.length % 4 === 0
+      && raw.length <= Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 4
+      && /^[A-Za-z0-9+/]+={0,2}$/.test(raw);
+    const decodedImageBytes = validBase64 ? Buffer.from(raw, "base64").byteLength : 0;
+    if (!validBase64 || decodedImageBytes === 0 || decodedImageBytes > MAX_IMAGE_BYTES) {
       return send(res, 413, { error: "Screenshot is empty or too large. Maximum file size is 2.5 MB." });
     }
 
