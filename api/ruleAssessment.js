@@ -99,18 +99,18 @@ function hasBangla(text) {
   return /[\u0980-\u09FF]/.test(text);
 }
 
-const DIRECT_CREDENTIAL_REQUEST = /\\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\\s+(?:your\\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\\b|\\b(?:otp|pin|password)\\s+(?:pathan|diben|den|share koren)\\b|ওটিপি\\s*(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|পিন\\s*(?:দিন|পাঠান)|পাসওয়ার্ড\\s*(?:দিন|পাঠান)/i;
-const DIRECT_PAYMENT_REQUEST = /\\b(?:send|transfer|deposit)\\s+(?:(?:the|a)\\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\\s+)?(?:fee|money|payment|funds)\\b|\\bpay\\s+(?:(?:the|a)\\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\\s+)?(?:fee|money|payment)\\s+(?:now|today|first|to claim|to release)\\b|টাকা\\s*(?:পাঠান|দিতে হবে)|ফি\\s*(?:পাঠান|দিতে হবে)/i;
+const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|ওটিপি\s*(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|পিন\s*(?:দিন|পাঠান)|পাসওয়ার্ড\s*(?:দিন|পাঠান)/i;
+const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
 
 function stripNegatedInstructions(text) {
   return String(text || "")
-    .replace(/\\b(?:never|do not|don't)\\s+(?:share|disclose|give|send|provide|pay|click|open)\\b[^.!?\\n]{0,110}/gi, " ")
-    .replace(/\\b(?:we|your bank|the bank|the service)?\\s*will never ask\\b[^.!?\\n]{0,90}/gi, " ")
-    .replace(/(?:কখনো|কোনোভাবেই)?\\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\\n]{0,110}/gi, " ");
+    .replace(/\b(?:never|do not|don't)\s+(?:share|disclose|give|send|provide|pay|click|open)\b[^.!?\n]{0,110}/gi, " ")
+    .replace(/\b(?:we|your bank|the bank|the service)?\s*will never ask\b[^.!?\n]{0,90}/gi, " ")
+    .replace(/(?:কখনো|কোনোভাবেই)?\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\n]{0,110}/gi, " ");
 }
 
 function isCredentialWarning(text, actionableText) {
-  const containsWarning = /\\b(?:never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask)\\b.{0,90}\\b(?:otp|pin|password|verification code)\\b|\\b(?:otp|pin|password)\\b.{0,70}\\b(?:never share|do not share|don't share|never disclose|do not disclose)\\b|ওটিপি.{0,45}(?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন.{0,35}(?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)/i.test(text);
+  const containsWarning = /\b(?:never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask)\b.{0,90}\b(?:otp|pin|password|verification code)\b|\b(?:otp|pin|password)\b.{0,70}\b(?:never share|do not share|don't share|never disclose|do not disclose)\b|ওটিপি.{0,45}(?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন.{0,35}(?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)/i.test(text);
   return containsWarning && !DIRECT_CREDENTIAL_REQUEST.test(actionableText);
 }
 
