@@ -5,10 +5,10 @@ test('landing page loads and primary tools are reachable', async ({ page }) => {
   await expect(page).toHaveTitle(/SHONKET AI/i);
   await expect(page.getByRole('heading', { name: /Don.t trust/i })).toBeVisible();
   await expect(page.getByAltText(/Official Built For Ostad Presents YUNet AIgnite Buildathon 2026 sticker/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Check a message/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Analyze a message/i }).first()).toBeVisible();
 });
 
-test('scam checker accepts text and shows an analysis result', async ({ page }) => {
+test('scam checker accepts text and shows a rule-based result', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
     await route.fulfill({
       status: 200,
@@ -16,33 +16,28 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
       body: JSON.stringify({
         isRelevant: true,
         verdict: 'suspicious',
-        riskLevel: 'high',
-        riskScore: 82,
-        summary_en: 'The message offers an unexpected prize and requests an OTP.',
-        summary_bn: 'বার্তাটি অপ্রত্যাশিত পুরস্কার ও OTP চাইছে।',
-        evidence: [{ reason_en: 'An unsolicited prize is used to request an OTP.', reason_bn: 'অপ্রত্যাশিত পুরস্কারের মাধ্যমে OTP চাওয়া হচ্ছে।' }],
-        tactics: ['fake_prize', 'otp_request', 'urgency'],
+        riskLevel: 'critical',
+        riskScore: 80,
+        summary_en: 'The message combines a prize claim with a direct request for an OTP.',
+        summary_bn: 'বার্তাটি পুরস্কারের দাবির সঙ্গে OTP চেয়েছে।',
+        evidence: [{ reason_en: 'A direct request for an OTP is a credential-theft warning sign.', reason_bn: 'সরাসরি OTP চাওয়া গোপন তথ্য চুরির সতর্কসংকেত।' }],
+        tactics: ['credential_request', 'unverified_prize_claim', 'urgency'],
         safe_actions: ['Never share OTPs or passwords.', 'Verify independently through official channels.'],
-        uncertainty: 'This is an AI-assisted assessment, not proof of fraud or safety.',
-        confidence: 'high',
-        engine: 'Gemini',
+        uncertainty: 'This is a rule-based text check, not proof of fraud or safety.',
+        confidence: 'medium',
+        engine: 'Rule-based',
+        model: 'deterministic-rules',
         webEvidence: {
-          searched: true,
-          searchExecuted: true,
-          status: 'evidence_retrieved',
-          officialSourcesFound: 1,
-          sources: [{
-            title: 'Sample official scholarship notice',
-            url: 'https://example.gov.bd/notices/scholarship',
-            domain: 'example.gov.bd',
-            sourceType: 'government',
-            officialDomain: true
-          }]
+          searched: false,
+          searchExecuted: false,
+          status: 'not_available',
+          officialSourcesFound: 0,
+          sources: []
         },
         claimVerification: {
           status: 'unverified',
-          summary_bn: 'এই নির্দিষ্ট দাবির যথেষ্ট সরকারি প্রমাণ পাওয়া যায়নি।',
-          summary_en: 'There is not enough authoritative evidence for this exact claim.'
+          summary_bn: 'এই দাবির পক্ষে কোনো বাহ্যিক সরকারি উৎস খোঁজা হয়নি।',
+          summary_en: 'No external source was searched for this claim.'
         }
       })
     });
@@ -50,24 +45,18 @@ test('scam checker accepts text and shows an analysis result', async ({ page }) 
   await page.goto('/');
   await page.locator('#message').fill('Congratulations! You won a cash prize. Send your OTP immediately to claim it.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
-  await expect(page.locator('#workspace-panel').getByText(/AI CHECK COMPLETE|AI যাচাই সম্পন্ন|MEDIUM RISK|HIGH RISK|LOW RISK/i).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#workspace-panel').getByText(/INSTANT RULE-BASED CHECK/i)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
-  await expect(page.getByText('WEB EVIDENCE · GOOGLE SEARCH')).toBeVisible();
   await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
   await expect(page.getByText('UNVERIFIED')).toBeVisible();
-  await expect(page.getByText('Sample official scholarship notice')).toBeVisible();
+  await expect(page.getByText(/No external source was searched/i)).toBeVisible();
 });
 
-test('scam checker accepts a screenshot file', async ({ page }) => {
+test('screenshot and microphone input are clearly unavailable in text-only mode', async ({ page }) => {
   await page.goto('/');
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2ioAAAAASUVORK5CYII=', 'base64');
-  await page.locator('#screenshot-upload').setInputFiles({
-    name: 'sample-message.png',
-    mimeType: 'image/png',
-    buffer: png,
-  });
-  await expect(page.getByText('sample-message.png')).toBeVisible();
-  await expect(page.getByText(/SCREENSHOT ATTACHED/i)).toBeVisible();
+  await expect(page.getByText(/Voice and screenshot analysis are not available/i)).toBeVisible();
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Speak|Listening/i })).toHaveCount(0);
 });
 
 test('link inspector identifies a known official domain without opening it', async ({ page }) => {

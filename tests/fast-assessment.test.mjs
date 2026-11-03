@@ -1,259 +1,326 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildFastAssessment } from "../api/fastAssessment.js";
-import { extractGroundingSources, classifyGroundingFailure, inspectGeminiFailure, getSearchGroundingConfig } from "../api/analyze.js";
+import { buildRuleAssessment } from "../api/ruleAssessment.js";
+import analyzeHandler from "../api/analyze.js";
 
-test("cash prize plus processing fee returns an instant suspicious assessment", () => {
-  const text = "Congratulations! You have won a cash prize. Send a small processing fee now to claim your reward.";
-  const result = buildFastAssessment(text, "en", {
-    score: 52,
-    matched: ["Upfront payment request", "Unexpected prize or reward"]
-  });
-
-  assert.ok(result);
+test("a prize claim combined with an upfront fee is suspicious", () => {
+  const result = buildRuleAssessment(
+    "You have won a cash prize. Pay the processing fee now to release it.",
+    "en"
+  );
   assert.equal(result.verdict, "suspicious");
-  assert.equal(result.riskScore, 52);
   assert.equal(result.engine, "Rule-based");
-  assert.equal(result.webEvidence.searched, false);
-  assert.equal(result.claimVerification.status, "not_applicable");
-  assert.match(result.summary_en, /upfront processing fee/i);
-});
-
-test("a prize announcement without an upfront-fee request returns an unverified result", () => {
-  const text = "Congratulations! You have won a cash prize.";
-  const result = buildFastAssessment(text, "en", { score: 22, matched: ["Unexpected prize or reward"] });
-  assert.ok(result);
-  assert.equal(result.verdict, "uncertain");
   assert.equal(result.claimVerification.status, "unverified");
-  assert.equal(result.engine, "Rule-based");
+  assert.ok(result.riskScore >= 55);
+  assert.match(result.summary_en, /upfront fee/i);
 });
 
-test("a normal processing-fee message without a prize claim still uses Gemini", () => {
-  const text = "Your application processing fee is due.";
-  assert.equal(buildFastAssessment(text, "en", { score: 30, matched: ["Upfront payment request"] }), null);
+test("a job offer combined with a registration fee is suspicious", () => {
+  const result = buildRuleAssessment(
+    "Guaranteed job offer. Send the registration fee today.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+  assert.ok(result.matchedSignals.includes("unverified_job_offer"));
 });
 
-test("Bangla prize and advance-fee wording returns Bangla guidance", () => {
-  const text = "আপনি নগদ পুরস্কার জিতেছেন। পুরস্কার পেতে আগে প্রসেসিং ফি পাঠান।";
-  const result = buildFastAssessment(text, "bn", { score: 52, matched: ["Upfront payment request", "Unexpected prize or reward"] });
-
-  assert.ok(result);
-  assert.equal(result.responseLanguage, "bn");
-  assert.match(result.summary_bn, /প্রসেসিং ফি/);
-  assert.match(result.safe_actions[0], /ফি পাঠাবেন না/);
+test("an OTP request is suspicious even without a second signal", () => {
+  const result = buildRuleAssessment("Reply with your OTP to complete verification.", "en");
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("credential_request"));
+  assert.match(result.summary_en, /OTP/i);
 });
 
-
-test("anti-scam warning about prize fees is classified as low-risk informational content", () => {
-  const text = "This is a scam. Never pay a processing fee to claim a cash prize. Fraudsters use this trick.";
-  const result = buildFastAssessment(text, "en", {
-    score: 52,
-    matched: ["Upfront payment request", "Unexpected prize or reward"]
-  });
-  assert.ok(result);
+test("an OTP warning is not classified as credential theft", () => {
+  const result = buildRuleAssessment(
+    "Your bank will never ask for your OTP. Never share your PIN or password.",
+    "en"
+  );
   assert.equal(result.verdict, "likely_safe");
   assert.equal(result.riskScore, 0);
   assert.deepEqual(result.matchedSignals, []);
 });
 
-test("Banglish prize plus fee wording triggers the instant path", () => {
-  const text = "Apni prize jitsen, reward pete age processing fee pathan.";
-  const result = buildFastAssessment(text, "bn", {
-    score: 30,
-    matched: ["Unexpected prize or reward", "Upfront payment request"]
-  });
-  assert.ok(result);
-  assert.equal(result.verdict, "suspicious");
-  assert.equal(result.responseLanguage, "bn");
-  assert.equal(result.engine, "Rule-based");
-});
-
-
-test("urgent OTP harvesting request uses the instant warning path", () => {
-  const text = "Your bank account will be blocked today. Reply with your OTP to keep it active.";
-  const result = buildFastAssessment(text, "en", { score: 48, matched: ["Credential or OTP request", "Possible authority impersonation", "Urgency or pressure"] });
-  assert.ok(result);
-  assert.equal(result.verdict, "suspicious");
-  assert.equal(result.engine, "Rule-based");
-  assert.match(result.summary_en, /OTP or PIN/i);
-});
-
-test("a reminder never to share an OTP is classified as low-risk advice", () => {
-  const text = "Your bank will never ask for your OTP. Never share your PIN or password with anyone.";
-  const result = buildFastAssessment(text, "en", { score: 0, matched: [] });
-  assert.ok(result);
-  assert.equal(result.verdict, "likely_safe");
-  assert.equal(result.riskScore, 0);
-});
-
-test("urgent account verification link uses the instant phishing warning path", () => {
-  const text = "Your account is suspended. Click here to verify your account immediately: http://example.invalid/login";
-  const result = buildFastAssessment(text, "en", { score: 42, matched: ["Urgency or pressure", "Link or verification prompt"] });
-  assert.ok(result);
-  assert.equal(result.verdict, "suspicious");
-  assert.equal(result.engine, "Rule-based");
-  assert.match(result.summary_en, /phishing/i);
-});
-
-
-test("a prize claim without fees or urgent links is returned as unverified, not scam", () => {
-  const text = "Congratulations! You have won a cash prize. Contact the official office to learn more.";
-  const result = buildFastAssessment(text, "en", { score: 22, matched: ["Unexpected prize or reward"] });
-  assert.ok(result);
+test("an ordinary processing-fee reminder remains uncertain", () => {
+  const result = buildRuleAssessment("Your application processing fee is due.", "en");
   assert.equal(result.verdict, "uncertain");
-  assert.equal(result.riskScore, 22);
+  assert.equal(result.riskScore, 30);
+});
+
+test("a prize claim without a fee is unverified, not labelled a scam", () => {
+  const result = buildRuleAssessment("Congratulations! You have won a cash prize.", "en");
+  assert.equal(result.verdict, "uncertain");
   assert.equal(result.claimVerification.status, "unverified");
   assert.equal(result.confidence, "low");
 });
 
-test("a prize claim with urgency is not treated as a safe prize-only case", () => {
-  const text = "You have won a cash prize. Act now, the offer expires today.";
-  assert.equal(buildFastAssessment(text, "en", { score: 40, matched: ["Unexpected prize or reward", "Urgency or pressure"] }), null);
-});
-
-
-test("Google Search redirect chunks retain an exact government publisher domain", () => {
-  const result = extractGroundingSources({
-    groundingChunks: [
-      { web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/example", title: "dshe.gov.bd" } }
-    ]
-  });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].domain, "dshe.gov.bd");
-  assert.equal(result[0].sourceType, "government");
-  assert.equal(result[0].officialDomain, true);
-});
-
-test("publisher titles are not mined for domains embedded in arbitrary page-title text", () => {
-  const result = extractGroundingSources({
-    groundingChunks: [
-      { web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/example", title: "Fake notice mentions example.gov.bd but is not hosted there" } }
-    ]
-  });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].domain, "publisher domain unavailable");
-  assert.equal(result[0].officialDomain, false);
-});
-
-test("direct HTTPS publisher URLs are classified by their actual hostname", () => {
-  const result = extractGroundingSources({
-    groundingChunks: [
-      { web: { uri: "https://scholarship.education.gov.bd/notices/2026", title: "Scholarship notice" } }
-    ]
-  });
-  assert.equal(result[0].domain, "scholarship.education.gov.bd");
-  assert.equal(result[0].sourceType, "government");
-});
-
-test("non-HTTPS and invalid grounding source URLs are ignored", () => {
-  const result = extractGroundingSources({
-    groundingChunks: [
-      { web: { uri: "http://example.gov.bd/notice", title: "example.gov.bd" } },
-      { web: { uri: "not a URL", title: "example.gov.bd" } }
-    ]
-  });
-  assert.deepEqual(result, []);
-});
-
-test("grounding failure classifier distinguishes quota, permission, and schema errors", () => {
-  assert.equal(classifyGroundingFailure(429, "generate_content_search_request quota exceeded"), "search_quota");
-  assert.equal(classifyGroundingFailure(403, "Google Search grounding is not enabled for this project"), "search_tool_rejected");
-  assert.equal(classifyGroundingFailure(400, "Invalid responseSchema: unsupported property"), null);
-  assert.equal(classifyGroundingFailure(429, "Model output token quota exceeded"), null);
-  assert.equal(classifyGroundingFailure(null, "", "timeout"), "timeout");
-  assert.equal(classifyGroundingFailure(503, "This model is currently experiencing high demand"), null);
-  assert.equal(classifyGroundingFailure(503, "Google Search grounding service is unavailable"), "search_service_unavailable");
-});
-
-
-test("Gemini minute quotas are not mislabeled as daily quota and respect RetryInfo", () => {
-  const result = inspectGeminiFailure({
-    error: {
-      status: "RESOURCE_EXHAUSTED",
-      message: "Quota exceeded",
-      details: [
-        {
-          "@type": "type.googleapis.com/google.rpc.QuotaFailure",
-          violations: [{
-            quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier",
-            quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
-          }]
-        },
-        { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "18.2s" }
-      ]
-    }
-  });
-
-  assert.equal(result.kind, "quota_or_rate_limit");
-  assert.equal(result.retryAfterSeconds, 19);
-});
-
-test("Gemini daily quotas are identified separately from per-minute limits", () => {
-  const result = inspectGeminiFailure({
-    error: {
-      status: "RESOURCE_EXHAUSTED",
-      details: [{
-        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
-        violations: [{
-          quotaId: "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
-          quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
-        }]
-      }]
-    }
-  });
-
-  assert.equal(result.kind, "daily_quota");
-  assert.equal(result.retryAfterSeconds, null);
-});
-
-test("Gemini Search grounding quota failures are classified separately", () => {
-  const result = inspectGeminiFailure({
-    error: {
-      message: "Quota exceeded for generate_content_search_request",
-      details: [{
-        "@type": "type.googleapis.com/google.rpc.RetryInfo",
-        retryDelay: "7s"
-      }]
-    }
-  });
-
-  assert.equal(result.kind, "search_quota");
-  assert.equal(result.retryAfterSeconds, 7);
-});
-
-test("Gemini HTTP Retry-After header is used when RetryInfo is absent", () => {
-  const result = inspectGeminiFailure({ error: { message: "Too many requests" } }, "11");
-
-  assert.equal(result.kind, "rate_limited");
-  assert.equal(result.retryAfterSeconds, 11);
-});
-
-
-test("Search grounding stays disabled by default when no explicit feature flag is set", () => {
-  const result = getSearchGroundingConfig(
-    "A government scholarship is offering 50,000 BDT. Apply before 30 November 2026."
+test("urgent account link language is classified as suspicious", () => {
+  const result = buildRuleAssessment(
+    "Your account is suspended. Click here to verify your account immediately: https://example.invalid/login",
+    "en"
   );
-
-  assert.equal(result.claimNeedsExternalVerification, true);
-  assert.equal(result.useWebSearch, false);
-  assert.equal(result.disabledByConfiguration, true);
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("suspicious_link_prompt"));
+  assert.ok(result.matchedSignals.includes("urgency"));
 });
 
-test("Search grounding can be enabled explicitly for a deployment with access", () => {
-  const result = getSearchGroundingConfig(
+test("a link by itself is not proof that a message is malicious", () => {
+  const result = buildRuleAssessment("Here is the meeting agenda: https://example.com/agenda", "en");
+  assert.equal(result.verdict, "uncertain");
+  assert.ok(result.matchedSignals.includes("link_present"));
+  assert.equal(result.claimVerification.status, "not_applicable");
+});
+
+test("Bangla scam patterns return Bangla output and actions", () => {
+  const result = buildRuleAssessment(
+    "আপনি নগদ পুরস্কার জিতেছেন। পুরস্কার পেতে আগে প্রসেসিং ফি পাঠান।",
+    "bn"
+  );
+  assert.equal(result.responseLanguage, "bn");
+  assert.equal(result.verdict, "suspicious");
+  assert.match(result.summary_bn, /আগাম টাকা/);
+  assert.match(result.safe_actions[0], /টাকা/);
+});
+
+test("Banglish OTP request is detected", () => {
+  const result = buildRuleAssessment("Apnar OTP pathan ekhoni, account bondho hoye jabe.", "bn");
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("credential_request"));
+});
+
+test("all scholarship and job claims remain unverified without external sources", () => {
+  const result = buildRuleAssessment(
     "A government scholarship is offering 50,000 BDT. Apply before 30 November 2026.",
-    "true"
+    "en"
   );
-
-  assert.equal(result.claimNeedsExternalVerification, true);
-  assert.equal(result.useWebSearch, true);
-  assert.equal(result.disabledByConfiguration, false);
+  assert.equal(result.claimVerification.status, "unverified");
+  assert.equal(result.webEvidence.searched, false);
+  assert.equal(result.webEvidence.searchExecuted, false);
+  assert.match(result.claimVerification.summary_en, /No external/i);
 });
 
-test("ordinary notices do not call Search even when the feature flag is enabled", () => {
-  const result = getSearchGroundingConfig("Your parcel has been delivered.", "true");
+test("ordinary benign notices are not automatically marked safe", () => {
+  const result = buildRuleAssessment("Your parcel has been delivered.", "en");
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.riskScore, 0);
+});
 
-  assert.equal(result.claimNeedsExternalVerification, false);
-  assert.equal(result.useWebSearch, false);
-  assert.equal(result.disabledByConfiguration, false);
+test("rule-based output never claims to verify the sender or destination", () => {
+  const result = buildRuleAssessment("Click here to verify your account: https://example.invalid", "en");
+  assert.match(result.uncertainty, /not been verified/i);
+  assert.equal(result.webEvidence.status, "not_available");
+  assert.equal(result.claimVerification.status, "not_applicable");
+});
+
+test("the response includes no more than three evidence items or tactics", () => {
+  const result = buildRuleAssessment(
+    "Urgent! Your bank account is blocked. Send your OTP and PIN, click here, pay the fee, and install AnyDesk: https://example.invalid",
+    "en"
+  );
+  assert.ok(result.evidence.length <= 3);
+  assert.ok(result.tactics.length <= 3);
+});
+
+test("text input is bounded to 4000 characters", () => {
+  const longText = "a".repeat(5000);
+  const result = buildRuleAssessment(longText, "en");
+  assert.equal(result.isRelevant, true);
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.confidence, "low");
+});
+
+
+test("an anti-scam sentence cannot hide a contradictory direct OTP request", () => {
+  const result = buildRuleAssessment(
+    "Never share your OTP. Reply with your OTP now to keep your account active.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("credential_request"));
+});
+
+test("an anti-scam sentence cannot hide a contradictory payment request", () => {
+  const result = buildRuleAssessment(
+    "You have won a prize. Never pay unexpected fees. Send the processing fee now to release your prize.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+});
+
+
+function createMockResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: "",
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    setHeader(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
+    end(body) {
+      this.body = String(body || "");
+      return this.body;
+    }
+  };
+}
+
+test("public API checks text with deterministic rules and only calls Redis for rate limits", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    return {
+      ok: true,
+      json: async () => [{ result: [1, 60] }]
+    };
+  };
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.12" },
+      body: {
+        message: "You have won a cash prize. Send a processing fee now to claim it.",
+        language: "en"
+      }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.body);
+    assert.equal(body.engine, "Rule-based");
+    assert.equal(body.model, "deterministic-rules");
+    assert.equal(body.claimVerification.status, "unverified");
+    assert.equal(body.webEvidence.searchExecuted, false);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every(call => call.url === "https://redis.example.invalid/pipeline"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API fails closed when rate-limit storage is not configured", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.13" },
+      body: { message: "Your parcel has been delivered.", language: "en" }
+    }, response);
+    assert.equal(response.statusCode, 503);
+    assert.match(JSON.parse(response.body).error, /Rate limiting is not configured/i);
+  } finally {
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API rejects screenshots instead of pretending to analyse images", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => [{ result: [1, 60] }]
+  });
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.14" },
+      body: {
+        message: "Please check this screenshot",
+        imageBase64: "dGVzdA==",
+        imageMimeType: "image/png"
+      }
+    }, response);
+    assert.equal(response.statusCode, 422);
+    assert.equal(JSON.parse(response.body).code, "IMAGE_ANALYSIS_UNAVAILABLE");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+test("public API rejects unsupported methods without calling external services", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    throw new Error("fetch should not be called");
+  };
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({ method: "GET", headers: {}, body: {} }, response);
+    assert.equal(response.statusCode, 405);
+    assert.equal(called, false);
+    assert.equal(response.headers.Allow, "POST");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test("public API auto-detects Bangla text without a provider call", async () => {
+  const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalFetch = globalThis.fetch;
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => [{ result: [1, 60] }]
+  });
+
+  try {
+    const response = createMockResponse();
+    await analyzeHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.15" },
+      body: {
+        message: "আপনি নগদ পুরস্কার জিতেছেন। পুরস্কার পেতে আগে প্রসেসিং ফি পাঠান।",
+        language: "auto"
+      }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(JSON.parse(response.body).responseLanguage, "bn");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
 });

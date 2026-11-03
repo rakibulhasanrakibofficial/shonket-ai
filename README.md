@@ -1,44 +1,52 @@
 # SHONKET AI
 
-Bangladesh-focused AI Scam Intelligence & Adaptive Awareness Platform.
+Bangladesh-focused scam-awareness and message-checking toolkit.
 
 **Tagline:** Detect. Understand. Practice. Protect.
 
 ## Features
-- Gemini-powered Bangla/English message analysis with evidence, manipulation patterns, safe actions, uncertainty and confidence.
-- Selective Google Search grounding for scholarship, stipend, grant, government-benefit and recruitment claims, with source links and conservative domain labels.
-- Screenshot analysis for PNG, JPEG and WebP (up to 3 MB).
+
+- Bangla and English message checks using deterministic, explainable text patterns.
+- Evidence snippets, matched warning signals, practical safety actions, and explicit uncertainty.
+- Prize/fee, job/fee, OTP/PIN, urgency, impersonation, suspicious-link-prompt, and remote-access warning patterns.
+- Claims about scholarships, jobs, grants, benefits, or prizes remain **unverified** because this version does not search the web.
 - Deterministic URL structure inspection. Submitted URLs are never fetched by the backend.
 - Fictional scam-awareness simulator with feedback and session score.
 - Responsive interface with accessible reduced-motion support.
 
+## Important scope
+
+The checker is text-only in this version. Screenshot reading and microphone speech recognition are unavailable and are not simulated.
+
+This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. Server-side rate limiting still uses Upstash Redis.
+
 ## Stack
-React, Vite, Tailwind CSS, Framer Motion, Lucide React, Vercel Serverless Functions, Gemini API.
+
+React, Vite, Tailwind CSS, Framer Motion, Lucide React, Vercel Serverless Functions, Upstash Redis.
 
 ## Local setup
+
 1. Run `npm install`.
 2. Copy `.env.example` to `.env.local`.
-3. Set `GEMINI_API_KEY` in `.env.local`.
+3. Add the Upstash Redis REST URL and token to `.env.local`.
 4. Run `npm run dev`.
 
 ## Vercel environment variables
-- `GEMINI_API_KEY` — required; keep it server-side and never commit it.
-- `GEMINI_MODEL` — optional; defaults to `gemini-3.8-flash`.
+
 - `UPSTASH_REDIS_REST_URL` — required for shared, server-side API rate limiting.
 - `UPSTASH_REDIS_REST_TOKEN` — required secret for the Upstash Redis REST API.
 
-The analysis endpoint fails closed with HTTP 503 if rate-limit storage is not configured. Current limits: 5 analyses per IP per minute and 30 per IP per day. Limits are enforced server-side using atomic Redis counters. Configure both Upstash values in Vercel Environment Variables and redeploy.
+The analysis endpoint fails closed with HTTP 503 if rate-limit storage is not configured. Limits are enforced server-side using atomic Redis counters.
 
 Redeploy after changing environment variables.
 
-## Evidence verification
-Google Search grounding is enabled only when pasted text contains a supported factual-claim category and checkable details. Search evidence is supplemental: missing results do not prove fraud, and a government/education domain label does not authenticate a specific offer. Review each linked notice and compare the exact amount, institution, deadline, eligibility, and application channel.
-
-Google Search grounding usage has separate quota and pricing. Check the current Gemini API pricing and limits before making this feature available to many users. The implementation uses the existing GEMINI_API_KEY and does not require a separate search-provider key.
-
 ## Limitations and privacy
-- Risk score is a deterministic heuristic based on visible message signals, not a probability of fraud or a calibrated security score.
-- AI explanations can be wrong. A likely-safe result is not a guarantee.
+
+- Risk scores are deterministic heuristics, not probabilities of fraud or calibrated security scores.
+- A suspicious result is a warning for further checking, not proof of fraud. An uncertain or low-risk result is not a guarantee of safety.
+- Scholarship, job, grant, benefit, and prize claims are not externally verified in this version.
 - Link inspection checks URL structure only. It does not resolve redirects, check reputation, or visit the submitted URL.
-- No login, database, or message history is used. Do not submit passwords, OTPs, account numbers, or private information.
+- Screenshot analysis is not available in this version.
+- Do not submit passwords, OTPs, PINs, account numbers, or other private information.
 - The simulator uses fictional educational scenarios.
+- This architecture change removes the generative-AI API call from the public checker; it is not, by itself, a certification of legal compliance or child-safety compliance. Review hosting, analytics, storage, consent, and applicable privacy obligations before public launch.
