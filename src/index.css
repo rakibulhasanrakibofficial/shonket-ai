@@ -1317,3 +1317,182 @@
     transform: none !important;
   }
 }
+
+
+/* Workspace navigation — colorful, tactile 3D controls. */
+.workspace-tool-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 11px;
+}
+.workspace-tool-tab {
+  --tool-top: rgba(139,92,246,.3);
+  --tool-mid: rgba(91,63,174,.2);
+  --tool-edge: rgba(196,181,253,.62);
+  --tool-glow: rgba(139,92,246,.2);
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-height: 54px;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+  padding: 12px 17px;
+  border: 1px solid var(--tool-edge);
+  border-radius: 16px;
+  color: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.18), transparent 38%),
+    linear-gradient(135deg, var(--tool-top), var(--tool-mid) 57%, rgba(8,14,31,.86));
+  box-shadow:
+    0 5px 0 rgba(3,7,18,.7),
+    0 8px 18px rgba(0,0,0,.24),
+    0 0 18px var(--tool-glow),
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -2px 0 rgba(0,0,0,.22);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.2;
+  letter-spacing: .005em;
+  text-shadow: 0 1px 1px rgba(0,0,0,.4);
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, border-color .16s ease;
+}
+.workspace-tool-tab::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 1px 10% auto;
+  height: 1px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+  opacity: .75;
+}
+.workspace-tool-tab::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, rgba(255,255,255,.08), transparent 35%, transparent 68%, rgba(255,255,255,.07));
+  pointer-events: none;
+}
+.workspace-tool-tab svg {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.38));
+}
+.workspace-tool-tab-checker {
+  --tool-top: rgba(236,72,153,.62);
+  --tool-mid: rgba(124,58,237,.53);
+  --tool-edge: rgba(244,114,182,.88);
+  --tool-glow: rgba(217,70,239,.25);
+}
+.workspace-tool-tab-checker svg { color: #fce7f3; }
+.workspace-tool-tab-links {
+  --tool-top: rgba(37,99,235,.62);
+  --tool-mid: rgba(8,145,178,.42);
+  --tool-edge: rgba(96,165,250,.88);
+  --tool-glow: rgba(59,130,246,.23);
+}
+.workspace-tool-tab-links svg { color: #dbeafe; }
+.workspace-tool-tab-simulator {
+  --tool-top: rgba(13,148,136,.6);
+  --tool-mid: rgba(5,150,105,.42);
+  --tool-edge: rgba(45,212,191,.85);
+  --tool-glow: rgba(20,184,166,.22);
+}
+.workspace-tool-tab-simulator svg { color: #ccfbf1; }
+.workspace-tool-tab-history {
+  --tool-top: rgba(217,119,6,.62);
+  --tool-mid: rgba(194,65,12,.44);
+  --tool-edge: rgba(251,191,36,.88);
+  --tool-glow: rgba(245,158,11,.2);
+}
+.workspace-tool-tab-history svg { color: #fef3c7; }
+.workspace-tool-tab:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15) saturate(1.08);
+  box-shadow:
+    0 7px 0 rgba(3,7,18,.7),
+    0 13px 22px rgba(0,0,0,.27),
+    0 0 24px var(--tool-glow),
+    inset 0 1px 0 rgba(255,255,255,.34),
+    inset 0 -2px 0 rgba(0,0,0,.18);
+}
+.workspace-tool-tab:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 rgba(3,7,18,.7),
+    0 4px 10px rgba(0,0,0,.22),
+    0 0 13px var(--tool-glow),
+    inset 0 2px 5px rgba(0,0,0,.18);
+}
+.workspace-tool-tab.is-active {
+  border-color: rgba(255,255,255,.82);
+  filter: brightness(1.17) saturate(1.12);
+  box-shadow:
+    0 5px 0 rgba(3,7,18,.75),
+    0 10px 25px rgba(0,0,0,.26),
+    0 0 25px var(--tool-glow),
+    inset 0 1px 0 rgba(255,255,255,.48),
+    inset 0 -2px 0 rgba(0,0,0,.17);
+}
+.workspace-tool-tab:focus-visible {
+  outline: 3px solid rgba(196,181,253,.9);
+  outline-offset: 4px;
+}
+.workspace-tool-note {
+  color: #aeb8d1;
+  font-size: 12px !important;
+  line-height: 1.65 !important;
+}
+.workspace-tool-note-dot {
+  box-shadow: 0 0 10px rgba(103,232,249,.65);
+}
+@media (max-width: 640px) {
+  .workspace-tool-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 11px;
+  }
+  .workspace-tool-tab {
+    width: 100%;
+    min-height: 52px;
+    justify-content: flex-start;
+    gap: 9px;
+    padding: 11px 12px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+  .workspace-tool-tab svg {
+    width: 19px;
+    height: 19px;
+  }
+  .workspace-tool-note {
+    margin-top: 18px !important;
+    font-size: 11px !important;
+  }
+}
+@media (max-width: 360px) {
+  .workspace-tool-tab {
+    gap: 7px;
+    padding: 10px 9px;
+    font-size: 12px;
+  }
+  .workspace-tool-tab svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-tool-tab {
+    transition: none !important;
+  }
+  .workspace-tool-tab:hover,
+  .workspace-tool-tab:active {
+    transform: none !important;
+  }
+}
