@@ -4,6 +4,192 @@ const PORTALS = [
   { id: "dshe-notices", agency: "Directorate of Secondary and Higher Education (DSHE)", listingUrl: "https://dshe.gov.bd/pages/notices" }
 ];
 
+const SOURCE_GROUPS = {
+  education: PORTALS.map(source => ({ ...source, kind: "government_listing", title: source.agency + " — official notices" })),
+  jobs: [
+    {
+      id: "teletalk-jobs",
+      agency: "Alljobs by Teletalk — Government recruitment listing",
+      title: "Alljobs by Teletalk — Government recruitment and general notices",
+      listingUrl: "https://alljobs.teletalk.com.bd/general-notices",
+      kind: "recruitment_listing"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      kind: "official_guidance"
+    }
+  ],
+  mobile_money: [
+    {
+      id: "bkash-fraud-awareness",
+      agency: "bKash — official safety guidance",
+      title: "bKash — Fraud Awareness",
+      listingUrl: "https://www.bkash.com/bn/page/fraud-awareness",
+      kind: "official_guidance"
+    },
+    {
+      id: "bkash-security-tips",
+      agency: "bKash — official safety guidance",
+      title: "bKash — Security Tips",
+      listingUrl: "https://www.bkash.com/index.php/en/page/security-tips",
+      kind: "official_guidance"
+    },
+    {
+      id: "nagad-help",
+      agency: "Nagad — official Help centre",
+      title: "Nagad — Help and customer support",
+      listingUrl: "https://frontend.nagad.com.bd/en/help/",
+      kind: "official_guidance"
+    },
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    }
+  ],
+  banking: [
+    {
+      id: "bangladesh-bank-ict-alerts",
+      agency: "Bangladesh Bank — ICT Security Advisories & Alerts",
+      title: "Bangladesh Bank — ICT Security Advisories & Alerts",
+      listingUrl: "https://www.bb.org.bd/en/index.php/about/secalrt",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "bfiu-circulars",
+      agency: "Bangladesh Financial Intelligence Unit (BFIU)",
+      title: "BFIU — official circulars",
+      listingUrl: "https://www.bfiu.org.bd/index.php/legislation/circular",
+      kind: "government_listing"
+    },
+    {
+      id: "scamcheck-online-safety",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Online safety guidance",
+      listingUrl: "https://scamcheck.gov.bd/online-safety/",
+      kind: "official_guidance"
+    }
+  ],
+  cybersecurity: [
+    {
+      id: "cirt-alerts",
+      agency: "BGD e-GOV CIRT — alerts",
+      title: "BGD e-GOV CIRT — Security Alerts",
+      listingUrl: "https://www.cirt.gov.bd/alerts",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      kind: "official_guidance"
+    },
+    {
+      id: "scamcheck-online-safety",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Online safety guidance",
+      listingUrl: "https://scamcheck.gov.bd/online-safety/",
+      kind: "official_guidance"
+    }
+  ],
+  courier: [
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      kind: "official_guidance"
+    }
+  ],
+  telecom: [
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "cirt-alerts",
+      agency: "BGD e-GOV CIRT — alerts",
+      title: "BGD e-GOV CIRT — Security Alerts",
+      listingUrl: "https://www.cirt.gov.bd/alerts",
+      kind: "cyber_advisory"
+    }
+  ],
+  commerce: [
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      kind: "official_guidance"
+    },
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    }
+  ],
+  investment: [
+    {
+      id: "bfiu-circulars",
+      agency: "Bangladesh Financial Intelligence Unit (BFIU)",
+      title: "BFIU — official circulars",
+      listingUrl: "https://www.bfiu.org.bd/index.php/legislation/circular",
+      kind: "government_listing"
+    },
+    {
+      id: "bangladesh-bank-ict-alerts",
+      agency: "Bangladesh Bank — ICT Security Advisories & Alerts",
+      title: "Bangladesh Bank — ICT Security Advisories & Alerts",
+      listingUrl: "https://www.bb.org.bd/en/index.php/about/secalrt",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams/",
+      kind: "official_guidance"
+    }
+  ]
+};
+
+const SEARCH_CATEGORY_LABELS = {
+  education: "education, scholarship and stipend",
+  jobs: "government recruitment and jobs",
+  mobile_money: "mobile financial services",
+  banking: "banking and financial security",
+  cybersecurity: "cybersecurity and scam advisories",
+  courier: "courier and delivery",
+  telecom: "telecommunications and SMS security",
+  commerce: "online shopping and marketplace safety",
+  investment: "investment, loans and financial notices"
+};
+
 const CACHE_TTL_MS = 90_000;
 const FETCH_TIMEOUT_MS = 1_800;
 const cache = new Map();
