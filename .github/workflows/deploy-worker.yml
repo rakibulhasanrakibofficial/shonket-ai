@@ -1,0 +1,57 @@
+name: Deploy Cloudflare Worker API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/worker.js"
+      - "netlify/functions/**"
+      - "api/**"
+      - "wrangler.toml"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-worker-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run fast tests
+        run: npm run test:fast
+
+      - name: Build Worker static assets
+        run: npm run build
+
+      - name: Deploy Worker
+        if: ${ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: e2277133789312b1f0a906e9ee32f038
+          command: deploy
+
+      - name: Deployment credential required
+        if: ${ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "::warning::Cloudflare deployment skipped. Add the CLOUDFLARE_API_TOKEN GitHub Actions secret with the Edit Cloudflare Workers permission, then run this workflow again."
