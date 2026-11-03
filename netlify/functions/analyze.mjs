@@ -7,6 +7,91 @@ const MAX_TEXT_LENGTH = 4000;
 const MAX_BODY_BYTES = 16 * 1024;
 const rateBuckets = new Map();
 
+export function enrichClaimVerification(base, officialSearch) {
+  if (!base || base.status === "not_applicable") return base;
+
+  const search = officialSearch || {};
+  const status = String(search.status || "unavailable");
+  const evidenceStatus = String(search.evidenceAssessment?.status || "not_applicable");
+  const portals = Array.isArray(search.searchedPortals) ? search.searchedPortals : [];
+  const sources = Array.isArray(search.sources) ? search.sources : [];
+  const portalCount = portals.length;
+  const matchingNoticeCount = sources.filter(source => source.evidenceType === "government_listing_match").length;
+  const searchAttempted = status !== "not_applicable" && status !== "disabled";
+  const partial = ["partial_results", "partial_guidance", "partial_unavailable"].includes(status);
+  const checkedEn = portalCount === 1
+    ? "1 selected official or institutional portal"
+    : portalCount + " selected official or institutional portals";
+  const checkedBn = portalCount + "টি নির্বাচিত সরকারি/প্রাতিষ্ঠানিক পোর্টাল";
+
+  let summaryEn;
+  let summaryBn;
+
+  if (status === "disabled") {
+    summaryEn = "Live official-source search is disabled for this deployment. The claim remains unverified; lack of verification alone does not prove fraud.";
+    summaryBn = "এই deployment-এ live official-source search বন্ধ আছে। দাবিটি এখনো অযাচাইকৃত; যাচাই না হওয়া একা প্রতারণার প্রমাণ নয়।";
+  } else if (status === "not_applicable") {
+    summaryEn = "No supported official-source category matched this message, so a live official-source search was not run. The claim remains unverified; this is not evidence that it is false.";
+    summaryBn = "এই বার্তার সঙ্গে মেলে এমন সমর্থিত official-source category পাওয়া যায়নি, তাই live search চালানো হয়নি। দাবিটি এখনো অযাচাইকৃত; এটিকে মিথ্যা প্রমাণ হিসেবে ধরা যাবে না।";
+  } else if (status === "unavailable" || status === "partial_unavailable" || evidenceStatus === "search_unavailable") {
+    const checkedEnNote = portalCount
+      ? " " + (partial ? "The search was partial; " : "") + checkedEn + " responded."
+      : " The search was attempted, but no selected portal could be confirmed as reachable.";
+    const checkedBnNote = portalCount
+      ? " " + checkedBn + " থেকে উত্তর পাওয়া গেছে; অনুসন্ধান অসম্পূর্ণ।"
+      : " অনুসন্ধানের চেষ্টা করা হয়েছে, কিন্তু নির্বাচিত কোনো পোর্টালে সংযোগ নিশ্চিত করা যায়নি।";
+    summaryEn = "The live official-source search could not be completed." + checkedEnNote + " The claim remains unverified; an unavailable search is not a negative finding.";
+    summaryBn = "লাইভ সরকারি/প্রাতিষ্ঠানিক উৎস অনুসন্ধান সম্পন্ন করা যায়নি।" + checkedBnNote + " দাবিটি এখনো অযাচাইকৃত; সংযোগ ব্যর্থ হওয়া নেতিবাচক প্রমাণ নয়।";
+  } else if (evidenceStatus === "possible_amount_conflict") {
+    summaryEn = (partial ? "A partial search " : "The live search ") + "checked " + checkedEn + " and found a related official notice, but the amount in the message differs from the amount in the notice title. Do not treat the claim as verified; review the original notice and its conditions.";
+    summaryBn = (partial ? "আংশিক অনুসন্ধানে " : "লাইভ অনুসন্ধানে ") + checkedBn + " পরীক্ষা করে সম্পর্কিত একটি সরকারি নোটিশ পাওয়া গেছে, তবে বার্তার অঙ্ক ও নোটিশের শিরোনামের অঙ্কে অমিল আছে। দাবিটি যাচাইকৃত নয়; মূল নোটিশ ও শর্তাবলি দেখুন।";
+  } else if (evidenceStatus === "related_official_notice") {
+    const foundEn = matchingNoticeCount === 1 ? "a related official notice listing" : matchingNoticeCount + " related official notice listings";
+    const foundBn = matchingNoticeCount === 1 ? "একটি সম্পর্কিত সরকারি নোটিশ" : matchingNoticeCount + "টি সম্পর্কিত সরকারি নোটিশ";
+    summaryEn = (partial ? "A partial search " : "The live search ") + "checked " + checkedEn + " and found " + foundEn + ". This does not authenticate the sender, link, amount, eligibility, deadline, or every condition; review the original notice.";
+    summaryBn = (partial ? "আংশিক অনুসন্ধানে " : "লাইভ অনুসন্ধানে ") + checkedBn + " পরীক্ষা করে " + foundBn + " পাওয়া গেছে। এতে প্রেরক, লিংক, অর্থের পরিমাণ, যোগ্যতা, সময়সীমা বা সব শর্তের সত্যতা প্রমাণ হয় না; মূল নোটিশ দেখুন।";
+  } else if (evidenceStatus === "contextual_guidance" || status === "guidance_only" || status === "partial_guidance") {
+    summaryEn = (partial ? "A partial search " : "The live search ") + "checked " + checkedEn + " and retrieved general official safety guidance, but it did not confirm a government notice matching this specific claim. The claim remains unverified; general guidance does not authenticate the sender, amount, eligibility, or link.";
+    summaryBn = (partial ? "আংশিক অনুসন্ধানে " : "লাইভ অনুসন্ধানে ") + checkedBn + " পরীক্ষা করে সাধারণ সরকারি/প্রাতিষ্ঠানিক নিরাপত্তা নির্দেশনা পাওয়া গেছে, তবে এই নির্দিষ্ট দাবির সঙ্গে মেলে এমন সরকারি নোটিশ নিশ্চিত হয়নি। দাবিটি এখনো অযাচাইকৃত; সাধারণ নির্দেশনা প্রেরক, অঙ্ক, যোগ্যতা বা লিংকের সত্যতা প্রমাণ করে না।";
+  } else if (evidenceStatus === "no_matching_notice_found" || status === "no_results") {
+    summaryEn = "The live search checked " + checkedEn + " but found no matching official notice. No match does not prove the claim is false; the claim remains unverified and should be checked with the organisation directly.";
+    summaryBn = "লাইভ অনুসন্ধানে " + checkedBn + " পরীক্ষা করা হয়েছে, কিন্তু মিলে যাওয়া সরকারি নোটিশ পাওয়া যায়নি। নোটিশ না পাওয়া দাবিটি মিথ্যা প্রমাণ করে না; সংশ্লিষ্ট প্রতিষ্ঠানের সঙ্গে সরাসরি যাচাই করুন।";
+  } else {
+    summaryEn = "A live official-source search was attempted. Review the official search summary and original sources below; the claim remains unverified until its specific details are independently confirmed.";
+    summaryBn = "লাইভ official-source search চালানো হয়েছে। নিচের অনুসন্ধান-সারাংশ ও মূল উৎস দেখুন; নির্দিষ্ট তথ্য স্বাধীনভাবে নিশ্চিত না হওয়া পর্যন্ত দাবিটি অযাচাইকৃত থাকবে।";
+  }
+
+  return {
+    ...base,
+    status: "unverified",
+    officialSearchAttempted: searchAttempted,
+    officialSearchStatus: status,
+    officialPortalCount: portalCount,
+    officialSourceCount: sources.length,
+    officialEvidenceStatus: evidenceStatus,
+    officialSearchSummary_bn: search.summary_bn || "",
+    officialSearchSummary_en: search.summary_en || "",
+    summary_bn: summaryBn,
+    summary_en: summaryEn
+  };
+}
+
+export function buildWebEvidence(officialSearch) {
+  const search = officialSearch || {};
+  const status = String(search.status || "unavailable");
+  const portals = Array.isArray(search.searchedPortals) ? search.searchedPortals : [];
+  const sources = Array.isArray(search.sources) ? search.sources : [];
+  return {
+    searched: portals.length > 0,
+    searchExecuted: status !== "not_applicable" && status !== "disabled",
+    status,
+    officialSourcesFound: sources.length,
+    sources,
+    searchedPortals: portals,
+    failedPortalCount: Number(search.failedPortalCount || 0)
+  };
+}
+
 function allowedOrigins(runtimeEnv) {
   const configured = String(runtimeEnv.CORS_ALLOWED_ORIGINS || "")
     .split(",")
@@ -363,21 +448,30 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
   const language = languageFor(message, body.language);
   const rules = buildRuleAssessment(message, language);
   const retrievedSources = retrieveKnowledge(message, 3);
-  const searchApplies = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED !== "false" && isOfficialSourceSearchApplicable(message);
+  const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
+  const searchApplies = !searchDisabled && isOfficialSourceSearchApplicable(message);
   const searchScope = "Selected Bangladesh official and institutional sources based on message category";
   const notApplicableSearch = {
-    status: "not_applicable",
+    status: searchDisabled ? "disabled" : "not_applicable",
     scope: searchScope,
     searchedAt: new Date().toISOString(),
     searchedPortals: [],
     sources: [],
     evidenceAssessment: {
-      status: "not_applicable",
-      summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
-      summary_en: "No supported official-source category matched this message."
+      status: searchDisabled ? "not_checked" : "not_applicable",
+      summary_bn: searchDisabled
+        ? "এই deployment-এ live official-source search বন্ধ আছে।"
+        : "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+      summary_en: searchDisabled
+        ? "Live official-source search is disabled for this deployment."
+        : "No supported official-source category matched this message."
     },
-    summary_bn: "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
-    summary_en: "No supported official-source category matched this message."
+    summary_bn: searchDisabled
+      ? "এই deployment-এ live official-source search বন্ধ আছে।"
+      : "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+    summary_en: searchDisabled
+      ? "Live official-source search is disabled for this deployment."
+      : "No supported official-source category matched this message."
   };
 
   // Portal retrieval and the concise LLM explanation run concurrently.
@@ -436,14 +530,8 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     aiAnalysis,
     retrievedSources,
     officialSearch,
-    claimVerification: {
-      ...rules.claimVerification,
-      officialSearchStatus: officialSearch.status,
-      officialSourceCount: officialSearch.sources.length,
-      officialEvidenceStatus: officialSearch.evidenceAssessment?.status || "not_applicable",
-      officialSearchSummary_bn: officialSearch.summary_bn,
-      officialSearchSummary_en: officialSearch.summary_en
-    },
+    webEvidence: buildWebEvidence(officialSearch),
+    claimVerification: enrichClaimVerification(rules.claimVerification, officialSearch),
     privacy: {
       rawMessageStored: false,
       modelInputRedacted: Boolean(aiBinding || (runtimeEnv.CLOUDFLARE_API_TOKEN && runtimeEnv.CLOUDFLARE_ACCOUNT_ID)),
