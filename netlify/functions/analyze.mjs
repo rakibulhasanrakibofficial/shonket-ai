@@ -33,6 +33,9 @@ export function enrichClaimVerification(base, officialSearch) {
   } else if (status === "not_applicable") {
     summaryEn = "No supported official-source category matched this message, so a live official-source search was not run. The claim remains unverified; this is not evidence that it is false.";
     summaryBn = "এই বার্তার সঙ্গে মেলে এমন সমর্থিত official-source category পাওয়া যায়নি, তাই live search চালানো হয়নি। দাবিটি এখনো অযাচাইকৃত; এটিকে মিথ্যা প্রমাণ হিসেবে ধরা যাবে না।";
+  } else if (status === "pending") {
+    summaryEn = "The official-source search is running separately from the AI explanation. Results will appear here as soon as the selected portals respond; the claim remains unverified for now.";
+    summaryBn = "সরকারি উৎস অনুসন্ধান AI ব্যাখ্যা থেকে আলাদাভাবে চলছে। নির্বাচিত পোর্টালগুলোর উত্তর এলেই এখানে দেখানো হবে; আপাতত দাবিটি অযাচাইকৃত।";
   } else if (status === "unavailable" || status === "partial_unavailable" || evidenceStatus === "search_unavailable") {
     const checkedEnNote = portalCount
       ? " " + (partial ? "The search was partial; " : "") + checkedEn + " responded."
