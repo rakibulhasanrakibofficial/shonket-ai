@@ -124,6 +124,7 @@ test('analysis result can be copied and exported as a print-ready PDF', async ({
   await page.getByRole('button', { name: /Analyze message/i }).click();
   await expect(page.getByRole('button', { name: 'Copy result' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Generate PDF' })).toBeVisible();
+  await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Copy result' }).click();
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
