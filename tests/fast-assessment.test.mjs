@@ -1,7 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
 import analyzeHandler from "../api/analyze.js";
+
+const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
+
+test("all 22 scam-checker sample inputs match relevance and expected verdicts", () => {
+  for (const sample of sampleCases) {
+    const result = buildRuleAssessment(sample.text, /[\\u0980-\\u09FF]/.test(sample.text) ? "bn" : "en");
+    assert.equal(result.isRelevant, sample.relevant, sample.id + " relevance mismatch");
+    if (sample.relevant) {
+      assert.ok(sample.expected.includes(result.verdict), sample.id + " expected " + sample.expected.join("/") + " but received " + result.verdict);
+    } else {
+      assert.equal(result.verdict, "out_of_scope", sample.id + " should not receive a scam verdict");
+      assert.equal(result.riskScore, null, sample.id + " should not receive a risk score");
+    }
+  }
+});
 
 test("a prize claim combined with an upfront fee is suspicious", () => {
   const result = buildRuleAssessment(
