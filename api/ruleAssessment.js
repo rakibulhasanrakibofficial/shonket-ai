@@ -52,7 +52,7 @@ const RULES = [
   {
     id: "suspicious_link_prompt",
     weight: 15,
-    regex: /\b(?:click here|verify your account|login here|update your account|open this link|download this app|link[- ]e click|link[- ]e jan|link theke apply|ei link[- ]e|account verify korun|form fill[- ]up korun)\b|এখানে ক্লিক|অ্যাকাউন্ট যাচাই|লিংকে যান|অ্যাপ ডাউনলোড করুন|লিংকে ক্লিক করুন/i,
+    regex: /\b(?:click here|verify your account|login here|update your account|open this link|download this app|link[- ]e click|link[- ]e jan|link theke apply|ei link[- ]e|account verify korun|form fill[- ]up korun)\b|এখানে ক্লিক|অ্যাকাউন্ট যাচাই|লিংকে যান|অ্যাপ ডাউনলোড করুন|লিংকে ক্লিক(?: করুন| করে)/i,
     tactic: "suspicious_link_prompt",
     quoteBn: "লিংক খোলা বা তথ্য যাচাই করতে বলা হয়েছে",
     quoteEn: "The recipient is asked to open a link or verify details",
