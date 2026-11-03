@@ -10,9 +10,11 @@ function localAssessment(message, language, status = "not_configured") {
     : (/[ঀ-৿]/.test(message) ? "bn" : "en");
   const result = buildRuleAssessment(message, detectedLanguage);
   const retrievedSources = retrieveKnowledge(message, 3);
-  const noteBn = status === "not_configured"
-    ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
-    : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
+  const noteBn = status === "pending"
+    ? "নিয়মভিত্তিক ফলাফল প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
+    : status === "not_configured"
+      ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
+      : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
   const noteEn = status === "pending"
     ? "The rule-based result is ready. The AI explanation is still being generated..."
     : status === "not_configured"
@@ -53,10 +55,10 @@ function localAssessment(message, language, status = "not_configured") {
   };
 }
 
-export function createLocalPreview({ message, language = "auto" }) {
+export function createLocalPreview({ message, language = "auto", status = "pending" }) {
   const cleanMessage = String(message || "").trim().slice(0, 4000);
   if (!cleanMessage) return null;
-  return localAssessment(cleanMessage, language, "pending");
+  return localAssessment(cleanMessage, language, status);
 }
 
 async function parseResponse(response) {
