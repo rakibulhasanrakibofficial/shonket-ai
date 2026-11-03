@@ -116,3 +116,36 @@ test("non-education claims do not trigger education-portal fetches", async () =>
   assert.equal(calls, 0);
   assert.equal(result.status, "not_applicable");
 });
+
+test("generic private-sector job offers do not trigger education-portal fetches", async () => {
+  let calls = 0;
+  const result = await searchOfficialSources(
+    "Your CV was selected for a remote job. Pay a registration fee to confirm your position.",
+    {
+      fetchImpl: async () => {
+        calls += 1;
+        throw new Error("private-sector job messages are outside education portal search scope");
+      }
+    }
+  );
+  assert.equal(calls, 0);
+  assert.equal(result.status, "not_applicable");
+});
+
+test("education scholarships still trigger live official portal search", async () => {
+  let calls = 0;
+  const result = await searchOfficialSources(
+    "A government scholarship for university students offers an academic grant.",
+    {
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response("<html><body><table></table></body></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html" }
+        });
+      }
+    }
+  );
+  assert.equal(calls, 3);
+  assert.equal(result.searchedPortals.length, 3);
+});
