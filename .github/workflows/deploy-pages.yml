@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
+  group: github-pages-production
   cancel-in-progress: true
 
 jobs:
@@ -21,24 +21,65 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
         run: npm install
+
       - name: Build for GitHub Pages
         run: npm run build:github-pages
         env:
           VITE_API_BASE_URL: https://shonket-ai.rakibhasan212029.workers.dev
+
+      - name: Check that this build is still the latest main
+        id: freshness
+        shell: bash
+        run: |
+          git fetch --quiet origin main
+          BUILT_SHA="$(git rev-parse HEAD)"
+          LATEST_MAIN_SHA="$(git rev-parse origin/main)"
+          if [[ "$BUILT_SHA" == "$LATEST_MAIN_SHA" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Build matches latest main: $BUILT_SHA"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale build $BUILT_SHA; main is now $LATEST_MAIN_SHA"
+          fi
+
       - name: Upload Pages artifact
+        if: steps.freshness.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+      - name: Final latest-main guard
+        id: final_guard
+        if: steps.freshness.outputs.publish == 'true'
+        shell: bash
+        run: |
+          git fetch --quiet origin main
+          BUILT_SHA="$(git rev-parse HEAD)"
+          LATEST_MAIN_SHA="$(git rev-parse origin/main)"
+          if [[ "$BUILT_SHA" == "$LATEST_MAIN_SHA" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Publishing current main: $BUILT_SHA"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping deploy because main moved to $LATEST_MAIN_SHA"
+          fi
+
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.final_guard.outputs.publish == 'true'
         uses: actions/deploy-pages@v4
