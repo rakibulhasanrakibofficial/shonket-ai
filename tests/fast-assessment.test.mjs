@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildFastAssessment } from "../api/fastAssessment.js";
-import { extractGroundingSources, classifyGroundingFailure } from "../api/analyze.js";
+import { extractGroundingSources, classifyGroundingFailure, inspectGeminiFailure } from "../api/analyze.js";
 
 test("cash prize plus processing fee returns an instant suspicious assessment", () => {
   const text = "Congratulations! You have won a cash prize. Send a small processing fee now to claim your reward.";
@@ -163,4 +163,67 @@ test("grounding failure classifier distinguishes quota, permission, and schema e
   assert.equal(classifyGroundingFailure(null, "", "timeout"), "timeout");
   assert.equal(classifyGroundingFailure(503, "This model is currently experiencing high demand"), null);
   assert.equal(classifyGroundingFailure(503, "Google Search grounding service is unavailable"), "search_service_unavailable");
+});
+
+
+test("Gemini minute quotas are not mislabeled as daily quota and respect RetryInfo", () => {
+  const result = inspectGeminiFailure({
+    error: {
+      status: "RESOURCE_EXHAUSTED",
+      message: "Quota exceeded",
+      details: [
+        {
+          "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+          violations: [{
+            quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier",
+            quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+          }]
+        },
+        { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "18.2s" }
+      ]
+    }
+  });
+
+  assert.equal(result.kind, "quota_or_rate_limit");
+  assert.equal(result.retryAfterSeconds, 19);
+});
+
+test("Gemini daily quotas are identified separately from per-minute limits", () => {
+  const result = inspectGeminiFailure({
+    error: {
+      status: "RESOURCE_EXHAUSTED",
+      details: [{
+        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+        violations: [{
+          quotaId: "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+          quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+        }]
+      }]
+    }
+  });
+
+  assert.equal(result.kind, "daily_quota");
+  assert.equal(result.retryAfterSeconds, null);
+});
+
+test("Gemini Search grounding quota failures are classified separately", () => {
+  const result = inspectGeminiFailure({
+    error: {
+      message: "Quota exceeded for generate_content_search_request",
+      details: [{
+        "@type": "type.googleapis.com/google.rpc.RetryInfo",
+        retryDelay: "7s"
+      }]
+    }
+  });
+
+  assert.equal(result.kind, "search_quota");
+  assert.equal(result.retryAfterSeconds, 7);
+});
+
+test("Gemini HTTP Retry-After header is used when RetryInfo is absent", () => {
+  const result = inspectGeminiFailure({ error: { message: "Too many requests" } }, "11");
+
+  assert.equal(result.kind, "rate_limited");
+  assert.equal(result.retryAfterSeconds, 11);
 });
