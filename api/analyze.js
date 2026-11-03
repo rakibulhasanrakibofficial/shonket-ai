@@ -56,26 +56,67 @@ function shouldUseWebSearch(text) {
   return hasClaimCategory && hasCheckableClaim;
 }
 
-function extractGroundingSources(metadata) {
+function hostnameFromSourceTitle(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/(?:https?:\\/\\/)?(?:www\\.)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}/i);
+  if (!match) return "";
+  try {
+    const candidate = /^https?:\\/\\//i.test(match[0]) ? match[0] : "https://" + match[0];
+    return new URL(candidate).hostname.toLowerCase().replace(/^www\\./i, "");
+  } catch {
+    return "";
+  }
+}
+
+function hostnameFromSourceUri(uri) {
+  try { return new URL(uri).hostname.toLowerCase().replace(/^www\\./i, ""); }
+  catch { return ""; }
+}
+
+export function extractGroundingSources(metadata) {
   const chunks = Array.isArray(metadata?.groundingChunks) ? metadata.groundingChunks : [];
   const seen = new Set();
   return chunks.flatMap(chunk => {
     const web = chunk?.web;
     const uri = typeof web?.uri === "string" ? web.uri : "";
-    if (!/^https:\/\//i.test(uri) || seen.has(uri)) return [];
+    if (!/^https:\\/\\//i.test(uri) || seen.has(uri)) return [];
     seen.add(uri);
-    let hostname = "";
-    try { hostname = new URL(uri).hostname.toLowerCase(); } catch { return []; }
-    const officialGovernment = hostname === "gov.bd" || hostname.endsWith(".gov.bd");
-    const officialEducation = hostname === "edu.bd" || hostname.endsWith(".edu.bd") || hostname === "ac.bd" || hostname.endsWith(".ac.bd");
+
+    const uriHost = hostnameFromSourceUri(uri);
+    const googleRedirect = uriHost === "vertexaisearch.cloud.google.com" ||
+      uriHost.endsWith(".vertexaisearch.cloud.google.com");
+    // Google Search may return a redirect URI. In that case, the publisher
+    // domain is exposed in the source title, not in the redirect hostname.
+    const publisherDomain = hostnameFromSourceTitle(web?.title) ||
+      (googleRedirect ? "" : uriHost);
+    const officialGovernment = publisherDomain === "gov.bd" || publisherDomain.endsWith(".gov.bd");
+    const officialEducation = publisherDomain === "edu.bd" || publisherDomain.endsWith(".edu.bd") ||
+      publisherDomain === "ac.bd" || publisherDomain.endsWith(".ac.bd");
+
     return [{
-      title: String(web?.title || hostname).slice(0, 180),
+      title: String(web?.title || publisherDomain || "Web source").slice(0, 180),
       url: uri,
-      domain: hostname,
+      domain: publisherDomain || "publisher domain unavailable",
       sourceType: officialGovernment ? "government" : officialEducation ? "education" : "other",
       officialDomain: officialGovernment || officialEducation
     }];
   }).slice(0, 8);
+}
+
+export function classifyGroundingFailure(status, message = "", networkFailure = "") {
+  const detail = String(message || "").toLowerCase();
+  if (status == null) return networkFailure === "timeout" ? "timeout" : "network_error";
+  if (status === 408) return "timeout";
+  if ([500, 502, 503, 504].includes(status)) return "temporary_upstream";
+  if (status === 429 && /(google.?search|grounding|generate_content_search_request|search.{0,30}quota|quota.{0,30}search)/i.test(detail)) {
+    return "search_quota";
+  }
+  if ((status === 400 || status === 403) && /(google.?search|grounding|search tool|tool use)/i.test(detail)) {
+    return "search_tool_rejected";
+  }
+  // Schema/structured-output errors are not Search failures. Hiding them by
+  // silently retrying without grounding makes integration bugs harder to see.
+  return null;
 }
 
 
@@ -209,6 +250,7 @@ export default async function handler(req, res) {
     const upstreamAttempts = [];
     let activeModel = MODEL;
     let searchFallbackUsed = false;
+    let searchFallbackReason = null;
 
     async function requestGemini({ model, enableSearch, requestParts, timeoutMs }) {
       const controller = new AbortController();
@@ -243,7 +285,7 @@ export default async function handler(req, res) {
         model: MODEL,
         enableSearch: useWebSearch,
         requestParts: parts,
-        timeoutMs: useWebSearch ? 5000 : 9000
+        timeoutMs: useWebSearch ? 15000 : 9000
       });
       if (!upstream.ok) upstreamAttempts.push({ model: MODEL, status: upstream.status });
     } catch (error) {
@@ -255,11 +297,13 @@ export default async function handler(req, res) {
     // explicitly tell the model that no external verification took place.
     if (useWebSearch && (!upstream || !upstream.ok)) {
       const firstError = upstream ? await upstream.clone().json().catch(() => ({})) : {};
-      const firstMessage = String(firstError?.error?.message || "").toLowerCase();
-      const searchUnavailable = !upstream ||
-        retryableStatus(upstream.status) ||
-        ((upstream.status === 400 || upstream.status === 403) &&
-          /google.?search|grounding|search tool|tool use|response.?schema|structured output/.test(firstMessage));
+      const firstMessage = String(firstError?.error?.message || "");
+      searchFallbackReason = classifyGroundingFailure(
+        upstream?.status ?? null,
+        firstMessage,
+        upstreamAttempts[0]?.status || ""
+      );
+      const searchUnavailable = Boolean(searchFallbackReason);
 
       if (searchUnavailable) {
         searchFallbackUsed = true;
@@ -293,6 +337,12 @@ export default async function handler(req, res) {
       const canRetry = !upstream || retryableStatus(lastStatus);
       if (canRetry) {
         await wait(700);
+        // A model fallback must never receive a prompt claiming Search was
+        // enabled when the fallback request is sent without the Search tool.
+        if (useWebSearch && !searchFallbackUsed) {
+          searchFallbackUsed = true;
+          searchFallbackReason = searchFallbackReason || (lastStatus === 429 ? "model_quota_or_rate_limit" : "primary_model_fallback");
+        }
         const fallbackParts = searchFallbackUsed
           ? parts.map(part => part?.text
             ? { ...part, text: part.text.replace(searchInstruction, fallbackInstruction) }
@@ -377,6 +427,7 @@ export default async function handler(req, res) {
       searched: useWebSearch,
       searchExecuted,
       status: !useWebSearch ? "not_searched" : searchFallbackUsed ? "search_unavailable_fallback" : activeModel !== MODEL ? "model_fallback_without_search" : groundingSources.length ? "evidence_retrieved" : searchExecuted ? "search_completed_no_sources" : "grounding_unavailable",
+      failureReason: searchFallbackReason,
       officialSourcesFound: groundingSources.filter(source => source.officialDomain).length,
       sources: groundingSources
     };
