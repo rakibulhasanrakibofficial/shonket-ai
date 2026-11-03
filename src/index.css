@@ -1496,3 +1496,289 @@
     transform: none !important;
   }
 }
+
+
+/* WEB EVIDENCE — publisher identity, source cards and clear hierarchy */
+.web-evidence-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(103,232,249,.38) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(ellipse at 100% 0%,rgba(99,102,241,.14),transparent 38%),
+    linear-gradient(145deg,#0b1b32 0%,#0a1228 58%,#15142f 100%) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.055);
+}
+.web-evidence-panel::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0 0 auto;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(103,232,249,.62),rgba(167,139,250,.56),transparent);
+}
+.web-evidence-heading-icon {
+  color:#bae6fd;
+  border:1px solid rgba(125,211,252,.42);
+  background:linear-gradient(145deg,rgba(14,116,144,.35),rgba(67,56,202,.25));
+  box-shadow:0 5px 14px rgba(14,165,233,.13),inset 0 1px 0 rgba(255,255,255,.18);
+}
+.web-evidence-count {
+  display:inline-flex;
+  min-height:34px;
+  align-items:center;
+  gap:8px;
+  border:1px solid rgba(167,139,250,.35);
+  border-radius:999px;
+  padding:7px 12px;
+  background:rgba(99,102,241,.11);
+  color:#e0e7ff;
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.045em;
+}
+.web-evidence-source {
+  border:1px solid rgba(125,211,252,.24) !important;
+  border-radius:16px !important;
+  background:linear-gradient(115deg,rgba(18,38,66,.94),rgba(10,18,36,.97) 58%,rgba(19,25,49,.95)) !important;
+  box-shadow:0 7px 18px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);
+  text-decoration:none;
+}
+.web-evidence-source:hover {
+  border-color:rgba(103,232,249,.5) !important;
+  background:linear-gradient(115deg,rgba(20,49,78,.97),rgba(13,25,48,.98) 58%,rgba(25,29,58,.97)) !important;
+  box-shadow:0 11px 22px rgba(0,0,0,.22),0 0 16px rgba(34,211,238,.07);
+}
+.web-evidence-logo-wrap {
+  display:grid;
+  width:60px;
+  min-width:60px;
+  height:60px;
+  place-items:center;
+  overflow:hidden;
+  border:1px solid rgba(191,219,254,.3);
+  border-radius:14px;
+  background:linear-gradient(145deg,#fff,#e8eef8);
+  box-shadow:0 5px 14px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.72);
+}
+.web-evidence-logo-wrap .source-brand-mark,
+.web-evidence-logo-wrap .source-brand-fallback,
+.web-evidence-logo-wrap .live-source-logo {
+  width:100% !important;
+  min-width:0 !important;
+  height:100% !important;
+  flex:1 1 auto !important;
+  border:0 !important;
+  border-radius:0 !important;
+  padding:6px !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.web-evidence-logo-wrap .source-brand-image,
+.web-evidence-logo-wrap .live-source-logo img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.web-evidence-logo-wrap .source-brand-fallback,
+.web-evidence-logo-wrap .live-source-domain-fallback {
+  display:grid;
+  place-items:center;
+  padding:5px !important;
+  color:#0f172a !important;
+  font-size:9px !important;
+  font-weight:900;
+  text-align:center;
+  overflow-wrap:anywhere;
+}
+.web-evidence-source-meta {
+  min-width:0;
+}
+.web-evidence-domain {
+  color:#a5d8f5;
+  font-size:10px;
+  font-weight:850;
+  overflow-wrap:anywhere;
+}
+.web-evidence-domain-type {
+  display:inline-flex;
+  align-items:center;
+  border:1px solid rgba(148,163,184,.24);
+  border-radius:999px;
+  padding:3px 8px;
+  color:#bac6d9;
+  background:rgba(148,163,184,.07);
+  font-size:9px;
+  font-weight:750;
+}
+.web-evidence-open {
+  display:grid;
+  width:35px;
+  min-width:35px;
+  height:35px;
+  place-items:center;
+  border:1px solid rgba(125,211,252,.3);
+  border-radius:11px;
+  color:#bae6fd;
+  background:rgba(14,116,144,.13);
+  transition:transform .18s ease,background .18s ease;
+}
+.web-evidence-source:hover .web-evidence-open {
+  transform:translate(2px,-2px);
+  background:rgba(14,116,144,.25);
+}
+.web-evidence-disclaimer {
+  border-top:1px solid rgba(148,163,184,.16);
+  padding-top:13px;
+}
+.web-evidence-disclaimer span {
+  color:#aebbd0;
+  font-size:11px;
+  line-height:1.7;
+}
+
+/* CLAIM VERIFICATION — calm amber warning state and readable evidence counts */
+.claim-verification-panel {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  border:1px solid rgba(251,191,36,.32) !important;
+  border-radius:20px !important;
+  background:
+    radial-gradient(ellipse at 100% 0%,rgba(245,158,11,.1),transparent 42%),
+    linear-gradient(145deg,rgba(37,31,28,.88),rgba(13,18,32,.98) 56%,rgba(22,22,39,.97)) !important;
+  box-shadow:0 14px 34px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.045);
+}
+.claim-verification-panel::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0 0 auto;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(251,191,36,.62),rgba(248,113,113,.35),transparent);
+}
+.claim-verification-icon {
+  color:#fde68a;
+  border:1px solid rgba(251,191,36,.4);
+  background:linear-gradient(145deg,rgba(217,119,6,.24),rgba(180,83,9,.13));
+  box-shadow:0 5px 15px rgba(217,119,6,.12),inset 0 1px 0 rgba(255,255,255,.14);
+}
+.claim-verification-status {
+  display:inline-flex;
+  min-height:34px;
+  align-items:center;
+  gap:7px;
+  border:1px solid rgba(248,113,113,.48);
+  border-radius:999px;
+  padding:7px 12px;
+  color:#fecaca;
+  background:rgba(127,29,29,.23);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.07em;
+}
+.claim-verification-summary {
+  color:#e2e8f0 !important;
+  font-size:13px !important;
+  line-height:1.8 !important;
+}
+.claim-verification-stats {
+  display:flex;
+  gap:9px;
+}
+.claim-stat-chip {
+  display:inline-flex;
+  min-height:40px;
+  align-items:center;
+  gap:8px;
+  border:1px solid rgba(148,163,184,.25);
+  border-radius:12px;
+  padding:8px 11px;
+  color:#e2e8f0;
+  background:rgba(15,23,42,.52);
+  font-size:10px;
+  font-weight:750;
+  line-height:1.4;
+}
+.claim-stat-chip strong {
+  color:#fff;
+  font-size:14px;
+  font-weight:900;
+}
+.claim-stat-portals {border-color:rgba(56,189,248,.34);background:rgba(8,145,178,.1);color:#bae6fd}
+.claim-stat-sources {border-color:rgba(129,140,248,.35);background:rgba(79,70,229,.11);color:#c7d2fe}
+.claim-stat-related {border-color:rgba(52,211,153,.34);background:rgba(16,185,129,.1);color:#a7f3d0}
+.claim-stat-guidance {border-color:rgba(167,139,250,.34);background:rgba(139,92,246,.1);color:#ddd6fe}
+.claim-stat-unmatched {border-color:rgba(251,191,36,.34);background:rgba(217,119,6,.1);color:#fde68a}
+.claim-verification-disclaimer {
+  border:1px solid rgba(148,163,184,.2);
+  background:linear-gradient(110deg,rgba(30,41,59,.56),rgba(15,23,42,.36));
+}
+.claim-verification-disclaimer p {
+  color:#bac6d8;
+  font-size:11px;
+  line-height:1.7;
+}
+@media(max-width:640px) {
+  .web-evidence-panel,.claim-verification-panel {
+    padding:13px !important;
+    border-radius:17px !important;
+  }
+  .web-evidence-header {
+    align-items:flex-start;
+  }
+  .web-evidence-heading-icon,.claim-verification-icon {
+    width:41px;
+    min-width:41px;
+    height:41px;
+    border-radius:13px;
+  }
+  .web-evidence-count {
+    margin-left:52px;
+    min-height:30px;
+    font-size:9px;
+  }
+  .web-evidence-source {
+    gap:10px !important;
+    padding:11px !important;
+    border-radius:14px !important;
+  }
+  .web-evidence-logo-wrap {
+    width:47px;
+    min-width:47px;
+    height:47px;
+    border-radius:11px;
+  }
+  .web-evidence-source .text-sm {
+    font-size:12px !important;
+    line-height:1.55 !important;
+  }
+  .web-evidence-domain {font-size:9px}
+  .web-evidence-open {width:30px;min-width:30px;height:30px}
+  .claim-verification-summary {
+    font-size:12px !important;
+    line-height:1.75 !important;
+  }
+  .claim-stat-chip {
+    min-height:36px;
+    padding:7px 9px;
+    font-size:9px;
+  }
+  .claim-verification-status {
+    min-height:30px;
+    font-size:9px;
+  }
+}
+@media(max-width:390px) {
+  .web-evidence-source {flex-wrap:wrap}
+  .web-evidence-source > span:nth-child(2) {flex:1 1 calc(100% - 62px)}
+  .web-evidence-open {margin-left:auto}
+  .claim-verification-header {align-items:flex-start}
+  .claim-verification-stats {align-items:stretch}
+  .claim-stat-chip {flex:1 1 145px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .web-evidence-source,.web-evidence-open {transition:none !important}
+  .web-evidence-source:hover .web-evidence-open {transform:none !important}
+}
