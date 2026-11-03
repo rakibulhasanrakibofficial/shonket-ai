@@ -53,6 +53,12 @@ if (analysis.isRelevant !== true || !analysis.verdict) {
 if (!Number.isFinite(Number(analysis.riskScore))) {
   throw new Error("The analysis API did not return a numeric risk score.");
 }
+if (analysis.verdict !== "suspicious" || Number(analysis.riskScore) < 55) {
+  throw new Error(
+    "Prize-plus-fee regression: expected suspicious with risk >= 55, received " +
+    analysis.verdict + " · risk " + analysis.riskScore + "/100."
+  );
+}
 if (analysis.aiAnalysis?.status !== "ready") {
   const code = String(analysis.aiAnalysis?.diagnosticCode || "AI_NOT_READY");
   throw new Error("Rule engine is online, but live AI inference is not ready (" + code + ").");
