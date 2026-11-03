@@ -373,7 +373,8 @@ export function detectSearchCategories(query) {
   const investment = has(/\b(investment|invest|profit|guaranteed return|ponzi|crypto|loan offer|double your money)\b|বিনিয়োগ|বিনিয়োগ|মুনাফা|লাভের নিশ্চয়তা|লাভের নিশ্চয়তা|টাকা দ্বিগুণ/i);
   if (investment) categories.push("investment");
 
-  const cyberRisk = has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion))\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
+  const prizeFeeClaim = has(/\b(prize|winner|lottery|reward|claim)\b|পুরস্কার|লটারি|বিজয়ী/i) && has(/\b(fee|charge|pay|payment|send money|process(?:ing)?)\b|ফি|টাকা পাঠান|পেমেন্ট/i);
+  const cyberRisk = prizeFeeClaim || has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion)|facebook|whatsapp|instagram|social media account)\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
   if (cyberRisk || (jobClaim && !governmentJob)) categories.push("cybersecurity");
 
   return [...new Set(categories)].slice(0, 3);
@@ -617,7 +618,7 @@ export async function searchOfficialSources(query, options = {}) {
     : hasGuidance
       ? (failedPortalCount ? "partial_guidance" : "guidance_only")
       : searchedPortals.length
-        ? "no_results" : "unavailable";
+        ? (failedPortalCount ? "partial_unavailable" : "no_results") : "unavailable";
 
   const label = plan.categories.map(category => SEARCH_CATEGORY_LABELS[category]).filter(Boolean).join(", ");
   const scopeNote_en = "Search checked selected Bangladesh official or institutional sources for " + label + ". Coverage is limited to these sources and is not a whole-web search.";
