@@ -2,7 +2,7 @@ const RULES = [
   {
     id: "credential_request",
     weight: 40,
-    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i,
+    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|ekhoni|ekhon|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:ekhoni\s*)?(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i,
     tactic: "credential_request",
     quoteBn: "গোপন কোড বা পাসওয়ার্ড চাওয়া হয়েছে",
     quoteEn: "A secret code or password is requested",
@@ -32,7 +32,7 @@ const RULES = [
   {
     id: "job_offer",
     weight: 16,
-    regex: /\b(?:guaranteed job|work from home|high salary|job offer|remote job|your cv (?:has been )?selected|selected for (?:a )?remote job|easy income|daily income|hiring now|job circular|chakri(?:r)?\s+(?:offer|sujog|paben|hobe|confirm|nischit)|(?:chakri|job)\s+(?:paben|confirm|nischit)|interview chara (?:chakri|job)|cv\s+(?:select|selected|bacha)|ghore boshe (?:kaj|income|ay)|sohoje ay)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে|চাকরির অফার|চাকরি নিশ্চিত|সাক্ষাৎকার ছাড়াই চাকরি|সিভি নির্বাচিত/i,
+    regex: /\b(?:guaranteed job|work from home|high salary|job offer|remote job|your cv (?:has been )?selected|selected for (?:a )?remote job|easy income|daily income|hiring now|job circular|chakri(?:r)?\s+(?:offer|sujog|paben|hobe|confirm|nischit)|(?:chakri|job)\s+(?:pete|paben|confirm|nischit)|interview chara (?:chakri|job)|cv\s+(?:select|selected|bacha)|ghore boshe (?:kaj|income|ay)|sohoje ay)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে|চাকরির অফার|চাকরি পেতে|চাকরি নিশ্চিত|সাক্ষাৎকার ছাড়াই চাকরি|সিভি নির্বাচিত/i,
     tactic: "unverified_job_offer",
     quoteBn: "চাকরি বা আয়ের প্রস্তাব দেওয়া হয়েছে",
     quoteEn: "A job or income opportunity is offered",
