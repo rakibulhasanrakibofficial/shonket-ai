@@ -16,7 +16,7 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 
 ## Important scope
 
-The checker is text-only in this version. Screenshot reading is unavailable and is not simulated.
+The checker is text-only in this version. Screenshot reading and microphone speech recognition are unavailable and are not simulated.
 
 This public checker does not call a generative-AI provider. It uses deterministic rules and does not send submitted message text to an external AI inference service. Server-side rate limiting still uses Upstash Redis.
 
