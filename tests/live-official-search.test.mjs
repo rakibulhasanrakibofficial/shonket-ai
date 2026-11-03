@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   compareEvidence,
+  detectSearchCategories,
   isAllowedGovUrl,
+  isAllowedSourceUrl,
+  isOfficialSourceSearchApplicable,
   normaliseDigits,
   parseListingRows,
   searchOfficialSources
@@ -98,38 +101,85 @@ test("unmatched claims are not marked false or fraudulent", () => {
 test("an amount mismatch in a related notice is flagged as possible conflict, not proof", () => {
   const result = compareEvidence(
     "Government scholarship provides 50,000 BDT",
-    [{ title: "Government scholarship provides 40,000 BDT" }],
+    [{ title: "Government scholarship provides 40,000 BDT", evidenceType: "government_listing_match" }],
     "results_found"
   );
   assert.equal(result.status, "possible_amount_conflict");
   assert.match(result.summary_en, /Review the original notice/i);
 });
 
-test("non-education claims do not trigger education-portal fetches", async () => {
+test("an unrelated greeting does not trigger an official-source search", async () => {
   let calls = 0;
-  const result = await searchOfficialSources("You won a prize. Pay a processing fee.", {
+  const result = await searchOfficialSources("Hello, how are you today?", {
     fetchImpl: async () => {
       calls += 1;
-      throw new Error("should not be called");
+      throw new Error("out-of-scope greetings must not trigger source requests");
     }
   });
   assert.equal(calls, 0);
   assert.equal(result.status, "not_applicable");
+  assert.equal(isOfficialSourceSearchApplicable("Hello, how are you today?"), false);
 });
 
-test("generic private-sector job offers do not trigger education-portal fetches", async () => {
+test("a prize plus processing-fee claim triggers official cyber safety guidance", async () => {
   let calls = 0;
+  const html = "<html><body><h1>Official safety guidance</h1><p>Prize scams, advance fees, OTP requests and fake links are common warning signs.</p></body></html>";
+  const result = await searchOfficialSources("You won a prize. Pay a processing fee to claim it.", {
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  });
+  assert.ok(calls > 0);
+  assert.equal(result.status, "guidance_only");
+  assert.ok(result.category.includes("cybersecurity"));
+  assert.ok(result.sources.some(source => source.evidenceType === "official_safety_guidance"));
+  assert.equal(result.evidenceAssessment.status, "contextual_guidance");
+  assert.match(result.summary_en, /does not authenticate|no government notice/i);
+});
+
+test("generic private-sector job messages use scam guidance without pretending to match a government vacancy", async () => {
   const result = await searchOfficialSources(
     "Your CV was selected for a remote job. Pay a registration fee to confirm your position.",
     {
-      fetchImpl: async () => {
-        calls += 1;
-        throw new Error("private-sector job messages are outside education portal search scope");
-      }
+      fetchImpl: async () => new Response("<html><body><h1>Common scams</h1><p>Fake job offers can request registration fees.</p></body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" }
+      })
     }
   );
-  assert.equal(calls, 0);
-  assert.equal(result.status, "not_applicable");
+  assert.equal(result.status, "guidance_only");
+  assert.ok(result.category.includes("jobs"));
+  assert.ok(result.sources.every(source => source.evidenceType !== "government_listing_match"));
+  assert.ok(!result.searchedPortals.some(source => source.agency.includes("Alljobs by Teletalk")));
+});
+
+test("government job claims include the official Teletalk recruitment listing", async () => {
+  const calls = [];
+  const html = "<html><body><table><tr><th>No</th><th>Title</th><th>Date</th><th>Action</th></tr><tr><td>1</td><td>Office Assistant Recruitment Notice — Department of Example</td><td>03-11-2026</td><td><a href='/jobs/government/123'>View</a></td></tr></table></body></html>";
+  const result = await searchOfficialSources("Government job recruitment notice for office assistant, apply through Teletalk.", {
+    fetchImpl: async url => {
+      calls.push(String(url));
+      return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  });
+  assert.ok(calls.some(url => url.includes("alljobs.teletalk.com.bd")));
+  assert.ok(result.sources.some(source => source.evidenceType === "government_listing_match"));
+});
+
+test("message categories route to relevant official source groups", () => {
+  assert.ok(detectSearchCategories("Your bKash cash-in was successful.").includes("mobile_money"));
+  assert.ok(detectSearchCategories("Your parcel tracking number is ready.").includes("courier"));
+  assert.ok(detectSearchCategories("Your SIM card will be blocked. Verify now.").includes("telecom"));
+  assert.ok(detectSearchCategories("Your online order refund is pending.").includes("commerce"));
+  assert.ok(detectSearchCategories("Your bank account requires verification.").includes("banking"));
+});
+
+test("official source links allow only HTTPS on the exact configured hostname", () => {
+  assert.equal(isAllowedSourceUrl("https://www.bkash.com/page/security-tips", "https://www.bkash.com/page/security-tips"), true);
+  assert.equal(isAllowedSourceUrl("http://www.bkash.com/page/security-tips", "https://www.bkash.com/page/security-tips"), false);
+  assert.equal(isAllowedSourceUrl("https://www.bkash.com.evil.example/page/security-tips", "https://www.bkash.com/page/security-tips"), false);
+  assert.equal(isAllowedSourceUrl("https://evil.example/page/security-tips", "https://www.bkash.com/page/security-tips"), false);
 });
 
 test("education scholarships still trigger live official portal search", async () => {
