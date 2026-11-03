@@ -197,40 +197,53 @@ test('screenshot upload keeps its preview and can be removed', async ({ page }) 
   await expect(page.locator('#screenshot-upload')).toHaveValue('');
 });
 
-test('screenshot validation shows errors and allows selecting a corrected image', async ({ page }) => {
+test('screenshot validation clears rejected selections and allows a corrected image', async ({ page }) => {
   await page.goto('/');
   const fileInput = page.locator('#screenshot-upload');
+  const validPng='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=';
+  await fileInput.setInputFiles({
+    name:'previous-valid.png',
+    mimeType:'image/png',
+    buffer:Buffer.from(validPng,'base64')
+  });
+  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
+  await expect(page.getByText('previous-valid.png')).toBeVisible();
+
   await fileInput.setInputFiles({
     name: 'unsupported.gif',
     mimeType: 'image/gif',
     buffer: Buffer.from('GIF89a')
   });
   await expect(page.getByRole('alert')).toContainText(/Unsupported image type/i);
+  await expect(page.getByAltText('Screenshot preview')).toHaveCount(0);
+  await expect(page.getByText('previous-valid.png')).toHaveCount(0);
   await expect(fileInput).toHaveValue('');
 
   await fileInput.setInputFiles({
-    name: 'valid-again.webp',
-    mimeType: 'image/webp',
-    buffer: Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEAAUAmJaQAA3AA/v89WAAAAA==','base64')
+    name: 'empty.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(0)
   });
-  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
-  await expect(page.getByText('valid-again.webp')).toBeVisible();
-
-  await fileInput.setInputFiles({name:'empty.png',mimeType:'image/png',buffer:Buffer.alloc(0)});
   await expect(page.getByRole('alert')).toContainText(/screenshot is empty/i);
-  await expect(page.getByAltText('Screenshot preview')).toHaveCount(0);
   await expect(fileInput).toHaveValue('');
 
-  await fileInput.setInputFiles({name:'too-large.png',mimeType:'image/png',buffer:Buffer.alloc(2.5*1024*1024+1)});
+  await fileInput.setInputFiles({
+    name:'too-large.png',
+    mimeType:'image/png',
+    buffer:Buffer.alloc(2.5*1024*1024+1)
+  });
   await expect(page.getByRole('alert')).toContainText(/2.5 MB or smaller/i);
   await expect(page.getByAltText('Screenshot preview')).toHaveCount(0);
   await expect(fileInput).toHaveValue('');
 
-  await fileInput.setInputFiles({name:'corrected.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=','base64')});
+  await fileInput.setInputFiles({
+    name:'corrected.png',
+    mimeType:'image/png',
+    buffer:Buffer.from(validPng,'base64')
+  });
   await expect(page.getByAltText('Screenshot preview')).toBeVisible();
   await expect(page.getByText('corrected.png')).toBeVisible();
 });
-
 test('screenshot preview can be replaced without leaving stale file metadata', async ({ page }) => {
   await page.goto('/');
   const fileInput=page.locator('#screenshot-upload');
