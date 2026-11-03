@@ -108,6 +108,11 @@ export async function analyzeMessage({
         })
       });
       assessment = await parseResponse(response);
+      // Do not surface an education-portal search section for message types
+      // where that narrowly scoped search was intentionally not applicable.
+      if (assessment.officialSearch?.status === "not_applicable") {
+        assessment = { ...assessment, officialSearch: null };
+      }
     } catch (error) {
       // An explicit client error should be shown. Network, not-found, and
       // server errors degrade safely to local rules + local RAG.
