@@ -97,6 +97,7 @@ test('screenshot upload reads the image and checks its extracted text', async ({
   await expect.poll(() => requestBody?.imageMimeType).toBe('image/png');
   expect(requestBody.imageBase64).toContain('data:image/png;base64,');
   await expect(page.locator('#message')).toHaveValue('Congratulations! You won a prize. Send a processing fee today.');
+  await expect(page.locator('#screenshot-upload')).toHaveValue('');
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
 });
 
