@@ -155,12 +155,12 @@ export function inspectGeminiFailure(errorBody, retryAfterHeader = "") {
   const retryInfo = details.find(item =>
     String(item?.["@type"] || "").includes("RetryInfo")
   );
-  const retryDelayMatch = String(retryInfo?.retryDelay || "").match(/^(\\d+(?:\\.\\d+)?)s$/);
+  const retryDelayMatch = String(retryInfo?.retryDelay || "").match(/^(\d+(?:\.\d+)?)s$/);
   let retrySeconds = retryDelayMatch ? Number(retryDelayMatch[1]) : NaN;
 
   if (!Number.isFinite(retrySeconds)) {
     const headerValue = String(retryAfterHeader || "").trim();
-    if (/^\\d+(?:\\.\\d+)?$/.test(headerValue)) {
+    if (/^\d+(?:\.\d+)?$/.test(headerValue)) {
       retrySeconds = Number(headerValue);
     } else if (headerValue) {
       const retryDate = Date.parse(headerValue);
