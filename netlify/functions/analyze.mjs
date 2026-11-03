@@ -388,7 +388,7 @@ async function generateExplanation({ message, language, rules, sources, official
   }
 }
 
-export async function officialSearchHandler(event, runtimeEnv, rateLimiter = null) {
+export async function officialSearchHandler(event, runtimeEnv, rateLimiter = null, fetchImpl = globalThis.fetch) {
   runtimeEnv = runtimeEnv || (typeof process !== "undefined" ? process.env : {});
   const origin = event.headers && (event.headers.origin || event.headers.Origin);
   const headers = corsHeaders(origin || "", runtimeEnv);
@@ -483,7 +483,7 @@ export async function officialSearchHandler(event, runtimeEnv, rateLimiter = nul
     };
   } else {
     try {
-      officialSearch = await searchOfficialSources(message);
+      officialSearch = await searchOfficialSources(message, { fetchImpl });
     } catch {
       officialSearch = {
         status: "unavailable",
