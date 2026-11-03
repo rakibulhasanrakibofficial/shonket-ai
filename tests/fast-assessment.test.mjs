@@ -237,7 +237,7 @@ test("screenshot API extracts image text and checks it with deterministic rules"
       method: "POST",
       headers: { "x-real-ip": "203.0.113.21" },
       body: {
-        message: "",
+        message: "Important context: " + "a".repeat(2500),
         imageMimeType: "image/png",
         imageBase64: "data:image/png;base64,aW1hZ2U=",
         language: "en"
@@ -248,6 +248,8 @@ test("screenshot API extracts image text and checks it with deterministic rules"
     const body = JSON.parse(response.body);
     assert.equal(body.screenshotRead, true);
     assert.match(body.extractedText, /cash prize/i);
+    assert.ok(body.combinedText.startsWith("Important context: "));
+    assert.ok(body.combinedText.length > 2500);
     assert.equal(body.verdict, "suspicious");
     assert.ok(body.matchedSignals.includes("unverified_prize_claim"));
     assert.ok(body.matchedSignals.includes("upfront_payment"));
