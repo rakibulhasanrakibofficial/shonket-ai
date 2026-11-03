@@ -58,16 +58,16 @@ function shouldUseWebSearch(text) {
 
 function hostnameFromSourceTitle(value) {
   const text = String(value || "").trim();
-  const candidates = text.match(/[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
-  for (const candidate of candidates) {
-    try {
-      const hostname = new URL("https://" + candidate.replace(/^www[.]/i, "")).hostname;
-      return hostname.toLowerCase();
-    } catch {
-      // Ignore title fragments that are not valid hostnames.
-    }
+  // Gemini's Search grounding examples use the publisher hostname as the
+  // source title (for example, "aljazeera.com"). Do not mine arbitrary
+  // page-title prose for a domain: titles are untrusted display text.
+  const match = text.match(/^(?:https?:\/\/)?(?:www\.)?((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,})\/?$/i);
+  if (!match) return "";
+  try {
+    return new URL("https://" + match[1]).hostname.toLowerCase().replace(/^www[.]/i, "");
+  } catch {
+    return "";
   }
-  return "";
 }
 
 function hostnameFromSourceUri(uri) {
