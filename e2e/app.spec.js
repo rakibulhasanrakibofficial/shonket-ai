@@ -130,7 +130,7 @@ test('analysis result can be copied and exported as a print-ready PDF', async ({
   const copied = await page.evaluate(() => window.__copiedText);
   expect(copied).toContain('SHONKET AI');
   expect(copied).toContain('You won a prize. Pay a processing fee today.');
-  expect(copied).toContain('advance-fee request');
+  expect(copied).toContain('upfront fee');
   expect(copied).toContain('bKash — Security Tips');
 
   await expect(page.locator('#shonket-print-report')).toContainText('Digital Safety Analysis Report');
