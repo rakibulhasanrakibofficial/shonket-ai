@@ -146,7 +146,7 @@ test("Netlify API calls Cloudflare Workers AI server-side and validates the LLM 
     assert.equal(authorization, "Bearer cf_test_token");
     assert.equal(requestBody.model, "@cf/google/gemma-4-26b-a4b-it");
     assert.equal(requestBody.chat_template_kwargs.enable_thinking, false);
-    assert.equal(requestBody.max_completion_tokens, 600);
+    assert.equal(requestBody.max_completion_tokens, 350);
     assert.equal(body.aiAnalysis.status, "ready");
     assert.match(body.aiAnalysis.explanation_en, /upfront fee/i);
     assert.equal(body.verdict, "suspicious");
