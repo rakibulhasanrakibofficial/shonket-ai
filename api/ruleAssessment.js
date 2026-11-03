@@ -2,7 +2,7 @@ const RULES = [
   {
     id: "credential_request",
     weight: 40,
-    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i,
+    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i,
     tactic: "credential_request",
     quoteBn: "গোপন কোড বা পাসওয়ার্ড চাওয়া হয়েছে",
     quoteEn: "A secret code or password is requested",
@@ -12,7 +12,7 @@ const RULES = [
   {
     id: "upfront_fee",
     weight: 30,
-    regex: /\b(?:processing fee|registration fee|release fee|advance fee|claim fee|security deposit|pay now|payment required|send money)\b|\bfee\s+(?:pathan|diben|den|dite hobe)\b|\btaka\s+(?:pathan|diben|den)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i,
+    regex: /\b(?:processing fee|registration fee|release fee|advance fee|claim fee|security deposit|processing charge|activation fee|verification fee|joining fee|training fee|interview fee|pay now|payment required|send money)\b|\bfee\s+(?:pathan|diben|den|dite hobe)\b|\btaka\s+(?:pathan|diben|den)\b|\b(?:age|aage|prothome|first)\s+\d{2,7}\s*(?:tk|taka|bdt)\b|\b\d{2,7}\s*(?:tk|taka|bdt)\s+(?:age|aage|advance|prothome|first|pathan|diben|den|din|pay|send)\b|\b(?:fee|charge)\s+(?:ta\s+)?(?:pathan|diben|den|pay korun|advance din)\b|আগে\s*\d{2,7}\s*টাকা|\d{2,7}\s*টাকা\s*(?:আগে|অগ্রিম|পাঠান|দেন|দিন)|৳\s*\d{2,7}\s*(?:আগে|অগ্রিম)|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|রিলিজ ফি|আগাম ফি|আগে টাকা|টাকা পাঠান|পেমেন্ট করুন/i,
     tactic: "upfront_payment",
     quoteBn: "আগাম টাকা বা ফি চাওয়া হয়েছে",
     quoteEn: "An upfront payment or fee is requested",
@@ -22,7 +22,7 @@ const RULES = [
   {
     id: "prize_claim",
     weight: 22,
-    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen)\b|পুরস্কার জিতেছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
+    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen|peyechen|peyেছেন)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen|peyechen)\b|\blottery\s+te\s+(?:jitsen|jitse|paisen|paichen|peyechen)\b|\b(?:apni\s+)?(?:prize|puraskar)\s+(?:peyechen|peyেছেন|jitsen|jitse)\b|\bwinner\s+(?:hoyechen|hoyecho|hoyesen)\b|পুরস্কার জিতেছেন|পুরস্কার পেয়েছেন|পুরস্কার পেয়েছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
     tactic: "unverified_prize_claim",
     quoteBn: "পুরস্কার জেতার দাবি করা হয়েছে",
     quoteEn: "A prize or winnings claim is made",
@@ -32,7 +32,7 @@ const RULES = [
   {
     id: "job_offer",
     weight: 16,
-    regex: /\b(?:guaranteed job|work from home|high salary|job offer|remote job|your cv (?:has been )?selected|selected for (?:a )?remote job|easy income|daily income|hiring now)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে/i,
+    regex: /\b(?:guaranteed job|work from home|high salary|job offer|remote job|your cv (?:has been )?selected|selected for (?:a )?remote job|easy income|daily income|hiring now|job circular|chakri(?:r)?\s+(?:offer|sujog|paben|hobe|confirm|nischit)|(?:chakri|job)\s+(?:paben|confirm|nischit)|interview chara (?:chakri|job)|cv\s+(?:select|selected|bacha)|ghore boshe (?:kaj|income|ay)|sohoje ay)\b|নিশ্চিত চাকরি|ঘরে বসে আয়|উচ্চ বেতন|সহজ আয়|নিয়োগ চলছে|চাকরির অফার|চাকরি নিশ্চিত|সাক্ষাৎকার ছাড়াই চাকরি|সিভি নির্বাচিত/i,
     tactic: "unverified_job_offer",
     quoteBn: "চাকরি বা আয়ের প্রস্তাব দেওয়া হয়েছে",
     quoteEn: "A job or income opportunity is offered",
@@ -42,7 +42,7 @@ const RULES = [
   {
     id: "urgency",
     weight: 18,
-    regex: /\b(?:urgent|immediately|expires today|limited time|act now|last chance|within \d+ hours?|account will be blocked|account suspended)\b|জরুরি|এখনই|আজই শেষ|শেষ সুযোগ|অ্যাকাউন্ট বন্ধ|অ্যাকাউন্ট স্থগিত/i,
+    regex: /\b(?:urgent|immediately|expires today|limited time|act now|last chance|within \d+ hours?|account will be blocked|account suspended|ekhoni|ekhon-i|ajkei|ajker moddhe|shesh sujog|sesh sujog|taratari|account bondho (?:hoye jabe|hobe)|\d+\s+ghontar moddhe)\b|জরুরি|এখনই|আজই শেষ|শেষ সুযোগ|অ্যাকাউন্ট বন্ধ|অ্যাকাউন্ট স্থগিত/i,
     tactic: "urgency",
     quoteBn: "জরুরি চাপ বা ভয় দেখানো হয়েছে",
     quoteEn: "Urgency or pressure is used",
@@ -52,7 +52,7 @@ const RULES = [
   {
     id: "suspicious_link_prompt",
     weight: 15,
-    regex: /\b(?:click here|verify your account|login here|update your account|open this link|download this app)\b|এখানে ক্লিক|অ্যাকাউন্ট যাচাই|লিংকে যান|অ্যাপ ডাউনলোড করুন/i,
+    regex: /\b(?:click here|verify your account|login here|update your account|open this link|download this app|link[- ]e click|link[- ]e jan|link theke apply|ei link[- ]e|account verify korun|form fill[- ]up korun)\b|এখানে ক্লিক|অ্যাকাউন্ট যাচাই|লিংকে যান|অ্যাপ ডাউনলোড করুন|লিংকে ক্লিক করুন/i,
     tactic: "suspicious_link_prompt",
     quoteBn: "লিংক খোলা বা তথ্য যাচাই করতে বলা হয়েছে",
     quoteEn: "The recipient is asked to open a link or verify details",
@@ -91,24 +91,25 @@ const RULES = [
   }
 ];
 
-const WARNING_CONTEXT = /\b(?:this is (?:a )?(?:scam|fraud)|scam warning|fraud warning|never pay|do not pay|don't pay|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|avoid clicking|do not click|don't click)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|পিন শেয়ার করবেন না|প্রতারণা থেকে সাবধান|স্ক্যাম থেকে সাবধান/i;
+const WARNING_CONTEXT = /\b(?:this is (?:a )?(?:scam|fraud)|scam warning|fraud warning|never pay|do not pay|don't pay|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|avoid clicking|do not click|don't click|scam theke sabdhan|eta (?:a )?(?:scam|fraud)|kokhono (?:otp|pin|password|taka|fee)|otp (?:share korben na|diben na|bolben na)|pin (?:share korben na|diben na)|taka pathaben na|fee diben na|link e click korben na)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|পিন শেয়ার করবেন না|প্রতারণা থেকে সাবধান|স্ক্যাম থেকে সাবধান/i;
 
-const MESSAGE_CONTEXT = /\b(?:sms|text message|whatsapp|messenger|e-?mail|inbox|account|bank|mobile banking|wallet|otp|one[- ]time code|pin|password|verification|login|sign in|click here|link|url|payment|pay|fee|money|transfer|refund|bill|invoice|salary|job|recruitment|hiring|scholarship|stipend|grant|financial assistance|benefit|prize|lottery|winner|claim|courier|parcel|delivery|tracking|appointment|clinic|reschedule|library book|return.{0,30}library|electricity bill|customer portal|class.{0,40}(?:moved|room)|room\s*\d+|notice board|purchase|order confirmation|shopping app|statement|tuition|accounts office)\b|ওটিপি|পিন|পাসওয়ার্ড|অ্যাকাউন্ট|ব্যাংক|বিকাশ|নগদ|রকেট|ওয়ালেট|পেমেন্ট|টাকা|ফি|চাকরি|বৃত্তি|উপবৃত্তি|পুরস্কার|লটারি|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|বিল|রিফান্ড|প্রসেসিং|যাচাই|লিংক/i
+const MESSAGE_CONTEXT = /\b(?:sms|text message|whatsapp|messenger|e-?mail|inbox|account|bank|mobile banking|wallet|otp|one[- ]time code|pin|password|verification|login|sign in|click here|link|url|payment|pay|fee|money|transfer|refund|bill|invoice|salary|job|recruitment|hiring|scholarship|stipend|grant|financial assistance|benefit|prize|lottery|winner|claim|courier|parcel|delivery|tracking|appointment|clinic|reschedule|library book|return.{0,30}library|electricity bill|customer portal|class.{0,40}(?:moved|room)|room\s*\d+|notice board|purchase|order confirmation|shopping app|statement|tuition|accounts office|bkash|nagad|rocket|chakri|taka|puraskar|britti|upobritti|cash[- ]in|cash[- ]out|cv|tk)\b|ওটিপি|পিন|পাসওয়ার্ড|অ্যাকাউন্ট|ব্যাংক|বিকাশ|নগদ|রকেট|ওয়ালেট|পেমেন্ট|টাকা|ফি|চাকরি|বৃত্তি|উপবৃত্তি|পুরস্কার|লটারি|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|বিল|রিফান্ড|প্রসেসিং|যাচাই|লিংক/i;
 
-const CLAIM_CONTEXT = /\b(?:scholarship|stipend|grant|allowance|financial assistance|government scheme|recruitment|job circular|vacancy|employment|internship|hiring|fellowship|subsidy|benefit|prize|lottery|winner|guaranteed job|job offer|cash prize)\b|বৃত্তি|উপবৃত্তি|অনুদান|সরকারি সহায়তা|সরকারি সহায়তা|নিয়োগ বিজ্ঞপ্তি|নিয়োগ বিজ্ঞপ্তি|চাকরির বিজ্ঞপ্তি|ভাতা|ফেলোশিপ|পুরস্কার|লটারি/i;
+const CLAIM_CONTEXT = /\b(?:scholarship|stipend|grant|allowance|financial assistance|government scheme|recruitment|job circular|vacancy|employment|internship|hiring|fellowship|subsidy|benefit|prize|lottery|winner|guaranteed job|job offer|cash prize|chakri|britti|upobritti|puraskar|sorkari sahajjo)\b|বৃত্তি|উপবৃত্তি|অনুদান|সরকারি সহায়তা|সরকারি সহায়তা|নিয়োগ বিজ্ঞপ্তি|নিয়োগ বিজ্ঞপ্তি|চাকরির বিজ্ঞপ্তি|ভাতা|ফেলোশিপ|পুরস্কার|লটারি/i;
 
 function hasBangla(text) {
   return /[\u0980-\u09FF]/.test(text);
 }
 
-const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i;
-const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
+const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i;
+const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|\b(?:age|aage|prothome)\s+\d{2,7}\s*(?:tk|taka|bdt)\s+(?:pathan|diben|den|din)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
 
 function stripNegatedInstructions(text) {
   return String(text || "")
     .replace(/\b(?:never|do not|don't)\s+(?:share|disclose|give|send|provide|pay|click|open)\b[^.!?\n]{0,110}/gi, " ")
     .replace(/\b(?:we|your bank|the bank|the service)?\s*will never ask\b[^.!?\n]{0,90}/gi, " ")
-    .replace(/(?:কখনো|কোনোভাবেই)?\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\n]{0,110}/gi, " ");
+    .replace(/(?:কখনো|কোনোভাবেই)?\s*(?:টাকা পাঠাবেন না|টাকা দেবেন না|ফি দেবেন না|ওটিপি (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না)|পিন (?:শেয়ার করবেন না|শেয়ার করবেন না|দেবেন না))[^।!?\n]{0,110}/gi, " ")
+    .replace(/\b(?:kokhono|kono somoy|kono obosthay)\s+(?:otp|pin|password|taka|fee)\s+(?:share korben na|diben na|pathaben na|bolben na)\b[^.!?\n]{0,110}/gi, " ");
 }
 
 function isCredentialWarning(text, actionableText) {
