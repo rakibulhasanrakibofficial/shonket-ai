@@ -5,6 +5,7 @@ import { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const allowedOrigin = "https://rakibulhasanrakibofficial.github.io";
 process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "false";
+process.env.CLOUDFLARE_ACCOUNT_ID = "cf_test_account_id";
 
 function makeEvent(message, headers = {}, httpMethod = "POST") {
   return {
@@ -49,8 +50,8 @@ test("model redaction removes URLs, email, Bangladeshi mobile numbers, and long 
 });
 
 test("Netlify API returns deterministic rule result and RAG sources without an LLM token", async () => {
-  const previousToken = process.env.HF_TOKEN;
-  delete process.env.HF_TOKEN;
+  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
+  delete process.env.CLOUDFLARE_API_TOKEN;
   try {
     const result = await handler(makeEvent({
       message: "You have won a cash prize. Pay the processing fee today.",
@@ -65,8 +66,8 @@ test("Netlify API returns deterministic rule result and RAG sources without an L
     assert.ok(body.retrievedSources.some(source => source.id === "bkash-security-tips"));
     assert.equal(body.privacy.rawMessageStored, false);
   } finally {
-    if (previousToken === undefined) delete process.env.HF_TOKEN;
-    else process.env.HF_TOKEN = previousToken;
+    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
+    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
   }
 });
 
@@ -100,12 +101,12 @@ test("Netlify API rejects malformed and oversized requests", async () => {
   assert.equal(tooLong.statusCode, 413);
 });
 
-test("Netlify API calls Hugging Face server-side and validates the LLM explanation", async () => {
+test("Netlify API calls Cloudflare Workers AI server-side and validates the LLM explanation", async () => {
   const originalFetch = globalThis.fetch;
-  const previousToken = process.env.HF_TOKEN;
-  const previousModel = process.env.HF_MODEL;
-  process.env.HF_TOKEN = "hf_test_token";
-  process.env.HF_MODEL = "Qwen/Qwen2.5-7B-Instruct:cheapest";
+  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
+  const previousModel = process.env.CLOUDFLARE_AI_MODEL;
+  process.env.CLOUDFLARE_API_TOKEN = "cf_test_token";
+  process.env.CLOUDFLARE_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
   let calledUrl = "";
   let requestBody = null;
   let authorization = "";
@@ -138,9 +139,9 @@ test("Netlify API calls Hugging Face server-side and validates the LLM explanati
     }));
     const body = JSON.parse(result.body);
     assert.equal(result.statusCode, 200);
-    assert.equal(calledUrl, "https://router.huggingface.co/v1/chat/completions");
-    assert.equal(authorization, "Bearer hf_test_token");
-    assert.equal(requestBody.model, "Qwen/Qwen2.5-7B-Instruct:cheapest");
+    assert.equal(calledUrl, "https://api.cloudflare.com/client/v4/accounts/cf_test_account_id/ai/v1/chat/completions");
+    assert.equal(authorization, "Bearer cf_test_token");
+    assert.equal(requestBody.model, "@cf/google/gemma-4-26b-a4b-it");
     assert.equal(body.aiAnalysis.status, "ready");
     assert.match(body.aiAnalysis.explanation_en, /upfront fee/i);
     assert.equal(body.verdict, "suspicious");
@@ -148,17 +149,17 @@ test("Netlify API calls Hugging Face server-side and validates the LLM explanati
     assert.doesNotMatch(requestBody.messages[1].content, /01712345678/);
   } finally {
     globalThis.fetch = originalFetch;
-    if (previousToken === undefined) delete process.env.HF_TOKEN;
-    else process.env.HF_TOKEN = previousToken;
-    if (previousModel === undefined) delete process.env.HF_MODEL;
-    else process.env.HF_MODEL = previousModel;
+    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
+    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
+    if (previousModel === undefined) delete process.env.CLOUDFLARE_AI_MODEL;
+    else process.env.CLOUDFLARE_AI_MODEL = previousModel;
   }
 });
 
 test("Netlify API degrades safely when the LLM provider is unavailable", async () => {
   const originalFetch = globalThis.fetch;
-  const previousToken = process.env.HF_TOKEN;
-  process.env.HF_TOKEN = "hf_test_token";
+  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
+  process.env.CLOUDFLARE_API_TOKEN = "cf_test_token";
   globalThis.fetch = async () => new Response("provider unavailable", { status: 503 });
   try {
     const result = await handler(makeEvent({
@@ -172,8 +173,8 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
     assert.equal(body.engine, "Rule-based");
   } finally {
     globalThis.fetch = originalFetch;
-    if (previousToken === undefined) delete process.env.HF_TOKEN;
-    else process.env.HF_TOKEN = previousToken;
+    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
+    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
   }
 });
 
@@ -181,8 +182,8 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
 test("Netlify API returns live official scholarship listings and conservative evidence status", async () => {
   const originalFetch = globalThis.fetch;
   const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
-  const previousToken = process.env.HF_TOKEN;
-  delete process.env.HF_TOKEN;
+  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
+  delete process.env.CLOUDFLARE_API_TOKEN;
   process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "true";
 
   const html = [
@@ -215,7 +216,7 @@ test("Netlify API returns live official scholarship listings and conservative ev
     globalThis.fetch = originalFetch;
     if (previousSearchFlag === undefined) delete process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
     else process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = previousSearchFlag;
-    if (previousToken === undefined) delete process.env.HF_TOKEN;
-    else process.env.HF_TOKEN = previousToken;
+    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
+    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
   }
 });
