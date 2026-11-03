@@ -45,6 +45,9 @@
   "functions": {
     "api/analyze.js": {
       "maxDuration": 60
+    },
+    "api/analyzeScreenshot.js": {
+      "maxDuration": 60
     }
   }
 }
