@@ -34,7 +34,7 @@ jobs:
       - name: Build for GitHub Pages
         run: npm run build:github-pages
         env:
-          VITE_API_BASE_URL: ${{ vars.SHONKET_API_BASE_URL }}
+          VITE_API_BASE_URL: https://shonket-ai.rakibhasan212029.workers.dev
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
