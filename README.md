@@ -11,7 +11,7 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - Lexical RAG over a curated knowledge base of Bangladesh digital-safety guidance.
 - Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js in English and Bangla; image files are not uploaded.
 - Microphone dictation, link-structure inspector, result copy/PDF export, and scam-awareness simulator.
-- Education-related scholarship, stipend, grant, and recruitment claims can trigger a live search of three allowlisted Bangladesh education-government listings (SHED scholarships, SHED notices, and DSHE notices). This is **not whole-web search**. Results contain listing titles, publication dates, and original government notice links; attached PDFs are not parsed. A related title is not proof that the sender or every claim detail is genuine. No match does not prove the claim is false.
+- Supported message categories can trigger a category-aware search of selected Bangladesh official or institutional sources: education/scholarship (SHED and DSHE listings), explicitly government recruitment (Alljobs by Teletalk), mobile financial services (bKash safety pages and CIRT/ScamCheck guidance), banking (Bangladesh Bank ICT alerts and BFIU circulars), cybersecurity (BGD e-GOV CIRT and ScamCheck), courier/delivery, telecom/SMS, online commerce, and investment/loan claims (using relevant CIRT, ScamCheck, Bangladesh Bank or BFIU sources). This is **not whole-web search**. Matching listings, official advisories, and general safety guidance are labelled separately. Static guidance is contextual and does not authenticate a specific sender or message. A related notice title is not proof that every claim detail is genuine; no match does not prove a claim is false. Some allowlisted pages may be temporarily unreachable, in which case the result is marked partial or unavailable.
 - AI-generated explanations are advisory and do not authenticate senders, domains, notices, or offers.
 
 ## Architecture
@@ -21,11 +21,11 @@ Bangladesh-focused scam-awareness and message-checking toolkit.
 - **LLM:** Cloudflare Workers AI through the native \`env.AI\` binding. Runtime API tokens are not required for inference.
 - **Rule engine:** \`api/ruleAssessment.js\`.
 - **RAG:** Lexical retrieval over curated sources in \`netlify/functions/knowledge-base.mjs\`.
-- **Live official-source search:** \`netlify/functions/live-official-search.mjs\` checks only \`shed.gov.bd\` scholarship/notices and \`dshe.gov.bd\` notices for education-related claims.
+- **Live official-source search:** `netlify/functions/live-official-search.mjs` routes supported message categories to a capped allowlist of official/institutional pages, including `shed.gov.bd`, `dshe.gov.bd`, `alljobs.teletalk.com.bd`, `bkash.com`, `bb.org.bd`, `bfiu.org.bd`, `cirt.gov.bd`, and `scamcheck.gov.bd`. It fetches only configured HTTPS pages, not user-supplied URLs.
 - **Shared analysis handler:** \`netlify/functions/analyze.mjs\` is reused by the Cloudflare Worker and remains compatible with the legacy Netlify function adapter.
 - **Screenshot OCR:** Tesseract.js in the browser. The screenshot itself is not sent to the API or LLM provider.
 
-The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The official-source search is a separate retrieval step over three allowlisted education-government listings, not unrestricted web search. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
+The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The official-source search is a separate, category-aware retrieval step over selected allowlisted pages, not unrestricted web search. Search results distinguish matching official notices from contextual safety guidance. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
 
 ## Cloudflare Worker deployment
 
@@ -127,7 +127,7 @@ Do not enter passwords, OTPs, PINs, account numbers, private documents, or other
 - Risk scores are deterministic heuristics, not calibrated probabilities.
 - A suspicious result is a warning for further checking, not proof of fraud. A low-risk result is not a guarantee of safety.
 - The curated RAG corpus can become outdated; it is not a live web search.
-- Official-source search is limited to three allowlisted education-government listings. It does not crawl the full web or parse attached notice PDFs.
+- Official-source search is limited to the configured source allowlist and a small number of relevant categories per message. It does not crawl the full web. Government notice attachments/PDFs are not parsed, and some pages may be unavailable or block automated retrieval. A `guidance_only` or `partial_guidance` result is safety context, not confirmation of the specific message.
 - URL inspection checks URL structure only. It does not resolve redirects, check domain reputation, or visit the submitted URL.
 - Screenshot OCR can misread blurry or cropped text. Always review extracted text.
 - The browser's speech-recognition provider may process audio under its own terms. SHONKET does not receive raw microphone audio.
