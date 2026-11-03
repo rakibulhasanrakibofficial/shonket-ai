@@ -128,3 +128,22 @@ test("text input is bounded to 4000 characters", () => {
   assert.equal(result.verdict, "uncertain");
   assert.equal(result.confidence, "low");
 });
+
+
+test("an anti-scam sentence cannot hide a contradictory direct OTP request", () => {
+  const result = buildRuleAssessment(
+    "Never share your OTP. Reply with your OTP now to keep your account active.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("credential_request"));
+});
+
+test("an anti-scam sentence cannot hide a contradictory payment request", () => {
+  const result = buildRuleAssessment(
+    "Never pay unexpected fees. Send the processing fee now to release your prize.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+});
