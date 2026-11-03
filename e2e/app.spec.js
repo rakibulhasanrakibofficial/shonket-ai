@@ -215,6 +215,20 @@ test('screenshot validation shows errors and allows selecting a corrected image'
   });
   await expect(page.getByAltText('Screenshot preview')).toBeVisible();
   await expect(page.getByText('valid-again.webp')).toBeVisible();
+
+  await fileInput.setInputFiles({name:'empty.png',mimeType:'image/png',buffer:Buffer.alloc(0)});
+  await expect(page.getByRole('alert')).toContainText(/screenshot is empty/i);
+  await expect(page.getByAltText('Screenshot preview')).toHaveCount(0);
+  await expect(fileInput).toHaveValue('');
+
+  await fileInput.setInputFiles({name:'too-large.png',mimeType:'image/png',buffer:Buffer.alloc(2.5*1024*1024+1)});
+  await expect(page.getByRole('alert')).toContainText(/2.5 MB or smaller/i);
+  await expect(page.getByAltText('Screenshot preview')).toHaveCount(0);
+  await expect(fileInput).toHaveValue('');
+
+  await fileInput.setInputFiles({name:'corrected.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=','base64')});
+  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
+  await expect(page.getByText('corrected.png')).toBeVisible();
 });
 
 test('screenshot preview can be replaced without leaving stale file metadata', async ({ page }) => {
@@ -381,12 +395,24 @@ test('simulator can complete all scenarios and restart', async ({ page }) => {
   await expect(page.getByText(/SCENARIO 1 OF/i)).toBeVisible();
 });
 
-test('mobile layout has no horizontal page overflow', async ({ page, isMobile }) => {
+test('mobile layout has no horizontal page overflow, including screenshot preview', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Mobile viewport check');
   await page.goto('/');
-  const sizes = await page.evaluate(() => ({
-    viewport: document.documentElement.clientWidth,
-    page: document.documentElement.scrollWidth,
-  }));
-  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+  const checkOverflow=async()=>{
+    const sizes=await page.evaluate(()=>({
+      viewport:document.documentElement.clientWidth,
+      page:document.documentElement.scrollWidth
+    }));
+    expect(sizes.page).toBeLessThanOrEqual(sizes.viewport+1);
+  };
+  await checkOverflow();
+  await page.locator('#screenshot-upload').setInputFiles({
+    name:'mobile-screenshot.png',
+    mimeType:'image/png',
+    buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=','base64')
+  });
+  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
+  await checkOverflow();
+  await page.getByRole('button',{name:'Remove',exact:true}).click();
+  await checkOverflow();
 });
