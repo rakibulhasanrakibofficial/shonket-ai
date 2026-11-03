@@ -179,6 +179,9 @@ const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[
 const recognitionRef=useRef(null);
 const voiceSessionRef=useRef(0);
 const voiceStopRequestedRef=useRef(false);
+const officialSearchRef=useRef(null);
+const analysisScrollRequestRef=useRef(0);
+const lastAutoScrolledRequestRef=useRef(0);
 const resultLanguage=analysis?.responseLanguage || (analysisLanguage==='bn'?'bn':'en');
 const preferredVoiceLanguage=resultLanguage==='bn'?'bn':'en';
 const matchingVoiceOptions=voiceOptions.filter(voice=>String(voice.lang||'').toLowerCase().startsWith(preferredVoiceLanguage));
@@ -190,7 +193,9 @@ const addHistory=entry=>setHistoryRecords(prev=>[{id:Date.now()+Math.random(),cr
 useEffect(()=>{try{localStorage.setItem('shonket-history-v1',JSON.stringify(historyRecords))}catch{}},[historyRecords]);
 useEffect(()=>{if(!imagePreview)return;return()=>URL.revokeObjectURL(imagePreview)},[imagePreview]);
 useEffect(()=>{
-  if(busy||!analysis)return;
+  if(!analysis)return;
+  const requestId=analysisScrollRequestRef.current;
+  if(!requestId||lastAutoScrolledRequestRef.current===requestId)return;
   let frameOne=0;
   let frameTwo=0;
   frameOne=window.requestAnimationFrame(()=>{
@@ -199,10 +204,9 @@ useEffect(()=>{
       const target=evidenceStack?.children.length?evidenceStack:document.getElementById('analysis-results');
       if(!target)return;
       const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // The header is in normal document flow (not sticky), so do not subtract
-      // its height; doing so leaves the evidence panel lower than intended.
       const targetTop=window.scrollY+target.getBoundingClientRect().top-12;
       window.scrollTo({top:Math.max(0,targetTop),behavior:reduceMotion?'auto':'smooth'});
+      lastAutoScrolledRequestRef.current=requestId;
     });
   });
   return ()=>{
@@ -225,16 +229,27 @@ async function analyze(){
   const cleanMessage=message.trim();
   if((!cleanMessage&&!imageFile)||busy)return;
   const preview=!imageFile?createLocalPreview({message:cleanMessage,language:analysisLanguage}):null;
+  officialSearchRef.current=null;
+  analysisScrollRequestRef.current+=1;
   setBusy(true);
   setAnalysis(preview);
   setAiError('');
+  const onOfficialSearch=payload=>{
+    officialSearchRef.current=payload;
+    setAnalysis(current=>current?{...current,...payload}:current);
+  };
   try{
-    const result=await analyzeMessage({message,imageFile,language:analysisLanguage});
-    setAnalysis(result);
+    const result=await analyzeMessage({
+      message,
+      imageFile,
+      language:analysisLanguage,
+      onOfficialSearch
+    });
+    setAnalysis({...result,...(officialSearchRef.current||{})});
     if(result.extractedText){setMessage(result.combinedText||result.extractedText);removeImage()}
     addHistory({type:'Scam Checker',title:result.screenshotRead?'Screenshot analysis':'Message analysis',verdict:result.verdict||'unknown',riskLevel:result.riskLevel||'unknown',riskScore:result.riskScore==null?null:(Number.isFinite(Number(result.riskScore))?Number(result.riskScore):null)});
   }catch(error){
-    if(preview)setAnalysis(createLocalPreview({message:cleanMessage,language:analysisLanguage,status:'unavailable'}));
+    if(preview)setAnalysis({...createLocalPreview({message:cleanMessage,language:analysisLanguage,status:'unavailable'}),...(officialSearchRef.current||{})});
     setAiError(String(error?.message||'Could not check this message. Please try again.'));
   }finally{setBusy(false)}
 }
@@ -429,9 +444,9 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 <div className="web-evidence-header flex flex-wrap items-center justify-between gap-3">
 <div className="flex min-w-0 items-center gap-3">
 <span className="web-evidence-heading-icon grid h-11 w-11 shrink-0 place-items-center rounded-2xl"><Globe2 size={22}/></span>
-<div className="min-w-0"><p className="text-xs font-extrabold tracking-[.15em] text-cyan-100 sm:text-sm">{resultLanguage==='bn'?'ওয়েব থেকে পাওয়া প্রমাণ':'WEB EVIDENCE · GOOGLE SEARCH'}</p><p className="mt-1 text-sm leading-6 text-slate-300">{analysis.webEvidence.status==='evidence_retrieved'?(resultLanguage==='bn'?'সার্চ থেকে প্রাসঙ্গিক উৎস পাওয়া গেছে।':'Grounding sources were returned for this claim.'):(resultLanguage==='bn'?'ব্যবহারযোগ্য উৎসের তথ্য পাওয়া যায়নি। দাবিটি এখনো অযাচাইকৃত।':'No usable source metadata was returned. The claim remains unverified.')}</p></div>
+<div className="min-w-0"><p className="text-xs font-extrabold tracking-[.15em] text-cyan-100 sm:text-sm">{resultLanguage==='bn'?'ওয়েব থেকে পাওয়া প্রমাণ':'WEB EVIDENCE · GOOGLE SEARCH'}</p><p className="mt-1 text-sm leading-6 text-slate-300">{analysis.webEvidence.status==='pending'?(resultLanguage==='bn'?'নির্বাচিত সরকারি উৎস অনুসন্ধান চলছে। ফলাফল আসার সঙ্গে সঙ্গে এখানে দেখানো হবে।':'Searching selected official sources. Results will appear here as soon as they arrive.'):analysis.webEvidence.status==='evidence_retrieved'?(resultLanguage==='bn'?'সার্চ থেকে প্রাসঙ্গিক উৎস পাওয়া গেছে।':'Grounding sources were returned for this claim.'):(resultLanguage==='bn'?'ব্যবহারযোগ্য উৎসের তথ্য পাওয়া যায়নি। দাবিটি এখনো অযাচাইকৃত।':'No usable source metadata was returned. The claim remains unverified.')}</p></div>
 </div>
-<div className="web-evidence-count shrink-0"><FileText size={14}/><span>{analysis.webEvidence.officialSourcesFound||0} {resultLanguage==='bn'?'টি উৎস পাওয়া গেছে':'SOURCES RETRIEVED'}</span></div>
+<div className="web-evidence-count shrink-0">{analysis.webEvidence.status==='pending'?<><span className="evidence-loading-dot"/><span>{resultLanguage==='bn'?'উৎস খোঁজা হচ্ছে':'SEARCHING SOURCES'}</span></>:<><FileText size={14}/><span>{analysis.webEvidence.officialSourcesFound||0} {resultLanguage==='bn'?'টি উৎস পাওয়া গেছে':'SOURCES RETRIEVED'}</span></>}</div>
 </div>
 {analysis.webEvidence.sources?.length>0&&<div className="web-evidence-list mt-4 grid gap-3">{analysis.webEvidence.sources.map((source,i)=>{const host=getLiveSourceDomain(source);const isGov=host.endsWith('.gov.bd');const isEdu=host.endsWith('.edu.bd');const sourceKind=isGov?(resultLanguage==='bn'?'সরকারি ডোমেইন':'Government domain'):isEdu?(resultLanguage==='bn'?'শিক্ষা-প্রতিষ্ঠান ডোমেইন':'Education domain'):(resultLanguage==='bn'?'অন্যান্য উৎস':'Other source');return <a key={source.url||i} href={source.url} target="_blank" rel="noopener noreferrer" className="web-evidence-source group flex min-w-0 items-center gap-3 rounded-2xl p-3.5 transition sm:gap-4 sm:p-4">
 <span className="web-evidence-logo-wrap shrink-0"><LiveSourceLogo source={source} compact/></span>
@@ -469,7 +484,7 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 <div className="official-source-search-panel mt-4 rounded-2xl border border-white/10 bg-[#080e1d]/75 p-3 sm:p-4">
 <div className="flex flex-wrap items-center justify-between gap-2">
 <div className="flex items-center gap-2"><ShieldCheck size={17} className="text-cyan-200"/><p className="text-[10px] font-extrabold tracking-[.14em] text-white">{resultLanguage==='bn'?'লাইভ সরকারি ও প্রাতিষ্ঠানিক উৎস অনুসন্ধান':'LIVE OFFICIAL-SOURCE SEARCH'}</p></div>
-<span className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold tracking-wide ${['results_found','partial_results'].includes(analysis.officialSearch.status)?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':analysis.officialSearch.status==='guidance_only'||analysis.officialSearch.status==='partial_guidance'?'border-sky-300/30 bg-sky-300/10 text-sky-100':analysis.officialSearch.status==='no_results'?'border-amber-300/30 bg-amber-300/10 text-amber-100':'border-rose-300/30 bg-rose-300/10 text-rose-200'}`}>{analysis.officialSearch.status==='partial_results'?'PARTIAL RESULTS':analysis.officialSearch.status==='partial_guidance'?'PARTIAL GUIDANCE':analysis.officialSearch.status==='guidance_only'?'OFFICIAL GUIDANCE':analysis.officialSearch.status==='partial_unavailable'?'PARTIAL SEARCH':analysis.officialSearch.status==='results_found'?'MATCHING NOTICES':analysis.officialSearch.status==='no_results'?'NO MATCHES':analysis.officialSearch.status==='unavailable'?'SEARCH UNAVAILABLE':analysis.officialSearch.status==='backend_not_connected'?'BACKEND NOT CONNECTED':'SEARCH STATUS'}</span>
+<span className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold tracking-wide ${['results_found','partial_results'].includes(analysis.officialSearch.status)?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':analysis.officialSearch.status==='guidance_only'||analysis.officialSearch.status==='partial_guidance'?'border-sky-300/30 bg-sky-300/10 text-sky-100':analysis.officialSearch.status==='no_results'?'border-amber-300/30 bg-amber-300/10 text-amber-100':'border-rose-300/30 bg-rose-300/10 text-rose-200'}`}>{analysis.officialSearch.status==='pending'?'SEARCHING OFFICIAL SOURCES':analysis.officialSearch.status==='partial_results'?'PARTIAL RESULTS':analysis.officialSearch.status==='partial_guidance'?'PARTIAL GUIDANCE':analysis.officialSearch.status==='guidance_only'?'OFFICIAL GUIDANCE':analysis.officialSearch.status==='partial_unavailable'?'PARTIAL SEARCH':analysis.officialSearch.status==='results_found'?'MATCHING NOTICES':analysis.officialSearch.status==='no_results'?'NO MATCHES':analysis.officialSearch.status==='unavailable'?'SEARCH UNAVAILABLE':analysis.officialSearch.status==='backend_not_connected'?'BACKEND NOT CONNECTED':'SEARCH STATUS'}</span>
 </div>
 <p className="mt-3 text-xs leading-6 text-slate-200">{resultLanguage==='bn'?analysis.officialSearch.summary_bn:analysis.officialSearch.summary_en}</p>
 {analysis.officialSearch.failedPortalCount>0&&<p className="mt-2 flex items-start gap-2 text-[10px] leading-5 text-amber-200"><AlertTriangle size={13} className="mt-0.5 shrink-0"/>{resultLanguage==='bn'?'কিছু উৎস থেকে উত্তর পাওয়া যায়নি। তাই অনুসন্ধান আংশিক।':'Some selected sources did not respond, so this search is partial.'}</p>}
@@ -493,7 +508,7 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 <span className="official-source-excerpt">{source.excerpt}</span>
 <span className="official-source-open-button">{source.evidenceType==='government_listing_match'?(resultLanguage==='bn'?'মূল সরকারি নোটিশ খুলুন':'OPEN ORIGINAL GOVERNMENT NOTICE'):source.evidenceType==='official_listing_context'?(resultLanguage==='bn'?'সরকারি নিয়োগ তালিকা খুলুন':'OPEN OFFICIAL RECRUITMENT LISTING'):(resultLanguage==='bn'?'মূল নিরাপত্তা নির্দেশনা খুলুন':'OPEN ORIGINAL SAFETY GUIDANCE')}<ExternalLink size={15}/><ArrowUpRight size={14}/></span>
 </a>)}
-</div>:<div className="mt-4 rounded-xl border border-dashed border-amber-200/20 bg-amber-200/[.035] p-4"><p className="text-xs font-bold text-amber-100">{resultLanguage==='bn'?'কোনো matching notice পাওয়া যায়নি':'No matching notice was found'}</p><p className="mt-1 text-[11px] leading-5 text-slate-400">{resultLanguage==='bn'?'এটি দাবিটি মিথ্যা প্রমাণ করে না। নিচের সাধারণ নিরাপত্তা নির্দেশনা প্রাসঙ্গিক হতে পারে।':'This does not prove the claim is false. General safety guidance may still be relevant.'}</p></div>}
+</div>:{analysis.officialSearch.status==='pending'?<div className="official-search-pending mt-4" role="status" aria-live="polite"><span className="official-search-spinner"/><div><p className="text-xs font-bold text-cyan-100">{resultLanguage==='bn'?'সরকারি উৎস পরীক্ষা করা হচ্ছে':'Checking official source listings'}</p><p className="mt-1 text-[11px] leading-5 text-slate-400">{resultLanguage==='bn'?'পোর্টালগুলো থেকে ফলাফল আসার সঙ্গে সঙ্গে এখানে যোগ হবে।':'Results will be added here as each selected portal responds.'}</p></div></div>:<div className="mt-4 rounded-xl border border-dashed border-amber-200/20 bg-amber-200/[.035] p-4"><p className="text-xs font-bold text-amber-100">{resultLanguage==='bn'?'কোনো matching notice পাওয়া যায়নি':'No matching notice was found'}</p><p className="mt-1 text-[11px] leading-5 text-slate-400">{resultLanguage==='bn'?'এটি দাবিটি মিথ্যা প্রমাণ করে না। নিচের সাধারণ নিরাপত্তা নির্দেশনা প্রাসঙ্গিক হতে পারে।':'This does not prove the claim is false. General safety guidance may still be relevant.'}</p></div>}}
 {analysis.officialSearch.searchedPortals?.length>0&&<div className="mt-4 border-t border-white/10 pt-3"><p className="mb-2 text-[9px] font-extrabold tracking-[.13em] text-slate-400">{resultLanguage==='bn'?'যেসব উৎস অনুসন্ধান করা হয়েছে':'SEARCHED SOURCES'}</p><div className="flex flex-wrap gap-1.5">{analysis.officialSearch.searchedPortals.map((portal,i)=><span key={portal.agency||i} className="searched-portal-chip inline-flex min-w-0 items-center gap-2 rounded-2xl border border-slate-400/20 bg-white/[.035] px-2.5 py-2 text-[10px] font-semibold text-slate-300"><LiveSourceLogo source={portal} compact/><span className="min-w-0"><span className="block font-bold text-slate-100">{portal.agency}</span><span className="mt-0.5 block text-[9px] text-slate-400">{getLiveSourceDomain(portal)}</span></span></span>)}</div></div>}
 <p className="mt-3 text-[10px] leading-5 text-slate-500">{resultLanguage==='bn'?(analysis.officialSearch.scopeNote_bn||'অনুসন্ধানটি নির্বাচিত official source-এ সীমাবদ্ধ। উৎসের বাইরে কোনো দাবি যাচাই করা হয়নি।'):(analysis.officialSearch.scopeNote_en||'Search is limited to selected official sources. Claims outside those sources were not verified.')}</p>
 </div>
