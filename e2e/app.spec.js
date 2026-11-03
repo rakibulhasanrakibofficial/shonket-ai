@@ -4,7 +4,9 @@ test('landing page loads and primary tools are reachable', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/SHONKET AI/i);
   await expect(page.getByRole('heading', { name: /Don.t trust/i })).toBeVisible();
-  await expect(page.getByAltText(/Official Built For Ostad Presents YUNet AIgnite Buildathon 2026 sticker/i)).toBeVisible();
+  const sticker = page.getByAltText(/Official Built For Ostad Presents YUNet AIgnite Buildathon 2026 sticker/i);
+  await expect(sticker).toBeVisible();
+  await expect.poll(() => sticker.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
   await expect(page.getByRole('button', { name: /Analyze a message/i }).first()).toBeVisible();
   await expect(page.getByText(/Your browser's speech provider may process microphone audio/i)).toHaveCount(0);
   await expect(page.getByText(/Screenshot text is extracted through Gemini/i)).toHaveCount(0);
@@ -55,6 +57,8 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
   await expect(page.getByText('UNVERIFIED', { exact: true })).toBeVisible();
   await expect(page.getByText(/No external source was searched/i)).toBeVisible();
+  await expect(page.getByText('LLM NOT CONFIGURED')).toBeVisible();
+  await expect(page.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toBeVisible();
 });
 
 

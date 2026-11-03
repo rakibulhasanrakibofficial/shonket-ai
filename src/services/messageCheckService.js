@@ -1,21 +1,27 @@
 import { buildRuleAssessment } from "../../api/ruleAssessment.js";
+import { retrieveKnowledge } from "../../netlify/functions/knowledge-base.mjs";
 import { extractScreenshotText } from "./screenshotOcrService.js";
 
 const API_BASE_URL = String(import.meta.env?.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-function localAssessment(message, language, apiUnavailable = false) {
+function localAssessment(message, language, status = "not_configured") {
   const detectedLanguage = language === "bn" || language === "en"
     ? language
     : (/[ঀ-৿]/.test(message) ? "bn" : "en");
   const result = buildRuleAssessment(message, detectedLanguage);
-  const noteBn = "API সংযুক্ত না থাকায় এই ফলাফল আপনার ব্রাউজারে নিয়মভিত্তিকভাবে তৈরি হয়েছে।";
-  const noteEn = "The API is not connected, so this result was generated locally using deterministic rules.";
+  const retrievedSources = retrieveKnowledge(message, 3);
+  const noteBn = status === "not_configured"
+    ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
+    : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
+  const noteEn = status === "not_configured"
+    ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
+    : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
 
   return {
     ...result,
-    analysisMode: "local-rules",
+    analysisMode: "local-rules+rag",
     aiAnalysis: {
-      status: "not_connected",
+      status,
       provider: null,
       model: null,
       explanation_bn: "",
@@ -25,8 +31,8 @@ function localAssessment(message, language, apiUnavailable = false) {
       note_bn: noteBn,
       note_en: noteEn
     },
-    retrievedSources: [],
-    apiUnavailable
+    retrievedSources,
+    apiUnavailable: status === "unavailable"
   };
 }
 
@@ -60,27 +66,34 @@ export async function analyzeMessage({
   }
 
   let assessment;
-  const endpoint = API_BASE_URL ? API_BASE_URL + "/api/analyze" : "/api/analyze";
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: requestMessage,
-        language: language === "en" || language === "bn" ? language : "auto"
-      })
-    });
-    assessment = await parseResponse(response);
-  } catch (error) {
-    // No configured backend, a GitHub Pages 404, or a network/CORS failure
-    // falls back locally. Explicit API validation/rate-limit errors are shown.
-    if (error?.status && error.status !== 404 && error.status < 500) {
-      if (error.status === 429 && error.retryAfterSeconds) {
-        throw new Error(error.message + " Retry after about " + error.retryAfterSeconds + " seconds.");
+  if (!API_BASE_URL) {
+    // GitHub Pages is static hosting. Without a configured backend, use the
+    // same deterministic rule engine and the curated RAG corpus in-browser.
+    // This avoids posting to a non-existent /api/analyze route on Pages.
+    assessment = localAssessment(requestMessage, language, "not_configured");
+  } else {
+    const endpoint = API_BASE_URL + "/api/analyze";
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: requestMessage,
+          language: language === "en" || language === "bn" ? language : "auto"
+        })
+      });
+      assessment = await parseResponse(response);
+    } catch (error) {
+      // An explicit client error should be shown. Network, not-found, and
+      // server errors degrade safely to local rules + local RAG.
+      if (error?.status && error.status !== 404 && error.status < 500) {
+        if (error.status === 429 && error.retryAfterSeconds) {
+          throw new Error(error.message + " Retry after about " + error.retryAfterSeconds + " seconds.");
+        }
+        throw error;
       }
-      throw error;
+      assessment = localAssessment(requestMessage, language, "unavailable");
     }
-    assessment = localAssessment(requestMessage, language, true);
   }
 
   if (!imageFile) return assessment;
