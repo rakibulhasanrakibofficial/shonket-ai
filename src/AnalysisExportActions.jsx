@@ -111,7 +111,7 @@ export default function AnalysisExportActions({ analysis, message = "", language
         <ul>{(analysis.safe_actions || []).map((x, i) => <li key={i}>{x}</li>)}</ul>
       </section>
       {analysis.claimVerification?.status && analysis.claimVerification.status !== "not_applicable" && <section className="shonket-print-section">
-        <h2>{bn ? "দাবি যাচাই" : "Claim Verification"} · {String(analysis.claimVerification.status).toUpperCase()}</h2>
+        <h2>{bn ? "দাবি যাচাইয়ের অবস্থা" : "Factual Claim Status"} · {String(analysis.claimVerification.status).toUpperCase()}</h2>
         <p>{bn ? analysis.claimVerification.summary_bn : analysis.claimVerification.summary_en}</p>
       </section>}
       {analysis.aiAnalysis && <section className="shonket-print-section">
