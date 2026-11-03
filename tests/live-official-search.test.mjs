@@ -89,7 +89,7 @@ test("a partial portal outage is not reported as a complete no-result search", a
   assert.equal(result.failedPortalCount, 1);
   assert.equal(result.searchedPortals.length, 2);
   assert.equal(result.evidenceAssessment.status, "search_unavailable");
-  assert.match(result.summary_en, /Some official portals could not be checked/i);
+  assert.match(result.summary_en, /Some official sources could not be checked/i);
 });
 
 test("unmatched claims are not marked false or fraudulent", () => {
