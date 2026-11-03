@@ -13,10 +13,12 @@ function localAssessment(message, language, status = "not_configured") {
   const noteBn = status === "not_configured"
     ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
     : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
-  const noteEn = status === "not_configured"
-    ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
-    : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
-  const officialSearch = {
+  const noteEn = status === "pending"
+    ? "The rule-based result is ready. The AI explanation is still being generated..."
+    : status === "not_configured"
+      ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
+      : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
+  const officialSearch = status === "pending" ? null : {
     status: "backend_not_connected",
     scope: "Bangladesh education ministry and DSHE public scholarship/notice listings",
     searchedAt: null,
@@ -49,6 +51,12 @@ function localAssessment(message, language, status = "not_configured") {
     officialSearch,
     apiUnavailable: status === "unavailable"
   };
+}
+
+export function createLocalPreview({ message, language = "auto" }) {
+  const cleanMessage = String(message || "").trim().slice(0, 4000);
+  if (!cleanMessage) return null;
+  return localAssessment(cleanMessage, language, "pending");
 }
 
 async function parseResponse(response) {
