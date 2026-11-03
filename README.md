@@ -2,67 +2,102 @@
 
 Bangladesh-focused scam-awareness and message-checking toolkit.
 
-**Tagline:** Detect. Understand. Practice. Protect.
+**Tagline:** Detect. Understand. Practise. Protect.
 
 ## Features
 
-- Bangla and English message checks using deterministic, explainable text patterns.
-- Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js using English and Bangla language data; only extracted text is sent to the rule-check API.
-- Evidence snippets, matched warning signals, practical safety actions, and explicit uncertainty.
-- Prize/fee, job/fee, OTP/PIN, urgency, impersonation, suspicious-link-prompt, and remote-access warning patterns.
-- Claims about scholarships, jobs, grants, benefits, or prizes remain **unverified** because this version does not search the web.
-- Deterministic URL structure inspection. Submitted URLs are never fetched by the backend.
-- Fictional scam-awareness simulator with feedback and session score.
-- Microphone dictation with separate English/Bangla language controls and the browser's native microphone permission.
-- Responsive interface with accessible reduced-motion support.
+- Bangla and English scam checks using the existing deterministic rule engine.
+- Optional LLM-assisted explanations. The LLM cannot change the deterministic verdict or risk score.
+- Lexical RAG over a small, curated knowledge base of official Bangladesh safety guidance. Original source links are displayed.
+- Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js in English and Bangla; image files are not uploaded.
+- Microphone dictation, link-structure inspector, screenshot preview, and scam-awareness simulator.
+- Claims about scholarships, jobs, grants, benefits, and prizes remain **unverified** unless the exact claim is independently confirmed by its issuing organisation. The curated RAG collection is not live web search.
+- AI-generated explanations are advisory and do not authenticate senders, domains, notices, or offers.
 
-## Screenshot privacy and limitations
+## Architecture
 
-Screenshot OCR runs in the user's browser. The selected screenshot is passed to a browser OCR worker and is not uploaded to SHONKET's server or sent to a generative-AI API. On first use, Tesseract.js downloads its worker/runtime and English/Bangla language data from its configured public CDNs. OCR quality depends on image clarity, font size, language, and layout; always review the extracted text. Only extracted text and any text the user typed are sent to the scam-check endpoint.
+- **Frontend:** React + Vite, deployed to GitHub Pages.
+- **Backend:** Netlify Function at `POST /api/analyze`.
+- **LLM:** Hugging Face Inference Providers, called only from the server-side Netlify Function.
+- **RAG:** Small lexical retrieval over curated sources in `netlify/functions/knowledge-base.mjs`.
+- **Screenshot OCR:** Tesseract.js in the browser. The screenshot image itself is not sent to Netlify or the LLM provider.
+- **Rule engine:** `api/ruleAssessment.js`; used by the backend and by the browser as an offline fallback.
 
-Pasted-message analysis uses deterministic rules and does not send message text to an AI inference service. Microphone dictation uses the browser's `SpeechRecognition` or `webkitSpeechRecognition` service; the browser or its speech provider may process audio outside the device. SHONKET does not receive raw microphone audio.
+The RAG implementation is lexical retrieval, not vector embeddings or a vector database. It retrieves general safety guidance; it does not prove that a specific message is genuine or fraudulent.
 
-## Stack
+## Deploy the backend to Netlify
 
-React, Vite, Tailwind CSS, Framer Motion, Lucide React, Tesseract.js (browser OCR), Cloudflare Workers Static Assets, and the native Cloudflare Workers Rate Limiting API.
+Connect the GitHub repository `rakibulhasanrakibofficial/shonket-ai` to Netlify.
 
-## Deploy with Cloudflare Workers (Free plan)
+Build settings:
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Functions directory: `netlify/functions`
 
-This project uses a standard Cloudflare Worker with Static Assets. It does not use Pages Functions, Gemini, or Upstash.
+The `netlify.toml` file configures the function and routes `/api/analyze` to it.
 
-1. In **Cloudflare Dashboard → Workers & Pages → Create application → Continue with GitHub**, connect this repository.
-2. Set the Git branch to `main` and the project path to the repository root.
-3. Set the build command to `npm run build`.
-4. Set the deploy command to `npx wrangler deploy`.
-5. Leave environment variables empty. No Gemini API key, Upstash URL, or Upstash token is required.
-6. Deploy. Wrangler reads `wrangler.toml`, publishes `dist` as static assets, and routes `/api/*` requests to `src/worker.js`.
+### Netlify environment variables
 
-The API rate limiter is configured in `wrangler.toml` as 60 checks per 60 seconds per client IP. Cloudflare's Rate Limiting API is approximate and the counter is maintained separately in each Cloudflare location; requests can exceed the configured threshold while counters update. People sharing one public IP may share a limit. The rate limiter namespace ID must be unique within the Cloudflare account.
+Configure these in **Site configuration → Environment variables**. Never put `HF_TOKEN` in the repository or a frontend variable.
 
-Cloudflare Workers Free has a daily request quota, so this is not unlimited hosting. The exact free-plan limits can change; check Cloudflare's current documentation before relying on a quota.
+| Variable | Required | Purpose |
+|---|---|---|
+| `HF_TOKEN` | Optional | Hugging Face token with Inference Providers permission. Without it, deterministic results and RAG sources still work, but no LLM explanation is generated. |
+| `HF_MODEL` | Optional | Model and provider routing preference. Default: `Qwen/Qwen2.5-7B-Instruct:cheapest`. |
+| `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated permitted frontend origins. The GitHub Pages origin, Netlify's own `URL`, and local Vite origins are allowed by default. |
 
-## Local development
+Hugging Face currently provides **$0.10/month** in Inference Providers credit for free accounts, subject to change. This is a small trial allowance, not unlimited usage. Additional usage requires separately purchased credits. Review the current provider/model availability, pricing, terms and data-handling conditions before enabling hosted inference.
+
+A best-effort per-IP request limit is applied in each warm function instance when LLM is enabled. Serverless instances do not share this in-memory counter, so it is not a substitute for a distributed production rate limiter.
+
+### Privacy and data handling
+
+The message is sent to the Netlify Function for rule assessment and RAG retrieval. When `HF_TOKEN` is configured, a redacted copy is sent to the selected Hugging Face Inference Provider for an explanation. The redaction removes common email addresses, URLs, Bangladeshi mobile numbers, and long digit strings, but it cannot guarantee removal of every personal detail. The function does not write messages to an application database. Provider-side processing is governed by the provider's own terms and privacy rules.
+
+The checker shows a notice before submission. Do not enter passwords, OTPs, PINs, account numbers, private documents, or other sensitive personal information.
+
+## Deploy the frontend to GitHub Pages
+
+1. In repository **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**.
+2. In **Settings → Secrets and variables → Actions → Variables**, add:
+   - Name: `VITE_API_BASE_URL`
+   - Value: your Netlify site origin, for example `https://your-site-name.netlify.app` (no trailing slash).
+3. Ensure the Netlify site's allowed CORS origin includes `https://rakibulhasanrakibofficial.github.io`. The default configuration already includes it.
+4. Push to `main` or manually run the **Deploy GitHub Pages** workflow.
+5. The workflow builds with the project base path `/shonket-ai/` and publishes `dist`.
+6. Open `https://rakibulhasanrakibofficial.github.io/shonket-ai/`.
+
+If `VITE_API_BASE_URL` is not configured, the UI remains usable with local deterministic rules and browser-side screenshot OCR. A new Pages build is required after changing this variable.
+
+## Local development and tests
 
 - `npm install`
-- `npm run dev` for the Vite frontend.
-- `npm run build` to generate static assets.
-- `npx wrangler dev` to run the Worker and Static Assets locally.
-- `npm run deploy` to build and deploy from a machine authenticated with the Cloudflare account.
+- `npm run dev` starts the Vite frontend.
+- `npm run test:fast` runs rule-engine, RAG, redaction and Netlify Function tests.
+- `npm run build` creates a root-path build.
+- `npm run build:github-pages` builds with the GitHub Pages subpath.
+- Use `npx netlify dev` to run the frontend and Netlify Function together locally.
 
 ## API behavior
 
-- `POST /api/analyze` accepts up to 4,000 characters of text.
-- JSON request bodies are capped at 64 KB.
-- Screenshot binaries are not accepted by the API; screenshots are OCR'd in the browser and only extracted text is submitted.
-- The Worker uses the Cloudflare-provided `CF-Connecting-IP` header for the rate-limit key. Client-supplied forwarded-IP headers are not trusted.
-- The Worker returns HTTP 429 when the configured native rate limit is exceeded and fails closed with HTTP 503 if the binding is unavailable.
+- `POST /api/analyze` accepts up to 4,000 characters. Request bodies are capped at 16 KB.
+- The response includes the deterministic rule assessment, `aiAnalysis`, and `retrievedSources`.
+- If `HF_TOKEN` is absent or the provider is unavailable, the endpoint still returns rule-based results and retrieved safety guidance.
+- LLM explanations never override the deterministic verdict or risk score.
+- Screenshot binaries are never accepted by the backend; OCR runs in the browser and only extracted text is sent to the checker.
 
-## Limitations and privacy
+## Curated knowledge sources
 
-- Risk scores are deterministic heuristics, not probabilities of fraud or calibrated security scores.
-- A suspicious result is a warning for further checking, not proof of fraud. An uncertain or low-risk result is not a guarantee of safety.
-- Scholarship, job, grant, benefit, and prize claims are not externally verified in this version.
-- Link inspection checks URL structure only. It does not resolve redirects, check reputation, or visit the submitted URL.
-- Screenshot OCR may misread blurry, cropped, low-resolution, or text-heavy images. Always review the extracted text.
-- Do not submit passwords, OTPs, PINs, account numbers, or other private information.
-- The simulator uses fictional educational scenarios.
+- [bKash — Fraud Awareness](https://www.bkash.com/bn/page/fraud-awareness)
+- [bKash — Security Tips](https://www.bkash.com/index.php/en/page/security-tips)
+- [BGD e-GOV CIRT — Error524 smishing advisory (13 April 2026)](https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd)
+- [Government of Bangladesh — ScamCheck: Victim of a Scam](https://scamcheck.gov.bd/victim-of-a-scam/)
+
+## Limitations
+
+- Risk scores are deterministic heuristics, not calibrated probabilities.
+- A suspicious result is a warning for further checking, not proof of fraud. A low-risk result is not a guarantee of safety.
+- The curated RAG corpus can become outdated; it does not run live web searches.
+- URL inspection checks URL structure only. It does not resolve redirects, check domain reputation, or visit the submitted URL.
+- Screenshot OCR can misread blurry or cropped text. Always review extracted text.
+- The browser's speech-recognition provider may process audio under its own terms. SHONKET does not receive raw microphone audio.

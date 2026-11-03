@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "evaluate:scam": "node scripts/evaluate-scam-api.mjs",
     "test:e2e": "playwright test",
-    "test:fast": "node --test tests/fast-assessment.test.mjs",
-    "deploy": "npm run build && wrangler deploy"
+    "test:fast": "node --test tests/fast-assessment.test.mjs tests/netlify-functions.test.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "build:github-pages": "vite build --base=/shonket-ai/"
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
