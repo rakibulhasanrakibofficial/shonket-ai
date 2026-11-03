@@ -61,7 +61,7 @@ test("Netlify API returns deterministic rule result and RAG sources without an L
     assert.equal(body.verdict, "suspicious");
     assert.equal(body.engine, "Rule-based");
     assert.equal(body.aiAnalysis.status, "not_configured");
-    assert.equal(body.analysisMode, "rules+rag");
+    assert.equal(body.analysisMode, "rules+rag+official-search");
     assert.ok(body.retrievedSources.some(source => source.id === "bkash-security-tips"));
     assert.equal(body.privacy.rawMessageStored, false);
   } finally {
