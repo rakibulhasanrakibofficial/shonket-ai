@@ -1,17 +1,4 @@
-async function readImageAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== "string" || !reader.result.startsWith("data:image/")) {
-        reject(new Error("The screenshot could not be read. Please choose the image again."));
-        return;
-      }
-      resolve(reader.result);
-    };
-    reader.onerror = () => reject(new Error("The screenshot could not be read. Please choose the image again."));
-    reader.readAsDataURL(file);
-  });
-}
+import { extractScreenshotText } from "./screenshotOcrService.js";
 
 async function parseResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -27,39 +14,48 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function analyzeMessage({ message, imageFile = null, language = "bn" }) {
+export async function analyzeMessage({
+  message,
+  imageFile = null,
+  language = "bn",
+  ocrExtractor = extractScreenshotText
+}) {
   const cleanMessage = String(message || "").trim();
   if (!cleanMessage && !imageFile) throw new Error("Add a message or screenshot to check.");
 
-  if (imageFile) {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(imageFile.type)) {
-      throw new Error("Upload a PNG, JPG, or WebP screenshot.");
-    }
-    if (imageFile.size > 2.5 * 1024 * 1024) {
-      throw new Error("Screenshot must be 2.5 MB or smaller.");
-    }
+  let requestMessage = cleanMessage;
+  let extractedText = "";
 
-    const imageBase64 = await readImageAsDataUrl(imageFile);
-    const response = await fetch("/api/analyzeScreenshot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: cleanMessage,
-        imageMimeType: imageFile.type,
-        imageBase64,
-        language: language === "en" || language === "bn" ? language : "auto"
-      })
-    });
-    return parseResponse(response);
+  if (imageFile) {
+    extractedText = await ocrExtractor(imageFile);
+    requestMessage = [cleanMessage, extractedText].filter(Boolean).join("\n").slice(0, 4000);
+    if (!requestMessage) throw new Error("No readable message text was found in the screenshot.");
   }
 
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      message: cleanMessage,
+      message: requestMessage,
       language: language === "en" || language === "bn" ? language : "auto"
     })
   });
-  return parseResponse(response);
+  const assessment = await parseResponse(response);
+  if (!imageFile) return assessment;
+
+  const responseLanguage = language === "bn" || language === "en"
+    ? language
+    : (/[ঀ-৿]/.test(requestMessage) ? "bn" : "en");
+  const ocrNote = responseLanguage === "bn"
+    ? "স্ক্রিনশটের লেখা আপনার ব্রাউজারেই পড়া হয়েছে; ঝাপসা বা কাটা অংশ ভুল হতে পারে।"
+    : "Screenshot text was read in your browser; blurry or cropped content may be misread.";
+
+  return {
+    ...assessment,
+    extractedText,
+    combinedText: requestMessage,
+    screenshotRead: true,
+    ocrEngine: "Tesseract.js (English + Bangla, browser-side)",
+    uncertainty: [assessment.uncertainty, ocrNote].filter(Boolean).join(" ")
+  };
 }

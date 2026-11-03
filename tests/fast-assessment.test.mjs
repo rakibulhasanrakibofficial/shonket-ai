@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
 import analyzeHandler from "../api/analyze.js";
-import screenshotHandler from "../api/analyzeScreenshot.js";
 
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
@@ -193,163 +192,6 @@ function createMockResponse() {
   };
 }
 
-test("screenshot API extracts image text and checks it with deterministic rules", async () => {
-  const previous = {
-    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
-    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
-    geminiKey: process.env.GEMINI_API_KEY,
-    geminiModel: process.env.GEMINI_MODEL
-  };
-  const originalFetch = globalThis.fetch;
-  const calls = [];
-  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
-  process.env.GEMINI_API_KEY = "test-gemini-key";
-  process.env.GEMINI_MODEL = "gemini-3.5-flash-lite";
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url: String(url), options });
-    if (String(url) === "https://redis.example.invalid/pipeline") {
-      return { ok: true, json: async () => [{ result: [1, 60] }] };
-    }
-    if (String(url).includes("generativelanguage.googleapis.com")) {
-      return {
-        ok: true,
-        json: async () => ({
-          candidates: [{
-            content: {
-              parts: [{
-                text: JSON.stringify({
-                  extracted_text: "Congratulations! You won a cash prize. Send a processing fee today.",
-                  uncertainty: "Small print may be unclear."
-                })
-              }]
-            }
-          }]
-        })
-      };
-    }
-    throw new Error("Unexpected fetch URL: " + url);
-  };
-
-  try {
-    const response = createMockResponse();
-    await screenshotHandler({
-      method: "POST",
-      headers: { "x-real-ip": "203.0.113.21" },
-      body: {
-        message: "Important context: " + "a".repeat(2500),
-        imageMimeType: "image/png",
-        imageBase64: "data:image/png;base64,aW1hZ2U=",
-        language: "en"
-      }
-    }, response);
-
-    assert.equal(response.statusCode, 200);
-    const body = JSON.parse(response.body);
-    assert.equal(body.screenshotRead, true);
-    assert.match(body.extractedText, /cash prize/i);
-    assert.ok(body.combinedText.startsWith("Important context: "));
-    assert.ok(body.combinedText.length > 2500);
-    assert.equal(body.verdict, "suspicious");
-    assert.ok(body.matchedSignals.includes("unverified_prize_claim"));
-    assert.ok(body.matchedSignals.includes("upfront_payment"));
-    assert.equal(calls.filter(call => call.url === "https://redis.example.invalid/pipeline").length, 2);
-    assert.equal(calls.filter(call => call.url.includes("generativelanguage.googleapis.com")).length, 1);
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
-    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
-    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
-    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
-    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
-    else process.env.GEMINI_API_KEY = previous.geminiKey;
-    if (previous.geminiModel === undefined) delete process.env.GEMINI_MODEL;
-    else process.env.GEMINI_MODEL = previous.geminiModel;
-  }
-});
-
-test("screenshot API rejects base64 payloads above the exact 2.5 MB limit", async () => {
-  const previous = {
-    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
-    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
-    geminiKey: process.env.GEMINI_API_KEY
-  };
-  const originalFetch = globalThis.fetch;
-  let geminiCalled = false;
-  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
-  process.env.GEMINI_API_KEY = "test-gemini-key";
-  globalThis.fetch = async url => {
-    if (String(url) === "https://redis.example.invalid/pipeline") {
-      return { ok: true, json: async () => [{ result: [1, 60] }] };
-    }
-    geminiCalled = true;
-    throw new Error("Gemini must not receive an oversized screenshot");
-  };
-
-  try {
-    const oversizedBase64 = Buffer.alloc(2.5 * 1024 * 1024 + 1, 0x61).toString("base64");
-    const response = createMockResponse();
-    await screenshotHandler({
-      method: "POST",
-      headers: { "x-real-ip": "203.0.113.23" },
-      body: {
-        imageMimeType: "image/png",
-        imageBase64: "data:image/png;base64," + oversizedBase64
-      }
-    }, response);
-    assert.equal(response.statusCode, 413);
-    assert.equal(geminiCalled, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
-    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
-    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
-    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
-    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
-    else process.env.GEMINI_API_KEY = previous.geminiKey;
-  }
-});
-
-test("screenshot API rejects unsupported image types before calling Gemini", async () => {
-  const previous = {
-    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
-    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
-    geminiKey: process.env.GEMINI_API_KEY
-  };
-  const originalFetch = globalThis.fetch;
-  let geminiCalled = false;
-  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
-  process.env.GEMINI_API_KEY = "test-gemini-key";
-  globalThis.fetch = async url => {
-    if (String(url) === "https://redis.example.invalid/pipeline") {
-      return { ok: true, json: async () => [{ result: [1, 60] }] };
-    }
-    geminiCalled = true;
-    throw new Error("Gemini should not be called for an unsupported file type");
-  };
-
-  try {
-    const response = createMockResponse();
-    await screenshotHandler({
-      method: "POST",
-      headers: { "x-real-ip": "203.0.113.22" },
-      body: { imageMimeType: "image/gif", imageBase64: "Z2lm" }
-    }, response);
-    assert.equal(response.statusCode, 400);
-    assert.equal(geminiCalled, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
-    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
-    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
-    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
-    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
-    else process.env.GEMINI_API_KEY = previous.geminiKey;
-  }
-});
-
 test("public API checks text with deterministic rules and only calls Redis for rate limits", async () => {
   const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
   const previousToken = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -502,5 +344,140 @@ test("public API auto-detects Bangla text without a provider call", async () => 
     else process.env.UPSTASH_REDIS_REST_URL = previousUrl;
     if (previousToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
     else process.env.UPSTASH_REDIS_REST_TOKEN = previousToken;
+  }
+});
+
+
+import { extractScreenshotText } from "../src/services/screenshotOcrService.js";
+import { analyzeMessage } from "../src/services/messageCheckService.js";
+import { onRequest as cloudflareAnalyze } from "../functions/api/analyze.js";
+
+test("browser screenshot OCR extracts English and Bangla and terminates its worker", async () => {
+  const file = { type: "image/png", size: 128 };
+  let terminated = false;
+  let progress = 0;
+  const extracted = await extractScreenshotText(file, {
+    onProgress: value => { progress = value; },
+    workerFactory: async (languages, workers, options) => {
+      assert.equal(languages, "eng+ben");
+      assert.equal(workers, 1);
+      options.logger({ status: "recognizing text", progress: 0.5 });
+      return {
+        recognize: async receivedFile => {
+          assert.equal(receivedFile, file);
+          return { data: { text: "Congratulations! You won a prize.\nআপনি পুরস্কার জিতেছেন।" } };
+        },
+        terminate: async () => { terminated = true; }
+      };
+    }
+  });
+  assert.match(extracted, /Congratulations/i);
+  assert.match(extracted, /পুরস্কার/);
+  assert.equal(progress, 50);
+  assert.equal(terminated, true);
+});
+
+test("browser screenshot OCR rejects invalid and oversized files before starting a worker", async () => {
+  let created = false;
+  const workerFactory = async () => { created = true; throw new Error("must not run"); };
+  await assert.rejects(extractScreenshotText({ type: "image/gif", size: 20 }, { workerFactory }), /PNG, JPG, or WebP/);
+  await assert.rejects(extractScreenshotText({ type: "image/png", size: 2.5 * 1024 * 1024 + 1 }, { workerFactory }), /2.5 MB/);
+  assert.equal(created, false);
+});
+
+test("screenshot analysis runs browser OCR and sends extracted text only to the API", async () => {
+  const originalFetch = globalThis.fetch;
+  const file = { type: "image/png", size: 128 };
+  let requestUrl = "";
+  let requestBody = null;
+  globalThis.fetch = async (url, options) => {
+    requestUrl = String(url);
+    requestBody = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ verdict: "suspicious", engine: "Rule-based", uncertainty: "Not proof of fraud." }) };
+  };
+
+  try {
+    const result = await analyzeMessage({
+      message: "Please review this message:",
+      imageFile: file,
+      language: "en",
+      ocrExtractor: async receivedFile => {
+        assert.equal(receivedFile, file);
+        return "You have won a prize. Pay a processing fee.";
+      }
+    });
+    assert.equal(requestUrl, "/api/analyze");
+    assert.equal(requestBody.message, "Please review this message:\nYou have won a prize. Pay a processing fee.");
+    assert.equal(requestBody.imageBase64, undefined);
+    assert.equal(requestBody.imageMimeType, undefined);
+    assert.equal(result.screenshotRead, true);
+    assert.equal(result.extractedText, "You have won a prize. Pay a processing fee.");
+    assert.match(result.ocrEngine, /browser-side/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Cloudflare Pages Function analyzes text and rate-limits using the trusted CF client IP", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    return new Response(JSON.stringify([{ result: [1, 60] }]), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  try {
+    const request = new Request("https://shonket.example/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.31" },
+      body: JSON.stringify({
+        message: "You have won a cash prize. Pay the processing fee now to release it.",
+        language: "en"
+      })
+    });
+    const response = await cloudflareAnalyze({
+      request,
+      env: {
+        UPSTASH_REDIS_REST_URL: "https://redis.example.invalid",
+        UPSTASH_REDIS_REST_TOKEN: "test-token"
+      }
+    });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.verdict, "suspicious");
+    assert.equal(body.engine, "Rule-based");
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every(call => call.url === "https://redis.example.invalid/pipeline"));
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Cloudflare Pages Function fails closed without a trusted CF client IP", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => { called = true; throw new Error("Redis must not be called"); };
+
+  try {
+    const request = new Request("https://shonket.example/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.32" },
+      body: JSON.stringify({ message: "Your account is blocked. Send your OTP now." })
+    });
+    const response = await cloudflareAnalyze({
+      request,
+      env: {
+        UPSTASH_REDIS_REST_URL: "https://redis.example.invalid",
+        UPSTASH_REDIS_REST_TOKEN: "test-token"
+      }
+    });
+    assert.equal(response.status, 503);
+    assert.equal(called, false);
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
