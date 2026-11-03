@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
 import analyzeHandler from "../api/analyze.js";
+import screenshotHandler from "../api/analyzeScreenshot.js";
 
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
@@ -186,6 +187,118 @@ function createMockResponse() {
     }
   };
 }
+
+test("screenshot API extracts image text and checks it with deterministic rules", async () => {
+  const previous = {
+    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+    geminiKey: process.env.GEMINI_API_KEY,
+    geminiModel: process.env.GEMINI_MODEL
+  };
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.GEMINI_API_KEY = "test-gemini-key";
+  process.env.GEMINI_MODEL = "gemini-3.5-flash-lite";
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    if (String(url) === "https://redis.example.invalid/pipeline") {
+      return { ok: true, json: async () => [{ result: [1, 60] }] };
+    }
+    if (String(url).includes("generativelanguage.googleapis.com")) {
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{
+            content: {
+              parts: [{
+                text: JSON.stringify({
+                  extracted_text: "Congratulations! You won a cash prize. Send a processing fee today.",
+                  uncertainty: "Small print may be unclear."
+                })
+              }]
+            }
+          }]
+        })
+      };
+    }
+    throw new Error("Unexpected fetch URL: " + url);
+  };
+
+  try {
+    const response = createMockResponse();
+    await screenshotHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.21" },
+      body: {
+        message: "",
+        imageMimeType: "image/png",
+        imageBase64: "data:image/png;base64,aW1hZ2U=",
+        language: "en"
+      }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.body);
+    assert.equal(body.screenshotRead, true);
+    assert.match(body.extractedText, /cash prize/i);
+    assert.equal(body.verdict, "suspicious");
+    assert.ok(body.matchedSignals.includes("unverified_prize_claim"));
+    assert.ok(body.matchedSignals.includes("upfront_payment"));
+    assert.equal(calls.filter(call => call.url === "https://redis.example.invalid/pipeline").length, 2);
+    assert.equal(calls.filter(call => call.url.includes("generativelanguage.googleapis.com")).length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
+    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
+    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previous.geminiKey;
+    if (previous.geminiModel === undefined) delete process.env.GEMINI_MODEL;
+    else process.env.GEMINI_MODEL = previous.geminiModel;
+  }
+});
+
+test("screenshot API rejects unsupported image types before calling Gemini", async () => {
+  const previous = {
+    redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+    geminiKey: process.env.GEMINI_API_KEY
+  };
+  const originalFetch = globalThis.fetch;
+  let geminiCalled = false;
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.invalid";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.GEMINI_API_KEY = "test-gemini-key";
+  globalThis.fetch = async url => {
+    if (String(url) === "https://redis.example.invalid/pipeline") {
+      return { ok: true, json: async () => [{ result: [1, 60] }] };
+    }
+    geminiCalled = true;
+    throw new Error("Gemini should not be called for an unsupported file type");
+  };
+
+  try {
+    const response = createMockResponse();
+    await screenshotHandler({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.22" },
+      body: { imageMimeType: "image/gif", imageBase64: "Z2lm" }
+    }, response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(geminiCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previous.redisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = previous.redisUrl;
+    if (previous.redisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = previous.redisToken;
+    if (previous.geminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previous.geminiKey;
+  }
+});
 
 test("public API checks text with deterministic rules and only calls Redis for rate limits", async () => {
   const previousUrl = process.env.UPSTASH_REDIS_REST_URL;
