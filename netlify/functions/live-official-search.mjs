@@ -97,6 +97,77 @@ const SOURCE_GROUPS = {
       listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     }
+  ],
+  cybersecurity: [
+    {
+      id: "cirt-alerts",
+      agency: "BGD e-GOV CIRT — alerts",
+      title: "BGD e-GOV CIRT — Security Alerts",
+      listingUrl: "https://cirt.gov.bd/alerts",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
+      kind: "official_guidance"
+    }
+  ],
+  courier: [
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
+      kind: "official_guidance"
+    }
+  ],
+  telecom: [
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    },
+    {
+      id: "cirt-alerts",
+      agency: "BGD e-GOV CIRT — alerts",
+      title: "BGD e-GOV CIRT — Security Alerts",
+      listingUrl: "https://cirt.gov.bd/alerts",
+      kind: "cyber_advisory"
+    }
+  ],
+  commerce: [
+    {
+      id: "scamcheck-common-scams",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Common Scams in Bangladesh",
+      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
+      kind: "official_guidance"
+    },
+    {
+      id: "cirt-smishing",
+      agency: "BGD e-GOV CIRT — cybersecurity advisory",
+      title: "Global Error524 smishing campaign targeting Bangladesh",
+      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
+      kind: "cyber_advisory"
+    }
   ]
 };
 
