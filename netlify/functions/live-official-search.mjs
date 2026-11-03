@@ -68,84 +68,6 @@ const SOURCE_GROUPS = {
       kind: "government_listing"
     },
     {
-      id: "scamcheck-online-safety",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Online safety guidance",
-      listingUrl: "https://scamcheck.gov.bd/online-safety/",
-      kind: "official_guidance"
-    }
-  ],
-  cybersecurity: [
-    {
-      id: "cirt-alerts",
-      agency: "BGD e-GOV CIRT — alerts",
-      title: "BGD e-GOV CIRT — Security Alerts",
-      listingUrl: "https://cirt.gov.bd/alerts",
-      kind: "cyber_advisory"
-    },
-    {
-      id: "cirt-smishing",
-      agency: "BGD e-GOV CIRT — cybersecurity advisory",
-      title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
-      kind: "cyber_advisory"
-    },
-    {
-      id: "scamcheck-common-scams",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
-      kind: "official_guidance"
-    },
-    {
-      id: "scamcheck-online-safety",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Online safety guidance",
-      listingUrl: "https://scamcheck.gov.bd/online-safety/",
-      kind: "official_guidance"
-    }
-  ],
-  courier: [
-    {
-      id: "cirt-smishing",
-      agency: "BGD e-GOV CIRT — cybersecurity advisory",
-      title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
-      kind: "cyber_advisory"
-    },
-    {
-      id: "scamcheck-common-scams",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
-      kind: "official_guidance"
-    }
-  ],
-  telecom: [
-    {
-      id: "cirt-smishing",
-      agency: "BGD e-GOV CIRT — cybersecurity advisory",
-      title: "Global Error524 smishing campaign targeting Bangladesh",
-      listingUrl: "https://cirt.gov.bd/advisories/global-campaign-targeting-bd",
-      kind: "cyber_advisory"
-    },
-    {
-      id: "cirt-alerts",
-      agency: "BGD e-GOV CIRT — alerts",
-      title: "BGD e-GOV CIRT — Security Alerts",
-      listingUrl: "https://cirt.gov.bd/alerts",
-      kind: "cyber_advisory"
-    }
-  ],
-  commerce: [
-    {
-      id: "scamcheck-common-scams",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Common Scams in Bangladesh",
-      listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
-      kind: "official_guidance"
-    },
-    {
       id: "cirt-smishing",
       agency: "BGD e-GOV CIRT — cybersecurity advisory",
       title: "Global Error524 smishing campaign targeting Bangladesh",
@@ -374,7 +296,9 @@ export function detectSearchCategories(query) {
   if (investment) categories.push("investment");
 
   const prizeFeeClaim = has(/\b(prize|winner|lottery|reward|claim)\b|পুরস্কার|লটারি|বিজয়ী/i) && has(/\b(fee|charge|pay|payment|send money|process(?:ing)?)\b|ফি|টাকা পাঠান|পেমেন্ট/i);
-  const cyberRisk = prizeFeeClaim || has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion)|facebook|whatsapp|instagram|social media account)\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
+  const advanceFeeClaim = has(/\b(processing fee|registration fee|release fee|advance fee|claim fee|joining fee|training fee|verification fee|pay upfront|upfront payment|fee to claim|fee to release)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|আগাম ফি|আগে টাকা/i)
+    && (jobClaim || mobileMoney || banking || courier || commerce || investment || prizeFeeClaim);
+  const cyberRisk = prizeFeeClaim || advanceFeeClaim || has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion)|facebook|whatsapp|instagram|social media account)\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
   if (cyberRisk || (jobClaim && !governmentJob)) categories.push("cybersecurity");
 
   return [...new Set(categories)].slice(0, 3);
