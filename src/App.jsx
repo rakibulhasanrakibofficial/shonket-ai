@@ -10,7 +10,7 @@ const SOURCE_BRANDS = [
     ids: ['bkash-fraud-awareness', 'bkash-security-tips'],
     name: 'bKash',
     logos: [
-      'https://images.seeklogo.com/logo-png/45/1/bkash-logo-png_seeklogo-457983.png',
+      'https://seekvectors.com/storage/images/3532ad70c87c1c00da49a5e1cbb3560f.svg',
       'https://upload.wikimedia.org/wikipedia/commons/f/fe/Bkash.webp'
     ],
     surface: 'source-brand-surface-light'
@@ -21,9 +21,9 @@ const SOURCE_BRANDS = [
     ids: ['bgd-cirt-error524'],
     name: 'BGD e-GOV CIRT',
     logos: [
-      'https://upload.wikimedia.org/wikipedia/commons/e/9d/BGD_e-Gov_CIRT_Emblem.svg',
+      'https://upload.wikimedia.org/wikipedia/commons/e/e9/BGD_e-Gov_CIRT_Emblem.svg',
       'https://cirt.gov.bd/assets/images/CIRT-Main-Logo.png',
-      'https://pbs.twimg.com/profile_images/1712349752086691840/OHEHnX1H.jpg'
+      'https://media.prothomalo.com/prothomalo-bangla/2025-10-08/1g1a5uvx/BGD-e-GOV-CIRT.jpg?auto=format%2Ccompress&fit=max&h=675&w=1200'
     ],
     surface: 'source-brand-surface-light'
   }
@@ -47,8 +47,11 @@ function SourceBrand({ source, size = 'regular' }) {
   const [logoIndex, setLogoIndex] = useState(0);
   const [failed, setFailed] = useState(false);
   const brand = getSourceBrand(source);
-  if (!brand || failed || !brand.logos[logoIndex]) return null;
+  if (!brand) return null;
   const compact = size === 'compact';
+  if (failed || !brand.logos[logoIndex]) {
+    return <span className={'source-brand-fallback ' + (compact ? 'source-brand-fallback-compact' : '')} aria-label={brand.name}>{brand.name}</span>;
+  }
   return (
     <span className={'source-brand-mark source-brand-' + brand.key + ' ' + (compact ? 'source-brand-mark-compact ' : '') + brand.surface} title={brand.name} aria-label={brand.name}>
       <img
