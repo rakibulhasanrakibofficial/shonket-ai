@@ -76,6 +76,40 @@ test("a prize claim without a fee is unverified, not labelled a scam", () => {
   assert.equal(result.confidence, "low");
 });
 
+test("the live smoke-test wording detects a prize claim plus a numeric processing fee", () => {
+  const result = buildRuleAssessment(
+    "Congratulations! You won a 50,000 BDT prize. Pay a 500 BDT processing fee today to claim it.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.riskScore >= 55);
+  assert.ok(result.matchedSignals.includes("unverified_prize_claim"));
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+  assert.match(result.summary_en, /prize claim with an upfront fee/i);
+});
+
+test("a selected remote-job offer with a registration fee is suspicious", () => {
+  const result = buildRuleAssessment(
+    "Your CV has been selected for a remote job. Pay a 750 BDT registration fee to confirm your position.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.riskScore >= 55);
+  assert.ok(result.matchedSignals.includes("unverified_job_offer"));
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+});
+
+test("a simple prize announcement without a fee stays unverified, not suspicious", () => {
+  const result = buildRuleAssessment(
+    "You won a prize in our annual community raffle. Check the organiser's public notice for details.",
+    "en"
+  );
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.riskScore, 22);
+  assert.ok(result.matchedSignals.includes("unverified_prize_claim"));
+  assert.ok(!result.matchedSignals.includes("upfront_payment"));
+});
+
 test("urgent account link language is classified as suspicious", () => {
   const result = buildRuleAssessment(
     "Your account is suspended. Click here to verify your account immediately: https://example.invalid/login",
