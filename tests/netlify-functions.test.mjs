@@ -294,19 +294,16 @@ test("Netlify API degrades safely when the LLM provider is unavailable", async (
 });
 
 
-test("LLM explanation starts while official education portals are still being checked", async () => {
+test("analysis response does not wait for the separate official portal search", async () => {
   const originalFetch = globalThis.fetch;
   const previousToken = process.env.CLOUDFLARE_API_TOKEN;
   const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
   process.env.CLOUDFLARE_API_TOKEN = "cf_test_token";
   process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "true";
-
   let modelStarted = false;
-  const officialUrls = [];
-  const releaseOfficial = [];
-  const officialHtml = "<html><body><table><tr><td>No matching notice in this test.</td></tr></table></body></html>";
+  const unexpectedPortalCalls = [];
 
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async url => {
     const address = String(url);
     if (address.includes("/ai/v1/chat/completions")) {
       modelStarted = true;
@@ -323,32 +320,23 @@ test("LLM explanation starts while official education portals are still being ch
         }]
       }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-
-    officialUrls.push(address);
-    return new Promise(resolve => {
-      releaseOfficial.push(() => resolve(new Response(officialHtml, {
-        status: 200,
-        headers: { "Content-Type": "text/html" }
-      })));
-    });
+    unexpectedPortalCalls.push(address);
+    throw new Error("The analysis endpoint must not perform official portal fetches.");
   };
 
   try {
-    const pending = handler(makeEvent({
+    const response = await handler(makeEvent({
       message: "Government scholarship for university agriculture students in 2031, rural research bursary 71QZ.",
       language: "en"
-    }));
-
-    await new Promise(resolve => setImmediate(resolve));
-    assert.equal(officialUrls.length, 3);
-    assert.equal(modelStarted, true, "LLM request should start before official portal requests finish");
-
-    releaseOfficial.forEach(release => release());
-    const response = await pending;
+    }, { "x-nf-client-connection-ip": "203.0.113.101" }));
     const body = JSON.parse(response.body);
     assert.equal(response.statusCode, 200);
+    assert.equal(modelStarted, true);
+    assert.deepEqual(unexpectedPortalCalls, []);
     assert.equal(body.aiAnalysis.status, "ready");
-    assert.equal(body.officialSearch.searchedPortals.length, 3);
+    assert.equal(body.officialSearch.status, "pending");
+    assert.equal(body.webEvidence.status, "pending");
+    assert.equal(body.webEvidence.searchExecuted, false);
   } finally {
     globalThis.fetch = originalFetch;
     if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
@@ -358,13 +346,7 @@ test("LLM explanation starts while official education portals are still being ch
   }
 });
 
-test("Netlify API returns live official scholarship listings and conservative evidence status", async () => {
-  const originalFetch = globalThis.fetch;
-  const previousSearchFlag = process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
-  const previousToken = process.env.CLOUDFLARE_API_TOKEN;
-  delete process.env.CLOUDFLARE_API_TOKEN;
-  process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = "true";
-
+test("official search endpoint returns live scholarship listings and conservative evidence status", async () => {
   const html = [
     "<table>",
     "<tr><th>No</th><th>Title</th><th>Files</th><th>Link</th><th>Published</th><th>Action</th></tr>",
@@ -372,30 +354,28 @@ test("Netlify API returns live official scholarship listings and conservative ev
     "</table>"
   ].join("");
 
-  globalThis.fetch = async () => new Response(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html" }
-  });
-
-  try {
-    const result = await handler(makeEvent({
+  const result = await officialSearchHandler(
+    makeEvent({
       message: "A government scholarship for university students offers 50,000 BDT for the 2027 academic year.",
       language: "en"
-    }));
-    const body = JSON.parse(result.body);
-    assert.equal(result.statusCode, 200);
-    assert.equal(body.officialSearch.status, "results_found");
-    assert.equal(body.officialSearch.sources.length > 0, true);
-    assert.equal(body.officialSearch.sources[0].publishedDate, "06-08-2026");
-    assert.equal(body.claimVerification.officialSearchStatus, "results_found");
-    assert.equal(body.claimVerification.officialEvidenceStatus, "related_official_notice");
-    assert.match(body.officialSearch.evidenceAssessment.summary_en, /does not authenticate/i);
-    assert.equal(body.aiAnalysis.status, "not_configured");
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (previousSearchFlag === undefined) delete process.env.OFFICIAL_SOURCE_SEARCH_ENABLED;
-    else process.env.OFFICIAL_SOURCE_SEARCH_ENABLED = previousSearchFlag;
-    if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
-    else process.env.CLOUDFLARE_API_TOKEN = previousToken;
-  }
+    }, { "x-nf-client-connection-ip": "203.0.113.102" }),
+    {
+      OFFICIAL_SOURCE_SEARCH_ENABLED: "true",
+      CORS_ALLOWED_ORIGINS: allowedOrigin
+    },
+    null,
+    async () => new Response(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html" }
+    })
+  );
+  const body = JSON.parse(result.body);
+  assert.equal(result.statusCode, 200);
+  assert.equal(body.officialSearch.status, "results_found");
+  assert.equal(body.officialSearch.sources.length > 0, true);
+  assert.equal(body.officialSearch.sources[0].publishedDate, "06-08-2026");
+  assert.equal(body.claimVerification.officialSearchStatus, "results_found");
+  assert.equal(body.claimVerification.officialEvidenceStatus, "related_official_notice");
+  assert.match(body.officialSearch.evidenceAssessment.summary_en, /does not authenticate/i);
 });
+
