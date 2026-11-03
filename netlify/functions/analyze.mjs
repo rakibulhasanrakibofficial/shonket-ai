@@ -253,7 +253,7 @@ async function generateExplanation({ message, language, rules, sources, official
           { role: "user", content: userPrompt }
         ],
         temperature: 0.15,
-        max_completion_tokens: 600,
+        max_completion_tokens: 350,
         chat_template_kwargs: { enable_thinking: false }
       })
     });
