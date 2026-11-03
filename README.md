@@ -24,29 +24,38 @@ Pasted-message analysis uses deterministic rules and does not send message text 
 
 ## Stack
 
-React, Vite, Tailwind CSS, Framer Motion, Lucide React, Tesseract.js (browser OCR), Cloudflare Pages Functions, and Upstash Redis.
+React, Vite, Tailwind CSS, Framer Motion, Lucide React, Tesseract.js (browser OCR), Cloudflare Workers Static Assets, and the native Cloudflare Workers Rate Limiting API.
 
-## Deploy on Cloudflare Pages (Free plan)
+## Deploy with Cloudflare Workers (Free plan)
 
-1. Push this repository to GitHub and connect it in **Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git**.
-2. Select the deployment branch (use `main` after merging this migration branch).
-3. Set the build command to `npm run build`, and the build output directory to `dist`. Keep the project root at the repository root.
-4. In **Settings → Variables and Secrets**, add these to the Production environment (and Preview too if needed):
-   - `UPSTASH_REDIS_REST_URL`
-   - `UPSTASH_REDIS_REST_TOKEN` (secret)
-5. Deploy. The `functions/api/analyze.js` file provides the `/api/analyze` endpoint. The `public/_routes.json` configuration keeps ordinary static asset requests out of Functions invocation routing.
+This project uses a standard Cloudflare Worker with Static Assets. It does not use Pages Functions, Gemini, or Upstash.
 
-No always-on Node server is required. Pages Functions run on demand. Cloudflare Free Workers currently have a daily request quota and a 10 ms CPU-time limit per request; stay within those published limits. Upstash has its own separate limits and plan.
+1. In **Cloudflare Dashboard → Workers & Pages → Create application → Continue with GitHub**, connect this repository.
+2. Set the Git branch to `main` and the project path to the repository root.
+3. Set the build command to `npm run build`.
+4. Set the deploy command to `npx wrangler deploy`.
+5. Leave environment variables empty. No Gemini API key, Upstash URL, or Upstash token is required.
+6. Deploy. Wrangler reads `wrangler.toml`, publishes `dist` as static assets, and routes `/api/*` requests to `src/worker.js`.
+
+The API rate limiter is configured in `wrangler.toml` as 60 checks per 60 seconds per client IP. Cloudflare's Rate Limiting API is approximate and the counter is maintained separately in each Cloudflare location; requests can exceed the configured threshold while counters update. People sharing one public IP may share a limit. The rate limiter namespace ID must be unique within the Cloudflare account.
+
+Cloudflare Workers Free has a daily request quota, so this is not unlimited hosting. The exact free-plan limits can change; check Cloudflare's current documentation before relying on a quota.
 
 ## Local development
 
 - `npm install`
 - `npm run dev` for the Vite frontend.
-- To test the Cloudflare Pages Function locally, build the app and run `npx wrangler pages dev dist` from the repository root. Configure the two Upstash variables in your local environment first.
+- `npm run build` to generate static assets.
+- `npx wrangler dev` to run the Worker and Static Assets locally.
+- `npm run deploy` to build and deploy from a machine authenticated with the Cloudflare account.
 
-## API rate limits
+## API behavior
 
-The API requires Upstash Redis REST URL and token. Requests fail closed with HTTP 503 if rate-limit storage is not configured. Limits are enforced server-side with atomic Redis counters: 60 requests per minute and 300 per day per client IP. The Cloudflare Function uses the Cloudflare-provided `CF-Connecting-IP` header; it does not trust a user-supplied forwarded-IP header.
+- `POST /api/analyze` accepts up to 4,000 characters of text.
+- JSON request bodies are capped at 64 KB.
+- Screenshot binaries are not accepted by the API; screenshots are OCR'd in the browser and only extracted text is submitted.
+- The Worker uses the Cloudflare-provided `CF-Connecting-IP` header for the rate-limit key. Client-supplied forwarded-IP headers are not trusted.
+- The Worker returns HTTP 429 when the configured native rate limit is exceeded and fails closed with HTTP 503 if the binding is unavailable.
 
 ## Limitations and privacy
 

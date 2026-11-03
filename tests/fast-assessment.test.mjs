@@ -350,7 +350,7 @@ test("public API auto-detects Bangla text without a provider call", async () => 
 
 import { extractScreenshotText } from "../src/services/screenshotOcrService.js";
 import { analyzeMessage } from "../src/services/messageCheckService.js";
-import { onRequest as cloudflareAnalyze } from "../functions/api/analyze.js";
+import { handleAnalyzeRequest } from "../src/worker.js";
 
 test("browser screenshot OCR extracts English and Bangla and terminates its worker", async () => {
   const file = { type: "image/png", size: 128 };
@@ -418,66 +418,71 @@ test("screenshot analysis runs browser OCR and sends extracted text only to the 
   }
 });
 
-test("Cloudflare Pages Function analyzes text and rate-limits using the trusted CF client IP", async () => {
-  const originalFetch = globalThis.fetch;
-  const calls = [];
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url: String(url), options });
-    return new Response(JSON.stringify([{ result: [1, 60] }]), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-  };
 
-  try {
-    const request = new Request("https://shonket.example/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.31" },
-      body: JSON.stringify({
-        message: "You have won a cash prize. Pay the processing fee now to release it.",
-        language: "en"
-      })
-    });
-    const response = await cloudflareAnalyze({
-      request,
-      env: {
-        UPSTASH_REDIS_REST_URL: "https://redis.example.invalid",
-        UPSTASH_REDIS_REST_TOKEN: "test-token"
+test("Cloudflare Worker checks text using its native rate-limit binding", async () => {
+  let rateLimitKey = "";
+  const request = new Request("https://shonket.example/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.31" },
+    body: JSON.stringify({
+      message: "You have won a cash prize. Pay the processing fee now to release it.",
+      language: "en"
+    })
+  });
+  const response = await handleAnalyzeRequest(request, {
+    ANALYZE_RATE_LIMITER: {
+      limit: async ({ key }) => {
+        rateLimitKey = key;
+        return { success: true };
       }
-    });
-    const body = await response.json();
-    assert.equal(response.status, 200);
-    assert.equal(body.verdict, "suspicious");
-    assert.equal(body.engine, "Rule-based");
-    assert.equal(calls.length, 2);
-    assert.ok(calls.every(call => call.url === "https://redis.example.invalid/pipeline"));
-    assert.equal(response.headers.get("Cache-Control"), "no-store");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+    }
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.verdict, "suspicious");
+  assert.equal(body.engine, "Rule-based");
+  assert.equal(rateLimitKey, "203.0.113.31");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
 });
 
-test("Cloudflare Pages Function fails closed without a trusted CF client IP", async () => {
-  const originalFetch = globalThis.fetch;
-  let called = false;
-  globalThis.fetch = async () => { called = true; throw new Error("Redis must not be called"); };
+test("Cloudflare Worker returns 429 when the native rate-limit binding rejects a request", async () => {
+  const request = new Request("https://shonket.example/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.33" },
+    body: JSON.stringify({ message: "Your parcel has been delivered." })
+  });
+  const response = await handleAnalyzeRequest(request, {
+    ANALYZE_RATE_LIMITER: { limit: async () => ({ success: false }) }
+  });
+  assert.equal(response.status, 429);
+  assert.match((await response.json()).error, /Too many checks/);
+});
 
-  try {
-    const request = new Request("https://shonket.example/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.32" },
-      body: JSON.stringify({ message: "Your account is blocked. Send your OTP now." })
-    });
-    const response = await cloudflareAnalyze({
-      request,
-      env: {
-        UPSTASH_REDIS_REST_URL: "https://redis.example.invalid",
-        UPSTASH_REDIS_REST_TOKEN: "test-token"
+test("Cloudflare Worker fails closed without a trusted Cloudflare client IP", async () => {
+  let called = false;
+  const request = new Request("https://shonket.example/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.32" },
+    body: JSON.stringify({ message: "Your account is blocked. Send your OTP now." })
+  });
+  const response = await handleAnalyzeRequest(request, {
+    ANALYZE_RATE_LIMITER: {
+      limit: async () => {
+        called = true;
+        return { success: true };
       }
-    });
-    assert.equal(response.status, 503);
-    assert.equal(called, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+    }
+  });
+  assert.equal(response.status, 503);
+  assert.equal(called, false);
+});
+
+test("Cloudflare Worker fails closed when its native rate-limit binding is missing", async () => {
+  const request = new Request("https://shonket.example/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.34" },
+    body: JSON.stringify({ message: "Your account is blocked. Send your OTP now." })
+  });
+  const response = await handleAnalyzeRequest(request, {});
+  assert.equal(response.status, 503);
 });

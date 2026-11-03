@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "evaluate:scam": "node scripts/evaluate-scam-api.mjs",
     "test:e2e": "playwright test",
-    "test:fast": "node --test tests/fast-assessment.test.mjs"
+    "test:fast": "node --test tests/fast-assessment.test.mjs",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
@@ -24,6 +25,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.5",
-    "@playwright/test": "^1.56.1"
+    "@playwright/test": "^1.56.1",
+    "wrangler": "^4.36.0"
   }
 }
