@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
     const requestedLanguage = body.language === "en" || body.language === "bn" ? body.language : "auto";
     const language = requestedLanguage === "auto"
-      ? (/[\\u0980-\\u09FF]/.test(cleanText) ? "bn" : "en")
+      ? (/[\u0980-\u09FF]/.test(cleanText) ? "bn" : "en")
       : requestedLanguage;
     const result = buildRuleAssessment(cleanText, language);
     return send(res, 200, {
