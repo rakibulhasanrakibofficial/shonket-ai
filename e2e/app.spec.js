@@ -52,6 +52,49 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await expect(page.getByText(/No external source was searched/i)).toBeVisible();
 });
 
+
+test('screenshot upload reads the image and checks its extracted text', async ({ page }) => {
+  let requestBody;
+  await page.route('**/api/analyzeScreenshot', async route => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'suspicious',
+        riskLevel: 'high',
+        riskScore: 72,
+        summary_en: 'The screenshot contains a prize claim and an upfront fee request.',
+        summary_bn: 'স্ক্রিনশটে পুরস্কারের দাবি ও আগাম ফি চাওয়া হয়েছে।',
+        evidence: [{ quote: 'Send a processing fee', reason_en: 'An upfront fee is requested.', reason_bn: 'আগাম ফি চাওয়া হয়েছে।' }],
+        tactics: ['unverified_prize_claim', 'upfront_payment'],
+        safe_actions: ['Do not pay an unexpected fee.', 'Verify through the official channel.'],
+        uncertainty: 'Only the visible screenshot text was checked.',
+        confidence: 'medium',
+        engine: 'Gemini Vision OCR + deterministic rules',
+        screenshotRead: true,
+        extractedText: 'Congratulations! You won a prize. Send a processing fee today.'
+      })
+    });
+  });
+
+  await page.goto('/');
+  await page.locator('#screenshot-upload').setInputFiles({
+    name: 'suspicious-message.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=', 'base64')
+  });
+  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
+  await expect(page.getByText('suspicious-message.png')).toBeVisible();
+  await page.getByRole('button', { name: /Analyze message/i }).click();
+
+  await expect.poll(() => requestBody?.imageMimeType).toBe('image/png');
+  expect(requestBody.imageBase64).toContain('data:image/png;base64,');
+  await expect(page.locator('#message')).toHaveValue('Congratulations! You won a prize. Send a processing fee today.');
+  await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
+});
+
 test('voice input restores English and Bangla controls with first-use consent', async ({ page }) => {
   await page.addInitScript(() => {
     class MockSpeechRecognition {
