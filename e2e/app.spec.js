@@ -170,16 +170,16 @@ test('voice input starts directly and keeps English and Bangla controls', async 
   });
   await page.goto('/');
   const voiceLanguages = page.locator('[aria-label="Voice input language"]');
-  await expect(voiceLanguages.getByRole('button', { name: 'বাংলা' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(voiceLanguages.getByRole('button', { name: 'EN' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
   await expect(page.locator('#message')).toHaveValue('A dictated message.');
-  expect(await page.evaluate(() => window.__voiceLanguage)).toBe('bn-BD');
+  expect(await page.evaluate(() => window.__voiceLanguage)).toBe('en-US');
   await expect(page.getByText(/Allow browser voice input/i)).toHaveCount(0);
 
-  await voiceLanguages.getByRole('button', { name: 'EN' }).click();
+  await voiceLanguages.getByRole('button', { name: 'বাংলা' }).click();
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
   await expect(page.locator('#message')).toHaveValue('A dictated message.\nA dictated message.');
-  expect(await page.evaluate(() => window.__voiceLanguage)).toBe('en-US');
+  expect(await page.evaluate(() => window.__voiceLanguage)).toBe('bn-BD');
 });
 
 test('voice input shows a clear unsupported-browser message', async ({ page }) => {
