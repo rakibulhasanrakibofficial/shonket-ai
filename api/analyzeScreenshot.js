@@ -1,7 +1,7 @@
 import { buildRuleAssessment } from "./ruleAssessment.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
-const MAX_TEXT = 2000;
+const MAX_TEXT = 4000;
 const MAX_IMAGE_BYTES = 2.5 * 1024 * 1024;
 const RATE_LIMITS = [
   { name: "minute", windowSeconds: 60, limit: 10 },
