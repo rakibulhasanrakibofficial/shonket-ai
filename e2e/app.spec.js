@@ -197,6 +197,72 @@ test('screenshot upload keeps its preview and can be removed', async ({ page }) 
   await expect(page.locator('#screenshot-upload')).toHaveValue('');
 });
 
+test('screenshot validation shows errors and allows selecting a corrected image', async ({ page }) => {
+  await page.goto('/');
+  const fileInput = page.locator('#screenshot-upload');
+  await fileInput.setInputFiles({
+    name: 'unsupported.gif',
+    mimeType: 'image/gif',
+    buffer: Buffer.from('GIF89a')
+  });
+  await expect(page.getByRole('alert')).toContainText(/Unsupported image type/i);
+  await expect(fileInput).toHaveValue('');
+
+  await fileInput.setInputFiles({
+    name: 'valid-again.webp',
+    mimeType: 'image/webp',
+    buffer: Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEAAUAmJaQAA3AA/v89WAAAAA==','base64')
+  });
+  await expect(page.getByAltText('Screenshot preview')).toBeVisible();
+  await expect(page.getByText('valid-again.webp')).toBeVisible();
+});
+
+test('screenshot preview can be replaced without leaving stale file metadata', async ({ page }) => {
+  await page.goto('/');
+  const fileInput=page.locator('#screenshot-upload');
+  const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6XcAAAAASUVORK5CYII=';
+  await fileInput.setInputFiles({name:'first.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+  await expect(page.getByText('first.png')).toBeVisible();
+  await fileInput.setInputFiles({name:'second.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+  await expect(page.getByText('second.png')).toBeVisible();
+  await expect(page.getByText('first.png')).toHaveCount(0);
+});
+
+test('limitations card is readable and stays within the mobile viewport', async ({ page, isMobile }) => {
+  await page.route('**/api/analyze',async route=>{
+    await route.fulfill({
+      status:200,
+      contentType:'application/json',
+      body:JSON.stringify({
+        isRelevant:true,verdict:'suspicious',riskLevel:'high',riskScore:70,
+        summary_en:'A message asks for an advance payment.',
+        summary_bn:'একটি বার্তায় আগাম টাকা চাওয়া হয়েছে।',
+        evidence:[],tactics:['upfront_fee'],safe_actions:['Verify independently.'],
+        uncertainty:'Sender and claim have not been independently verified.',
+        confidence:'medium',engine:'Rule-based',
+        aiAnalysis:{status:'ready',explanation_en:'The payment request needs checking.',explanation_bn:'পেমেন্ট অনুরোধটি যাচাই করা প্রয়োজন.',next_steps_en:[],next_steps_bn:[]},
+        officialSearch:{status:'not_applicable',sources:[],searchedPortals:[]},
+        retrievedSources:[]
+      })
+    });
+  });
+  await page.goto('/');
+  await page.locator('#message').fill('Pay a processing fee to claim your reward.');
+  await page.getByRole('button',{name:/Analyze message/i}).click();
+  const card=page.locator('.limitations-card');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.limitations-heading')).toContainText('LIMITATIONS & UNCERTAINTY');
+  await expect(card.locator('.limitations-body')).toContainText('The verdict and risk score are rule-based');
+  await expect(card.locator('.limitations-confidence strong')).toHaveText('medium');
+  if(isMobile){
+    const dims=await page.evaluate(()=>({viewport:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+    expect(dims.scroll).toBeLessThanOrEqual(dims.viewport+1);
+    const cardDims=await card.boundingBox();
+    expect(cardDims.width).toBeLessThanOrEqual(dims.viewport+1);
+  }
+});
+
+
 test('voice input starts directly and keeps English and Bangla controls', async ({ page }) => {
   await page.addInitScript(() => {
     class MockSpeechRecognition {
