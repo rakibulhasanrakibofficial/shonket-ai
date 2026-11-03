@@ -1,5 +1,50 @@
 import { test, expect } from '@playwright/test';
 
+const API_ORIGIN = 'https://rakibulhasanrakibofficial.github.io';
+
+async function fulfillApiPreflight(route) {
+  if (route.request().method() !== 'OPTIONS') return false;
+  await route.fulfill({
+    status: 204,
+    headers: {
+      'access-control-allow-origin': API_ORIGIN,
+      'access-control-allow-methods': 'POST, OPTIONS',
+      'access-control-allow-headers': 'Content-Type',
+      'access-control-max-age': '86400'
+    }
+  });
+  return true;
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/official-search', async route => {
+    if (await fulfillApiPreflight(route)) return;
+    if (await fulfillApiPreflight(route)) return;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        officialSearch: {
+          status: 'not_applicable',
+          summary_en: 'No supported official-source category matched this message.',
+          summary_bn: 'এই বার্তার জন্য live search প্রযোজ্য নয়।',
+          sources: [],
+          searchedPortals: []
+        },
+        webEvidence: {
+          searched: false,
+          searchExecuted: false,
+          status: 'not_applicable',
+          officialSourcesFound: 0,
+          sources: [],
+          searchedPortals: []
+        },
+        claimVerification: { status: 'not_applicable' }
+      })
+    });
+  });
+});
+
 test('landing page loads and primary tools are reachable', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/SHONKET AI/i);
@@ -17,6 +62,7 @@ test('landing page loads and primary tools are reachable', async ({ page }) => {
 
 test('scam checker accepts text and shows a rule-based result', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
+    if (await fulfillApiPreflight(route)) return;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -91,6 +137,51 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
       })
     });
   });
+  await page.route('**/api/official-search', async route => {
+    if (await fulfillApiPreflight(route)) return;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        officialSearch: {
+          status: 'guidance_only',
+          category: ['cybersecurity'],
+          summary_en: 'Relevant official safety guidance was found, but no notice matching this specific message was confirmed.',
+          summary_bn: 'প্রাসঙ্গিক নিরাপত্তা নির্দেশনা পাওয়া গেছে।',
+          scopeNote_en: 'Selected Bangladesh cybersecurity sources only; not a whole-web search.',
+          scopeNote_bn: 'নির্বাচিত বাংলাদেশি সাইবার নিরাপত্তা উৎস।',
+          evidenceAssessment: { status: 'contextual_guidance', summary_en: 'The guidance does not authenticate this sender.' },
+          searchedPortals: [{ agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' }],
+          sources: [{
+            id: 'cirt-alerts',
+            agency: 'BGD e-GOV CIRT',
+            title: 'Security Alerts',
+            url: 'https://cirt.gov.bd/alerts',
+            evidenceType: 'official_safety_guidance',
+            evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY',
+            excerpt: 'Official cybersecurity guidance for Bangladesh.'
+          }]
+        },
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          status: 'evidence_retrieved',
+          officialSourcesFound: 1,
+          sources: [{ title: 'BGD e-GOV CIRT — Security Alerts', url: 'https://cirt.gov.bd/alerts', domain: 'cirt.gov.bd' }],
+          searchedPortals: [{ agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' }]
+        },
+        claimVerification: {
+          status: 'unverified',
+          officialSearchAttempted: true,
+          officialSearchStatus: 'guidance_only',
+          officialPortalCount: 1,
+          officialSourceCount: 1,
+          officialEvidenceStatus: 'contextual_guidance',
+          summary_en: 'The live search checked 1 selected official or institutional portal and retrieved general safety guidance.'
+        }
+      })
+    });
+  });
   await page.goto('/');
   await page.locator('#message').fill('Congratulations! You won a cash prize. Send your OTP immediately to claim it.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
@@ -110,6 +201,7 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 
 test('official source results appear before the AI analysis request finishes', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
+    if (await fulfillApiPreflight(route)) return;
     await new Promise(resolve => setTimeout(resolve, 1600));
     await route.fulfill({
       status: 200,
@@ -305,6 +397,7 @@ test('analysis result can be copied and exported as a print-ready PDF', async ({
     window.print = () => { window.__printCalled = true; };
   });
   await page.route('**/api/analyze', async route => {
+    if (await fulfillApiPreflight(route)) return;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -443,6 +536,7 @@ test('screenshot preview can be replaced without leaving stale file metadata', a
 
 test('limitations card is readable and stays within the mobile viewport', async ({ page, isMobile }) => {
   await page.route('**/api/analyze',async route=>{
+    if (await fulfillApiPreflight(route)) return;
     await route.fulfill({
       status:200,
       contentType:'application/json',
