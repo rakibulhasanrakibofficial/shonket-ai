@@ -120,7 +120,8 @@ export async function analyzeMessage({
   imageFile = null,
   language = "bn",
   ocrExtractor = extractScreenshotText,
-  onOfficialSearch = null
+  onOfficialSearch = null,
+  onLocalPreview = null
 }) {
   const cleanMessage = String(message || "").trim();
   if (!cleanMessage && !imageFile) throw new Error("Add a message or screenshot to check.");
@@ -131,6 +132,10 @@ export async function analyzeMessage({
     extractedText = await ocrExtractor(imageFile);
     requestMessage = [cleanMessage, extractedText].filter(Boolean).join("\n").slice(0, 4000);
     if (!requestMessage) throw new Error("No readable message text was found in the screenshot.");
+  }
+
+  if (imageFile && typeof onLocalPreview === "function") {
+    onLocalPreview(localAssessment(requestMessage, language, "pending"));
   }
 
   // Start official-source retrieval independently so the UI can show its
