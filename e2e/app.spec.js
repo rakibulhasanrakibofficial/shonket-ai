@@ -95,7 +95,7 @@ test('screenshot upload reads the image and checks its extracted text', async ({
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
 });
 
-test('voice input restores English and Bangla controls with first-use consent', async ({ page }) => {
+test('voice input starts directly and keeps English and Bangla controls', async ({ page }) => {
   await page.addInitScript(() => {
     class MockSpeechRecognition {
       constructor() { this.lang = ''; }
@@ -115,11 +115,9 @@ test('voice input restores English and Bangla controls with first-use consent', 
   const voiceLanguages = page.locator('[aria-label="Voice input language"]');
   await expect(voiceLanguages.getByRole('button', { name: 'বাংলা' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
-  await expect(page.getByText(/Allow browser voice input/i)).toBeVisible();
-  expect(await page.evaluate(() => window.__voiceStarted || false)).toBe(false);
-  await page.getByRole('button', { name: /Allow and start microphone/i }).click();
   await expect(page.locator('#message')).toHaveValue('A dictated message.');
   expect(await page.evaluate(() => window.__voiceLanguage)).toBe('bn-BD');
+  await expect(page.getByText(/Allow browser voice input/i)).toHaveCount(0);
 
   await voiceLanguages.getByRole('button', { name: 'EN' }).click();
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
@@ -134,7 +132,6 @@ test('voice input shows a clear unsupported-browser message', async ({ page }) =
   });
   await page.goto('/');
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
-  await page.getByRole('button', { name: /Allow and start microphone/i }).click();
   await expect(page.getByRole('alert')).toContainText(/not supported in this browser/i);
 });
 
@@ -153,7 +150,6 @@ test('speech-recognition errors keep the checker visible and show a recoverable 
   });
   await page.goto('/');
   await page.getByRole('button', { name: /Speak|কথা বলুন/ }).click();
-  await page.getByRole('button', { name: /Allow and start microphone/i }).click();
   await expect(page.getByRole('alert')).toContainText(/speech service could not connect/i);
   await expect(page.getByRole('heading', { name: /Check a suspicious message/i })).toBeVisible();
   await expect(page.locator('#message')).toBeVisible();
