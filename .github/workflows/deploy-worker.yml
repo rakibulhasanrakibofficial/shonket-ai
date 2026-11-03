@@ -10,6 +10,7 @@ on:
       - "wrangler.toml"
       - "package.json"
       - "package-lock.json"
+      - "scripts/live-worker-smoke.mjs"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
@@ -51,6 +52,12 @@ jobs:
           apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: e2277133789312b1f0a906e9ee32f038
           command: deploy
+
+      - name: Verify live Worker and AI inference
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        run: node scripts/live-worker-smoke.mjs
+        env:
+          SHONKET_WORKER_URL: https://shonket-ai.rakibhasan212029.workers.dev
 
       - name: Deployment credential required
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
