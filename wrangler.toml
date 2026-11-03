@@ -19,6 +19,14 @@ namespace_id = "2026110301"
 limit = 12
 period = 60
 
+[[ratelimits]]
+name = "OFFICIAL_SEARCH_RATE_LIMITER"
+namespace_id = "2026110302"
+
+[ratelimits.simple]
+limit = 12
+period = 60
+
 [vars]
 CLOUDFLARE_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 OFFICIAL_SOURCE_SEARCH_ENABLED = "true"
