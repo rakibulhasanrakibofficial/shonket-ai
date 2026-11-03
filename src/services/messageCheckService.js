@@ -65,6 +65,17 @@ function localAssessment(message, language, status = "not_configured") {
     },
     retrievedSources,
     officialSearch,
+    claimVerification: status === "pending" ? {
+      ...result.claimVerification,
+      status: "unverified",
+      officialSearchAttempted: true,
+      officialSearchStatus: "pending",
+      officialEvidenceStatus: "pending",
+      officialPortalCount: 0,
+      officialSourceCount: 0,
+      summary_en: "Checking selected official and institutional sources. This result is not yet verified.",
+      summary_bn: "নির্বাচিত সরকারি ও প্রাতিষ্ঠানিক উৎস অনুসন্ধান চলছে। এখনো কোনো চূড়ান্ত যাচাই হয়নি।"
+    } : result.claimVerification,
     webEvidence: status === "pending" ? {
       searched: true,
       searchExecuted: false,
