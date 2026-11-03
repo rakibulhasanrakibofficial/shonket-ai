@@ -11,6 +11,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/live-worker-smoke.mjs"
+      - "tests/**"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
