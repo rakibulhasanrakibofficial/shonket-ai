@@ -385,15 +385,37 @@ test("browser screenshot OCR rejects invalid and oversized files before starting
   assert.equal(created, false);
 });
 
-test("screenshot analysis runs browser OCR and sends extracted text only to the API", async () => {
+test("static GitHub Pages analysis uses local rules and RAG without calling a missing API", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    throw new Error("Static hosting must not make an API request without a backend URL.");
+  };
+
+  try {
+    const result = await analyzeMessage({
+      message: "You have won a cash prize. Pay the processing fee today.",
+      language: "en"
+    });
+    assert.equal(called, false);
+    assert.equal(result.analysisMode, "local-rules+rag");
+    assert.equal(result.aiAnalysis.status, "not_configured");
+    assert.equal(result.verdict, "suspicious");
+    assert.equal(result.engine, "Rule-based");
+    assert.ok(result.retrievedSources.some(source => source.id === "bkash-security-tips"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("screenshot analysis reads locally and sends no request when a backend is not configured", async () => {
   const originalFetch = globalThis.fetch;
   const file = { type: "image/png", size: 128 };
-  let requestUrl = "";
-  let requestBody = null;
-  globalThis.fetch = async (url, options) => {
-    requestUrl = String(url);
-    requestBody = JSON.parse(options.body);
-    return { ok: true, json: async () => ({ verdict: "suspicious", engine: "Rule-based", uncertainty: "Not proof of fraud." }) };
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    throw new Error("No API request is expected on static-only hosting.");
   };
 
   try {
@@ -406,12 +428,12 @@ test("screenshot analysis runs browser OCR and sends extracted text only to the 
         return "You have won a prize. Pay a processing fee.";
       }
     });
-    assert.equal(requestUrl, "/api/analyze");
-    assert.equal(requestBody.message, "Please review this message:\nYou have won a prize. Pay a processing fee.");
-    assert.equal(requestBody.imageBase64, undefined);
-    assert.equal(requestBody.imageMimeType, undefined);
+    assert.equal(called, false);
+    assert.equal(result.analysisMode, "local-rules+rag");
     assert.equal(result.screenshotRead, true);
     assert.equal(result.extractedText, "You have won a prize. Pay a processing fee.");
+    assert.equal(result.combinedText, "Please review this message:\nYou have won a prize. Pay a processing fee.");
+    assert.equal(result.aiAnalysis.status, "not_configured");
     assert.match(result.ocrEngine, /browser-side/);
   } finally {
     globalThis.fetch = originalFetch;
