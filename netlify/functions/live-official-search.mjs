@@ -34,7 +34,7 @@ const SOURCE_GROUPS = {
       id: "bkash-security-tips",
       agency: "bKash — official safety guidance",
       title: "bKash — Security Tips",
-      listingUrl: "https://www.bkash.com/index.php/en/page/security-tips",
+      listingUrl: "https://www.bkash.com/page/security-tips",
       kind: "official_guidance"
     },
     {
@@ -203,11 +203,18 @@ const STOP_WORDS = new Set([
 ]);
 
 const SEARCH_SYNONYMS = [
-  { pattern: /\b(scholarship|scholarships|stipend|fellowship)\b|বৃত্তি|উপবৃত্তি|ফেলোশিপ/i, words: ["scholarship", "scholarships", "stipend", "fellowship", "government", "education", "academic", "student", "বৃত্তি", "উপবৃত্তি"] },
+  { pattern: /\b(scholarship|scholarships|stipend|fellowship)\b|বৃত্তি|উপবৃত্তি|ফেলোশিপ/i, words: ["scholarship", "stipend", "fellowship", "government", "education", "academic", "student", "বৃত্তি", "উপবৃত্তি"] },
   { pattern: /\b(grant|allowance|financial assistance|benefit|subsidy)\b|অনুদান|ভাতা|আর্থিক সহায়তা|আর্থিক সহায়তা/i, words: ["grant", "allowance", "benefit", "government", "education", "student", "অনুদান", "ভাতা"] },
-  { pattern: /\b(job|jobs|recruitment|vacancy|hiring|employment)\b|চাকরি|নিয়োগ|নিয়োগ/i, words: ["job", "jobs", "recruitment", "vacancy", "government", "education", "teacher", "চাকরি", "নিয়োগ", "নিয়োগ"] },
-  { pattern: /\b(education|university|student|study|academic|school|college)\b|শিক্ষা|বিশ্ববিদ্যালয়|বিশ্ববিদ্যালয়|শিক্ষার্থী/i, words: ["education", "university", "student", "study", "academic", "school", "college", "শিক্ষা", "বিশ্ববিদ্যালয়", "বিশ্ববিদ্যালয়", "শিক্ষার্থী"] }
-];
+  { pattern: /\b(job|jobs|recruitment|vacancy|hiring|employment|cv|resume|interview)\b|চাকরি|নিয়োগ|নিয়োগ|সিভি|নিয়োগ বিজ্ঞপ্তি/i, words: ["job", "jobs", "recruitment", "vacancy", "government", "teacher", "চাকরি", "নিয়োগ", "নিয়োগ"] },
+  { pattern: /\b(bkash|b-kash|nagad|rocket|upay|mobile banking|mobile financial|mfs|cash[- ]in|cash[- ]out)\b|বিকাশ|নগদ|রকেট|উপায়|মোবাইল ব্যাংকিং/i, words: ["bkash", "nagad", "rocket", "upay", "mobile", "banking", "mfs", "otp", "pin", "বিকাশ", "নগদ", "রকেট"] },
+  { pattern: /\b(bank|banking|bank account|debit card|credit card|loan|remittance|financial institution)\b|ব্যাংক|ব্যাংকিং|ঋণ|কার্ড|রেমিট্যান্স/i, words: ["bank", "banking", "account", "financial", "security", "fraud", "ব্যাংক", "ঋণ"] },
+  { pattern: /\b(otp|one[- ]time password|pin|password|phishing|smishing|scam|fraud|fake link|verify your account)\b|ওটিপি|পিন|পাসওয়ার্ড|প্রতারণা|জাল লিংক/i, words: ["otp", "pin", "password", "phishing", "smishing", "scam", "fraud", "security", "cyber", "ওটিপি", "পিন", "প্রতারণা"] },
+  { pattern: /\b(courier|parcel|delivery|tracking|shipment|customs fee)\b|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং/i, words: ["courier", "parcel", "delivery", "tracking", "shipment", "fraud", "কুরিয়ার", "পার্সেল"] },
+  { pattern: /\b(sim card|sim registration|mobile operator|telecom|recharge|mobile number)\b|সিম|মোবাইল অপারেটর|রিচার্জ|টেলিকম/i, words: ["sim", "mobile", "telecom", "operator", "registration", "recharge", "সিম", "রিচার্জ"] },
+  { pattern: /\b(online shopping|marketplace|e-commerce|order|refund|seller|buyer|advance payment)\b|অনলাইন শপিং|মার্কেটপ্লেস|অর্ডার|রিফান্ড|বিক্রেতা/i, words: ["shopping", "marketplace", "e-commerce", "order", "refund", "seller", "buyer", "advance", "অনলাইন", "অর্ডার"] },
+  { pattern: /\b(investment|invest|profit|return|ponzi|crypto|loan|interest)\b|বিনিয়োগ|বিনিয়োগ|লাভ|মুনাফা|ঋণ/i, words: ["investment", "invest", "profit", "return", "ponzi", "financial", "বিনিয়োগ", "লাভ"] },
+  { pattern: /\b(education|university|student|study|academic|school|college|teacher)\b|শিক্ষা|বিশ্ববিদ্যালয়|বিশ্ববিদ্যালয়|শিক্ষার্থী/i, words: ["education", "university", "student", "study", "academic", "school", "college", "শিক্ষা", "বিশ্ববিদ্যালয়", "শিক্ষার্থী"] }
+];;
 
 export function normaliseDigits(value) {
   return String(value || "").replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit)));
@@ -254,7 +261,21 @@ export function isAllowedGovUrl(candidate, expectedHost) {
     return url.protocol === "https:"
       && url.hostname === expectedHost
       && url.hostname.endsWith(".gov.bd")
-      && !url.username && !url.password;
+      && !url.username && !url.password
+      && !url.port;
+  } catch {
+    return false;
+  }
+}
+
+export function isAllowedSourceUrl(candidate, expectedUrl) {
+  try {
+    const url = new URL(candidate);
+    const expected = new URL(expectedUrl);
+    return url.protocol === "https:"
+      && url.hostname === expected.hostname
+      && !url.username && !url.password
+      && !url.port;
   } catch {
     return false;
   }
@@ -271,7 +292,7 @@ function safeAnchors(row, baseUrl) {
     if (!href) continue;
     try {
       const url = new URL(href, baseUrl);
-      if (isAllowedGovUrl(url.href, host)) links.push({ url: url.href, label: htmlToText(match[2]) });
+      if (isAllowedSourceUrl(url.href, baseUrl)) links.push({ url: url.href, label: htmlToText(match[2]) });
     } catch {}
   }
   return links;
@@ -320,9 +341,70 @@ export function parseListingRows(html, portal) {
 }
 
 export function isEducationClaim(query) {
-  // This search is scoped to Ministry of Education and DSHE listings.
-  // Generic private-sector job/recruitment messages are outside that scope.
-  return /\b(scholarship|stipend|fellowship|grant|education|university|student|study|academic|school|college|teacher)\b|বৃত্তি|উপবৃত্তি|ফেলোশিপ|অনুদান|শিক্ষা|বিশ্ববিদ্যালয়|বিশ্ববিদ্যালয়|শিক্ষার্থী|নিয়োগ|নিয়োগ|শিক্ষক/i.test(query);
+  return /\b(scholarship|stipend|fellowship|grant|education|university|student|study|academic|school|college|teacher)\b|বৃত্তি|উপবৃত্তি|ফেলোশিপ|অনুদান|শিক্ষা|বিশ্ববিদ্যালয়|বিশ্ববিদ্যালয়|শিক্ষার্থী|শিক্ষক/i.test(query);
+}
+
+export function detectSearchCategories(query) {
+  const value = String(query || "").slice(0, 4_000);
+  const has = pattern => pattern.test(value);
+  const categories = [];
+
+  if (isEducationClaim(value)) categories.push("education");
+
+  const jobClaim = has(/\b(job|jobs|recruitment|vacancy|hiring|employment|cv|resume|interview|job offer|job circular)\b|চাকরি|নিয়োগ|নিয়োগ|সিভি/i);
+  const governmentJob = has(/\b(government|govt|public service|bpsc|teletalk|government job)\b|সরকারি|বিসিএস|টেলিটক/i);
+  if (jobClaim && !categories.includes("education")) categories.push("jobs");
+
+  const mobileMoney = has(/\b(bkash|b-kash|nagad|rocket|upay|mfs|mobile financial|mobile banking|cash[- ]in|cash[- ]out|wallet transaction)\b|বিকাশ|নগদ|রকেট|উপায়|উপায়|মোবাইল ব্যাংকিং|ক্যাশ.?ইন|ক্যাশ.?আউট/i);
+  if (mobileMoney) categories.push("mobile_money");
+
+  const banking = has(/\b(bank|banking|bank account|debit card|credit card|loan|remittance|wire transfer|financial institution|account statement)\b|ব্যাংক|ব্যাংকিং|ঋণ|রেমিট্যান্স|কার্ড|হিসাব বিবরণী/i);
+  if (banking && !mobileMoney) categories.push("banking");
+
+  const courier = has(/\b(courier|parcel|delivery|tracking number|shipment|customs fee|customs charge)\b|কুরিয়ার|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|চালান/i);
+  if (courier) categories.push("courier");
+
+  const telecom = has(/\b(sim card|sim registration|mobile operator|telecom|recharge|mobile number|phone number|network provider)\b|সিম|মোবাইল অপারেটর|রিচার্জ|টেলিকম|নম্বর বন্ধ/i);
+  if (telecom) categories.push("telecom");
+
+  const commerce = has(/\b(online shopping|marketplace|e-commerce|order|refund|seller|buyer|advance payment|product delivery)\b|অনলাইন শপিং|মার্কেটপ্লেস|অর্ডার|রিফান্ড|বিক্রেতা|ক্রেতা/i);
+  if (commerce) categories.push("commerce");
+
+  const investment = has(/\b(investment|invest|profit|guaranteed return|ponzi|crypto|loan offer|double your money)\b|বিনিয়োগ|বিনিয়োগ|মুনাফা|লাভের নিশ্চয়তা|লাভের নিশ্চয়তা|টাকা দ্বিগুণ/i);
+  if (investment) categories.push("investment");
+
+  const cyberRisk = has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion))\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
+  if (cyberRisk || (jobClaim && !governmentJob)) categories.push("cybersecurity");
+
+  return [...new Set(categories)].slice(0, 3);
+}
+
+export function isOfficialSourceSearchApplicable(query) {
+  return detectSearchCategories(query).length > 0;
+}
+
+function searchPlan(query) {
+  const categories = detectSearchCategories(query);
+  const governmentJob = /\b(government|govt|public service|bpsc|teletalk|government job)\b|সরকারি|বিসিএস|টেলিটক/i.test(query);
+  const selected = [];
+  for (const category of categories) {
+    for (const source of SOURCE_GROUPS[category] || []) {
+      if (category === "jobs" && source.id === "teletalk-jobs" && !governmentJob) continue;
+      selected.push({ ...source, category });
+    }
+  }
+  const unique = [];
+  const seen = new Set();
+  for (const source of selected) {
+    if (seen.has(source.id)) continue;
+    seen.add(source.id);
+    unique.push(source);
+  }
+  return {
+    categories,
+    sources: unique.slice(0, categories.includes("education") ? 3 : 4),
+    governmentJob
+  };
 }
 
 function scoreRecord(record, terms) {
@@ -365,19 +447,34 @@ async function fetchListing(portal, fetchImpl) {
       method: "GET",
       redirect: "manual",
       signal: controller.signal,
-      headers: { "Accept": "text/html,application/xhtml+xml", "User-Agent": "SHONKET-AI-Official-Notice-Search/1.0" }
+      headers: { "Accept": "text/html,application/xhtml+xml", "User-Agent": "SHONKET-AI-Official-Source-Search/1.0" }
     });
-    if (!response.ok || response.status >= 300) throw new Error("Official portal returned HTTP " + response.status);
-    if (response.url && !isAllowedGovUrl(response.url, new URL(portal.listingUrl).hostname)) {
-      throw new Error("Official portal redirected outside the allowlist.");
+    if (!response.ok || response.status >= 300) throw new Error("Official source returned HTTP " + response.status);
+    if (response.url && !isAllowedSourceUrl(response.url, portal.listingUrl)) {
+      throw new Error("Official source redirected outside the allowlist.");
     }
     const contentType = response.headers?.get?.("content-type") || "";
-    if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) throw new Error("Official portal did not return HTML.");
+    if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) throw new Error("Official source did not return HTML.");
     const html = await response.text();
     return html.slice(0, 1_500_000);
   } finally {
     clearTimeout(timer);
   }
+}
+
+function excerptAroundTerms(text, queryTerms) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  const lower = clean.toLocaleLowerCase();
+  let best = -1;
+  for (const term of queryTerms) {
+    if (term.length < 3) continue;
+    const index = lower.indexOf(term.toLocaleLowerCase());
+    if (index >= 0 && (best < 0 || index < best)) best = index;
+  }
+  if (best < 0) return clean.slice(0, 260);
+  const start = Math.max(0, best - 90);
+  return (start ? "…" : "") + clean.slice(start, Math.min(clean.length, start + 300)) + (start + 300 < clean.length ? "…" : "");
 }
 
 /**
@@ -390,28 +487,33 @@ export async function searchOfficialSources(query, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const rawQuery = String(query || "").trim().slice(0, 4_000);
   const terms = searchTerms(rawQuery);
-  if (!rawQuery || !isEducationClaim(rawQuery) || !terms.length) {
+  const plan = searchPlan(rawQuery);
+
+  if (!rawQuery || !plan.categories.length || !terms.length) {
     return {
       status: "not_applicable",
-      scope: "Bangladesh education ministry and DSHE public scholarship/notice listings",
+      category: [],
+      scope: "No supported official-source category matched this message.",
       searchedAt: new Date().toISOString(),
       searchedPortals: [],
       sources: [],
-      evidenceAssessment: compareEvidence(rawQuery, [], "no_results"),
-      summary_bn: "এই বার্তার জন্য সরকারি শিক্ষা-পোর্টালে অনুসন্ধান প্রযোজ্য নয়।",
-      summary_en: "Search of Bangladesh education portals was not applicable to this message."
+      evidenceAssessment: compareEvidence(rawQuery, [], "not_applicable"),
+      summary_bn: "এই বার্তার সঙ্গে মেলে এমন কোনো official-source category পাওয়া যায়নি।",
+      summary_en: "No supported official-source category matched this message."
     };
   }
 
-  const key = tokens(rawQuery).sort().join("|");
+  const key = plan.categories.join(",") + "|" + tokens(rawQuery).sort().join("|");
   const existing = cache.get(key);
   if (existing && Date.now() - existing.at < CACHE_TTL_MS) return { ...existing.result, cached: true };
 
-  const outcomes = await Promise.allSettled(PORTALS.map(async portal => ({
-    portal, html: await fetchListing(portal, fetchImpl)
+  const outcomes = await Promise.allSettled(plan.sources.map(async source => ({
+    source, html: await fetchListing(source, fetchImpl)
   })));
+
   const searchedPortals = [];
-  const records = [];
+  const listingRecords = [];
+  const guidanceSources = [];
   let failedPortalCount = 0;
 
   for (const outcome of outcomes) {
@@ -419,14 +521,45 @@ export async function searchOfficialSources(query, options = {}) {
       failedPortalCount += 1;
       continue;
     }
+
+    const { source, html } = outcome.value;
     searchedPortals.push({
-      agency: outcome.value.portal.agency,
-      listingUrl: outcome.value.portal.listingUrl
+      agency: source.agency,
+      listingUrl: source.listingUrl,
+      category: source.category,
+      evidenceType: source.kind === "government_listing" || source.kind === "recruitment_listing"
+        ? "government_listing" : "official_safety_guidance"
     });
-    records.push(...parseListingRows(outcome.value.html, outcome.value.portal));
+
+    const rows = (source.kind === "government_listing" || source.kind === "recruitment_listing")
+      ? parseListingRows(html, source)
+      : [];
+    if (rows.length) listingRecords.push(...rows.map(record => ({ ...record, category: source.category })));
+
+    if (source.kind === "official_guidance" || source.kind === "cyber_advisory") {
+      const pageText = htmlToText(html);
+      const pageTokens = new Set(tokens(pageText));
+      const matchedTerms = terms.filter(term => pageTokens.has(term)).slice(0, 8);
+      guidanceSources.push({
+        id: source.id,
+        agency: source.agency,
+        title: source.title,
+        url: source.listingUrl,
+        listingUrl: source.listingUrl,
+        publishedDate: null,
+        publishedDateISO: null,
+        matchedTerms,
+        relevanceScore: matchedTerms.length,
+        evidenceType: "official_safety_guidance",
+        evidenceTypeLabel_en: source.kind === "cyber_advisory" ? "OFFICIAL CYBERSECURITY ADVISORY" : "OFFICIAL SAFETY GUIDANCE",
+        evidenceTypeLabel_bn: source.kind === "cyber_advisory" ? "সরকারি সাইবার নিরাপত্তা সতর্কতা" : "প্রাতিষ্ঠানিক নিরাপত্তা নির্দেশনা",
+        detailFetched: true,
+        excerpt: excerptAroundTerms(pageText, matchedTerms) || "Official safety guidance page retrieved. Review the original page for its full context."
+      });
+    }
   }
 
-  const sources = records
+  const matchingListings = listingRecords
     .map(record => ({ ...record, ...scoreRecord(record, terms) }))
     .filter(record => record.score >= 2)
     .sort((a, b) => b.score - a.score || String(b.publishedDateISO || "").localeCompare(String(a.publishedDateISO || "")))
@@ -441,38 +574,52 @@ export async function searchOfficialSources(query, options = {}) {
       publishedDateISO: record.publishedDateISO,
       matchedTerms: record.matchedTerms,
       relevanceScore: record.score,
+      evidenceType: "government_listing_match",
+      evidenceTypeLabel_en: "MATCHING OFFICIAL NOTICE",
+      evidenceTypeLabel_bn: "মিলে যাওয়া সরকারি নোটিশ",
       detailFetched: false,
-      excerpt: "This title and publication date were read from the official listing only. Open the original notice and attached document to verify amount, eligibility, deadline, and conditions."
+      excerpt: "This notice title and date were read from the official listing only. Open the original notice and attachments to verify the sender, amount, eligibility, deadline and conditions."
     }));
 
-  const status = sources.length
+  const sources = [...matchingListings, ...guidanceSources].slice(0, 6);
+  const hasListingMatch = matchingListings.length > 0;
+  const hasGuidance = guidanceSources.length > 0;
+  const status = hasListingMatch
     ? (failedPortalCount ? "partial_results" : "results_found")
-    : searchedPortals.length
-      ? (failedPortalCount ? "partial_unavailable" : "no_results")
-      : "unavailable";
-  const evidenceAssessment = compareEvidence(rawQuery, sources, status);
+    : hasGuidance
+      ? (failedPortalCount ? "partial_guidance" : "guidance_only")
+      : searchedPortals.length
+        ? "no_results" : "unavailable";
+
+  const label = plan.categories.map(category => SEARCH_CATEGORY_LABELS[category]).filter(Boolean).join(", ");
+  const scopeNote_en = "Search checked selected Bangladesh official or institutional sources for " + label + ". Coverage is limited to these sources and is not a whole-web search.";
+  const scopeNote_bn = "এই অনুসন্ধানে " + label + " বিষয়ে নির্বাচিত বাংলাদেশি সরকারি/প্রাতিষ্ঠানিক উৎস পরীক্ষা করা হয়েছে। উৎসের পরিধি সীমিত; এটি পুরো ওয়েবে অনুসন্ধান নয়।";
+  const evidenceAssessment = compareEvidence(rawQuery, matchingListings, status);
   const result = {
     status,
-    scope: "Bangladesh education ministry and DSHE public scholarship/notice listings",
+    category: plan.categories,
+    scope: label,
+    scopeNote_en,
+    scopeNote_bn,
     searchedAt: new Date().toISOString(),
     searchedPortals,
     failedPortalCount,
     sources,
     evidenceAssessment,
-    summary_bn: sources.length
-      ? "বাংলাদেশের সরকারি শিক্ষা-পোর্টালে সম্পর্কিত নোটিশ পাওয়া গেছে। এটি দাবির প্রেরক, পরিমাণ, যোগ্যতা বা শর্তের সত্যতা নিশ্চিত করে না।"
-      : searchedPortals.length
-        ? (failedPortalCount
-          ? "কিছু সরকারি পোর্টাল পরীক্ষা করা যায়নি এবং যেগুলো পরীক্ষা করা হয়েছে সেখানে মেলে এমন নোটিশ পাওয়া যায়নি। এটি দাবি মিথ্যা হওয়ার প্রমাণ নয়।"
-          : "যে সরকারি শিক্ষা-পোর্টালগুলো পরীক্ষা করা হয়েছে সেখানে মেলে এমন নোটিশ পাওয়া যায়নি। এটি দাবি মিথ্যা হওয়ার প্রমাণ নয়।")
-        : "এই মুহূর্তে সরকারি শিক্ষা-পোর্টালগুলোতে সংযোগ করা যায়নি। পরে আবার চেষ্টা করুন।",
-    summary_en: sources.length
-      ? "Related entries were found on Bangladesh education government portals. This does not confirm the sender, amount, eligibility, or terms."
-      : searchedPortals.length
-        ? (failedPortalCount
-          ? "Some official portals could not be checked and no matching entry was found on the reachable portals. This does not prove the claim is false."
-          : "No matching entry was found on the education government portals checked. This does not prove the claim is false.")
-        : "The education government portals could not be reached right now. Try again later."
+    summary_bn: hasListingMatch
+      ? "মেসেজের সঙ্গে সম্পর্কিত সরকারি নোটিশ পাওয়া গেছে। শিরোনাম মিলে গেলেও প্রেরক, লিংক, অর্থের পরিমাণ বা সব শর্ত যাচাই হয় না।"
+      : hasGuidance
+        ? "প্রাসঙ্গিক official safety guidance পাওয়া গেছে; তবে এই নির্দিষ্ট মেসেজ, প্রেরক বা দাবির সঙ্গে মিলে যাওয়া কোনো সরকারি নোটিশ নিশ্চিত করা যায়নি।"
+        : searchedPortals.length
+          ? "পরীক্ষা করা official source-গুলোতে মেসেজটির সঙ্গে মিলে যাওয়া কোনো notice পাওয়া যায়নি। এতে দাবিটি মিথ্যা প্রমাণ হয় না।"
+          : "এই মুহূর্তে প্রাসঙ্গিক official source-এ সংযোগ করা যায়নি। পরে আবার চেষ্টা করুন।",
+    summary_en: hasListingMatch
+      ? "Related official notice listings were found. A matching title does not verify the sender, link, amount, or every condition."
+      : hasGuidance
+        ? "Relevant official safety guidance was retrieved, but no government notice matching this specific message or claim was confirmed."
+        : searchedPortals.length
+          ? "No notice matching this message was found in the official sources checked. This does not prove the claim is false."
+          : "Relevant official sources could not be reached right now. Try again later."
   };
 
   cache.set(key, { at: Date.now(), result });
