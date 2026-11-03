@@ -91,8 +91,10 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
   await page.getByRole('button', { name: /Analyze message/i }).click();
   await expect(page.locator('#workspace-panel').getByText(/INSTANT RULE-BASED CHECK/i)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('heading', { name: 'Why it was flagged' })).toBeVisible();
-  await expect(page.getByText('CLAIM VERIFICATION')).toBeVisible();
-  await expect(page.getByText('UNVERIFIED', { exact: true })).toBeVisible();
+  await expect(page.getByText('CLAIM VERIFICATION', { exact: true })).toHaveCount(1);
+  await expect(page.getByText('UNVERIFIED', { exact: true })).toHaveCount(1);
+  await expect(page.getByText(/official portals checked/i)).toHaveCount(1);
+  await expect(page.getByText(/references retrieved/i)).toHaveCount(1);
   await expect(page.getByText('LLM ACTIVE')).toBeVisible();
   await expect(page.getByText('OFFICIAL CYBERSECURITY ADVISORY')).toBeVisible();
   await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toBeVisible();
