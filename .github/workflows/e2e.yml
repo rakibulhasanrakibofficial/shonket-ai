@@ -11,6 +11,8 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      VITE_API_BASE_URL: https://shonket-ai.rakibhasan212029.workers.dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
