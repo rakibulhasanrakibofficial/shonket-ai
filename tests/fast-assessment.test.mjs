@@ -138,11 +138,12 @@ test("the response includes no more than three evidence items or tactics", () =>
   assert.ok(result.tactics.length <= 3);
 });
 
-test("text input is bounded to 4000 characters", () => {
-  const longText = "a".repeat(5000);
+test("text beyond the 4000-character assessment limit cannot create a signal", () => {
+  const longText = "ordinary text. ".repeat(300) + "Reply with your OTP now.";
   const result = buildRuleAssessment(longText, "en");
-  assert.equal(result.isRelevant, true);
-  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.isRelevant, false);
+  assert.equal(result.verdict, "out_of_scope");
+  assert.equal(result.riskScore, null);
   assert.equal(result.confidence, "low");
 });
 
