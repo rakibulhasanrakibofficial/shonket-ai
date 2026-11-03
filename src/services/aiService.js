@@ -19,6 +19,14 @@ export async function analyzeMessage({ message, imageFile, language = "bn" }) {
     body: JSON.stringify(body)
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Analysis failed. Please try again.");
+  if (!response.ok) {
+    const retryAfter = Number(data.retryAfterSeconds);
+    const errorMessage = String(data.error || "Analysis failed. Please try again.");
+    throw new Error(
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? `${errorMessage} Retry after about ${retryAfter} seconds.`
+        : errorMessage
+    );
+  }
   return data;
 }
