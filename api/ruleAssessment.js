@@ -2,7 +2,7 @@ const RULES = [
   {
     id: "credential_request",
     weight: 40,
-    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i,
+    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i,
     tactic: "credential_request",
     quoteBn: "গোপন কোড বা পাসওয়ার্ড চাওয়া হয়েছে",
     quoteEn: "A secret code or password is requested",
@@ -101,7 +101,7 @@ function hasBangla(text) {
   return /[\u0980-\u09FF]/.test(text);
 }
 
-const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i;
+const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)/i;
 const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
 
 function stripNegatedInstructions(text) {
