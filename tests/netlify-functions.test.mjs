@@ -118,12 +118,15 @@ test("Netlify API calls Cloudflare Workers AI server-side and validates the LLM 
     return new Response(JSON.stringify({
       choices: [{
         message: {
-          content: JSON.stringify({
-            explanation_bn: "বার্তাটি পুরস্কারের দাবি করে আগাম ফি চাইছে।",
-            explanation_en: "The message combines a prize claim with an upfront fee request.",
-            next_steps_bn: ["ফি দেবেন না।", "অফিসিয়াল উৎসে যাচাই করুন।"],
-            next_steps_en: ["Do not pay the fee.", "Verify through the official source."]
-          })
+          content: [{
+            type: "text",
+            text: "Here is the requested explanation:\\n```json\\n" + JSON.stringify({
+              explanation_bn: "বার্তাটি পুরস্কারের দাবি করে আগাম ফি চাইছে।",
+              explanation_en: "The message combines a prize claim with an upfront fee request.",
+              next_steps_bn: ["ফি দেবেন না।", "অফিসিয়াল উৎসে যাচাই করুন।"],
+              next_steps_en: ["Do not pay the fee.", "Verify through the official source."]
+            }) + "\\n```"
+          }]
         }
       }]
     }), {
@@ -142,6 +145,8 @@ test("Netlify API calls Cloudflare Workers AI server-side and validates the LLM 
     assert.equal(calledUrl, "https://api.cloudflare.com/client/v4/accounts/cf_test_account_id/ai/v1/chat/completions");
     assert.equal(authorization, "Bearer cf_test_token");
     assert.equal(requestBody.model, "@cf/google/gemma-4-26b-a4b-it");
+    assert.equal(requestBody.chat_template_kwargs.enable_thinking, false);
+    assert.equal(requestBody.max_completion_tokens, 600);
     assert.equal(body.aiAnalysis.status, "ready");
     assert.match(body.aiAnalysis.explanation_en, /upfront fee/i);
     assert.equal(body.verdict, "suspicious");
