@@ -186,11 +186,22 @@ function parseBingResults(html, targetDomain, queryType) {
 
 function mentionsExactDomain(text, domain) {
   const value = String(text || "").toLowerCase();
-  // Domains are validated hostnames containing only letters, digits, dots and hyphens.
   const token = String(domain || "").toLowerCase();
   if (!token) return false;
-  const pattern = new RegExp("(?:^|[^a-z0-9.-])" + token + "(?=$|[^a-z0-9-.]|\\\\.(?=\\\\s|$))", "i");
-  return pattern.test(value);
+  let index = value.indexOf(token);
+  while (index >= 0) {
+    const before = index > 0 ? value[index - 1] : "";
+    const afterIndex = index + token.length;
+    const after = value[afterIndex] || "";
+    const leftBoundary = !before || !/[a-z0-9.-]/i.test(before);
+    let rightBoundary = !after || !/[a-z0-9-.]/i.test(after);
+    if (after === "." && (afterIndex + 1 >= value.length || /\\s/.test(value[afterIndex + 1]))) {
+      rightBoundary = true;
+    }
+    if (leftBoundary && rightBoundary) return true;
+    index = value.indexOf(token, index + 1);
+  }
+  return false;
 }
 
 function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
