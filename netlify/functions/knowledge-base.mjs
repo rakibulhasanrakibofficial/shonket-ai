@@ -32,7 +32,7 @@ export const KNOWLEDGE_BASE = [
     url: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
     sourceDate: "2025-01-11",
     summary: "ScamCheck identifies lottery and prize messages that demand a fee or sensitive details to claim winnings as a common scam pattern. It also warns that fake job offers may request upfront registration, training, or visa-processing payments.",
-    retrievalGate: /\b(?:prize|cash prize|winner|lottery|reward|fake job|job offer|recruitment|registration fee|training fee)\b|পুরস্কার|লটারি|বিজয়ী|বিজয়ী|চাকরির প্রস্তাব|নিয়োগ/i,
+    retrievalGate: /\b(?:prize|cash prize|winner|lottery|reward|fake job|job offer|recruitment)\b|পুরস্কার|লটারি|বিজয়ী|বিজয়ী|চাকরির প্রস্তাব|নিয়োগ/i,
     keywords: ["scamcheck", "common scams", "lottery", "prize", "cash prize", "winner", "reward", "claim", "fee", "processing fee", "pay", "upfront", "advance payment", "sensitive details", "fake job", "job offer", "registration", "training", "visa processing"]
   },
   {
