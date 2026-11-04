@@ -720,7 +720,7 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
 <p className="mt-2 text-xs leading-5 text-slate-300">{analysisLanguage==='bn'?(linkAnalysis.webEvidence?.summary_bn||'ডোমেইন-সম্পর্কিত ওয়েব ফলাফল খোঁজা হচ্ছে।'):(linkAnalysis.webEvidence?.summary_en||'Searching for domain-related web references.')}</p>
 {linkAnalysis.webEvidence?.threatIntelligence&&<section className="mt-3 rounded-xl border border-violet-300/20 bg-violet-300/[.035] p-3" data-testid="threat-intelligence-results">
   <div className="flex flex-wrap items-center justify-between gap-2">
-    <div className="flex items-center gap-2"><ShieldCheck size={15} className="text-violet-200"/><p className="text-[10px] font-extrabold tracking-[.14em] text-violet-100">{t('THREAT INTELLIGENCE DATABASES','থ্রেট ইন্টেলিজেন্স ডেটাবেস')}</p></div>
+    <div className="flex items-center gap-2"><ShieldCheck size={15} className="text-violet-200"/><p className="text-[10px] font-extrabold tracking-[.14em] text-violet-100">{t('URLHAUS THREAT INTELLIGENCE','URLhaus থ্রেট ইন্টেলিজেন্স')}</p></div>
     <span className="rounded-full border border-violet-200/20 bg-violet-200/[.06] px-2.5 py-1 text-[9px] font-extrabold text-violet-100">{linkAnalysis.webEvidence.threatIntelligence.status==='not_configured'?t('API KEY NEEDED','API KEY প্রয়োজন'):linkAnalysis.webEvidence.threatIntelligence.status==='matches_found'?t('RECORD FOUND','রেকর্ড পাওয়া গেছে'):linkAnalysis.webEvidence.threatIntelligence.status==='no_matches'?t('NO RECORDS FOUND','কোনো রেকর্ড মেলেনি'):t('LOOKUP UNAVAILABLE','অনুসন্ধান পাওয়া যায়নি')}</span>
   </div>
   <p className="mt-2 text-[11px] leading-5 text-slate-300">{analysisLanguage==='bn'?linkAnalysis.webEvidence.threatIntelligence.summary_bn:linkAnalysis.webEvidence.threatIntelligence.summary_en}</p>
