@@ -667,7 +667,7 @@ test('link inspector identifies a known official domain without opening it', asy
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
   await expect(page.getByText(/bkash\.com/i).first()).toBeVisible();
-  await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
+  await expect(page.getByText(/NO URL FLAGS DETECTED/i)).toBeVisible();
 });
 
 test('link inspector recognises the official multi-part Nagad domain', async ({ page }) => {
@@ -677,7 +677,7 @@ test('link inspector recognises the official multi-part Nagad domain', async ({ 
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
   await expect(page.getByText(/nagad.com.bd/i).first()).toBeVisible();
-  await expect(page.getByText(/NO OBVIOUS SIGNALS/i)).toBeVisible();
+  await expect(page.getByText(/NO URL FLAGS DETECTED/i)).toBeVisible();
   await expect(page.getByText(/Possible brand impersonation/i)).toHaveCount(0);
 });
 
@@ -806,7 +806,7 @@ test('Link Inspector searches the submitted hostname and never sends the full UR
   await expect(evidence.getByText(/RESULTS FOUND/i)).toBeVisible();
   await expect(evidence.locator('.web-evidence-source')).toHaveCount(1);
   await expect(evidence.getByText(/Public report mentioning bkash-bonus.xyz/i)).toBeVisible();
-  await expect(evidence.getByText(/AI EXPLANATION/i)).toBeVisible();
+  await expect(evidence.getByText(/AI EXPLANATION/i).first()).toBeVisible();
 
   expect(submittedPayload.contextType).toBe('url');
   expect(submittedPayload.message).toContain('bkash-bonus.xyz');
@@ -975,11 +975,11 @@ test('a slower official search from an earlier message cannot overwrite a newer 
   await page.goto('/');
   await page.locator('#message').fill('FIRST REQUEST: a prize offer asks for a processing fee.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
-  await expect(page.getByText(/Analysis response for FIRST REQUEST/i)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Analysis response for FIRST REQUEST/i).first()).toBeVisible({ timeout: 60_000 });
 
   await page.locator('#message').fill('SECOND REQUEST: an OTP is requested urgently.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
-  await expect(page.getByText(/Analysis response for SECOND REQUEST/i)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Analysis response for SECOND REQUEST/i).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true })).toBeVisible({ timeout: 10_000 });
 
   await expect.poll(() => firstSearchFinished).toBe(true, { timeout: 10_000 });
@@ -1165,7 +1165,7 @@ test('age-restricted category is not sent to public web search and does not beco
   await page.locator('#url').fill('https://18plus.example');
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/Age-restricted \/ 18\+ category/i)).toBeVisible();
-  await expect(page.locator('#workspace-panel').getByText('0', { exact: true })).toBeVisible();
+  await expect(page.locator('#workspace-panel .text-2xl.font-extrabold.tabular-nums')).toHaveText('0/100');
   await expect(page.getByText(/not a website safety rating or reputation check/i)).toBeVisible();
 
   const evidence = page.getByTestId('link-analysis-evidence');
