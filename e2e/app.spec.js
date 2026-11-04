@@ -815,7 +815,7 @@ test('Link Inspector shows live web evidence, official references, RAG and AI wi
   await expect(evidence.locator('.official-search-result-card')).toHaveCount(1);
   await expect(evidence.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toBeVisible();
   await expect(evidence.locator('.retrieved-source-card')).toHaveCount(1);
-  await expect(evidence.getByText(/AI EXPLANATION/i)).toBeVisible();
+  await expect(evidence.getByText('AI EXPLANATION', { exact: true })).toBeVisible();
   await expect(evidence.getByText(/The hostname and locally detected URL patterns deserve careful review/i)).toBeVisible();
 
   expect(submittedPayload.contextType).toBe('url');
