@@ -467,75 +467,6 @@ function providerNotConfigured(name, descriptionEn, descriptionBn) {
   };
 }
 
-async function lookupPhishTankHost(host, appKey, fetchImpl) {
-  // Privacy boundary: query only the host's HTTPS origin. The submitted path,
-  // query string, fragment, and credentials are never sent to PhishTank.
-  const checkedUrl = "https://" + host + "/";
-  const form = new URLSearchParams({
-    url: checkedUrl,
-    format: "json",
-    app_key: appKey
-  });
-  const payload = await fetchJsonWithTimeout(fetchImpl, "https://checkurl.phishtank.com/checkurl/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-      "User-Agent": "SHONKET-AI/1.0 (domain threat-intelligence lookup)"
-    },
-    body: form.toString()
-  });
-  const result = payload && payload.results;
-  if (!result || typeof result !== "object") {
-    throw new Error("PhishTank returned an invalid response.");
-  }
-
-  const inDatabase = result.in_database === true || String(result.in_database).toLowerCase() === "true";
-  if (!inDatabase) {
-    return {
-      host,
-      status: "no_match",
-      checkedUrl,
-      summary_en: "No PhishTank record matched this host's HTTPS homepage URL. Other paths are not checked.",
-      summary_bn: "এই host-এর HTTPS homepage URL-এর সঙ্গে PhishTank record মেলেনি। অন্য path পরীক্ষা করা হয়নি।"
-    };
-  }
-
-  const yes = value => value === true || ["y", "yes", "true", "1"].includes(String(value || "").toLowerCase());
-  const verified = yes(result.verified);
-  const valid = yes(result.valid);
-  const phishId = Number(result.phish_id);
-  const fallbackReference = Number.isSafeInteger(phishId) && phishId > 0
-    ? "https://www.phishtank.com/phish_detail.php?phish_id=" + phishId
-    : "";
-  const sourceUrl = safeHttpsReference(result.phish_detail_page, "www.phishtank.com") || fallbackReference;
-
-  const status = verified && valid
-    ? "verified_phishing"
-    : !verified
-      ? "unverified_submission"
-      : "inactive_report";
-
-  return {
-    host,
-    status,
-    checkedUrl,
-    sourceUrl,
-    phishId: Number.isSafeInteger(phishId) && phishId > 0 ? phishId : null,
-    verifiedAt: cleanText(result.verified_at, 80) || null,
-    summary_en: status === "verified_phishing"
-      ? "PhishTank has a community-verified, currently valid phishing record for this host's HTTPS homepage URL. This is a strong warning, but the submitted path was not checked."
-      : status === "unverified_submission"
-        ? "PhishTank contains an unverified submission for this host. Treat it as an unconfirmed report, not a verdict."
-        : "PhishTank has a verified report for this host, but the report is no longer marked as valid/current.",
-    summary_bn: status === "verified_phishing"
-      ? "এই host-এর HTTPS homepage URL-এর জন্য PhishTank-এ community-verified এবং বর্তমানে valid phishing record আছে। এটি শক্ত সতর্ক সংকেত, তবে submitted path পরীক্ষা করা হয়নি।"
-      : status === "unverified_submission"
-        ? "PhishTank-এ এই host-এর একটি unverified submission আছে। এটিকে নিশ্চিত verdict নয়, অযাচাইকৃত report হিসেবে দেখুন।"
-        : "PhishTank-এ এই host-এর verified report আছে, তবে সেটি বর্তমানে valid হিসেবে চিহ্নিত নয়।"
-  };
-}
-
 async function lookupUrlhausHost(host, authKey, fetchImpl) {
   const form = new URLSearchParams({ host });
   const payload = await fetchJsonWithTimeout(fetchImpl, "https://urlhaus-api.abuse.ch/v1/host/", {
@@ -594,114 +525,69 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
 
 async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl) {
   const targets = [...new Set([hostname, domain].filter(Boolean))];
-  const phishTankKey = String(runtimeEnv.PHISHTANK_APP_KEY || "").trim();
   const urlhausKey = String(runtimeEnv.URLHAUS_AUTH_KEY || "").trim();
-
-  const runProvider = async (name, key, lookup) => {
-    if (!key) {
-      return providerNotConfigured(
-        name,
-        name + " is not configured. Add its API key as a server-side Worker secret to enable lookups.",
-        name + " সংযুক্ত নয়। lookup চালু করতে API key server-side Worker secret হিসেবে যোগ করুন।"
-      );
-    }
-    const results = await Promise.all(targets.map(async target => {
-      try {
-        return await lookup(target, key, fetchImpl);
-      } catch {
-        return {
-          host: target,
-          status: "unavailable",
-          summary_en: "The provider did not return a usable response for this host.",
-          summary_bn: "এই host-এর জন্য provider ব্যবহারযোগ্য response দেয়নি।"
-        };
-      }
-    }));
-    const hitStatuses = name === "PhishTank"
-      ? new Set(["verified_phishing", "unverified_submission", "inactive_report"])
-      : new Set(["malware_host"]);
-    const hasHit = results.some(item => hitStatuses.has(item.status));
-    const allNoMatch = results.every(item => item.status === "no_match");
-    const anyUnavailable = results.some(item => item.status === "unavailable");
-    const status = hasHit
-      ? "match_found"
-      : allNoMatch
-        ? "no_match"
-        : anyUnavailable
-          ? "unavailable"
-          : "partial";
-    const summaries = results.filter(item => item.status !== "no_match").map(item => item.summary_en);
+  if (!urlhausKey) {
     return {
-      name,
-      status,
-      summary_en: hasHit
-        ? summaries.join(" ")
-        : allNoMatch
-          ? (name === "PhishTank"
-            ? "No PhishTank phishing record matched the checked host homepage URLs. Paths and query strings were not submitted."
-            : "No URLhaus malware-hosting record matched the checked hostnames. Absence from this database is not proof of safety.")
-          : "One or more host lookups could not be completed. No clean or malicious verdict was inferred.",
-      summary_bn: hasHit
-        ? results.filter(item => item.status !== "no_match").map(item => item.summary_bn).join(" ")
-        : allNoMatch
-          ? (name === "PhishTank"
-            ? "পরীক্ষা করা host homepage URL-এর সঙ্গে PhishTank phishing record মেলেনি। Path ও query string পাঠানো হয়নি।"
-            : "পরীক্ষা করা hostname-এর সঙ্গে URLhaus malware-hosting record মেলেনি। এই database-এ না থাকা নিরাপদ হওয়ার প্রমাণ নয়।")
-          : "এক বা একাধিক host lookup সম্পন্ন হয়নি। নিরাপদ বা ক্ষতিকর—কোনো verdict অনুমান করা হয়নি।",
-      targets: results
+      status: "not_configured",
+      checkedAt: new Date().toISOString(),
+      configuredProviderCount: 0,
+      unconfiguredProviderCount: 1,
+      configuredProviders: [],
+      unconfiguredProviders: ["URLhaus"],
+      summary_en: "URLhaus is not configured. Add URLHAUS_AUTH_KEY as a server-side Worker secret to enable malware-hosting lookups.",
+      summary_bn: "URLhaus সংযুক্ত নয়। malware-hosting lookup চালু করতে URLHAUS_AUTH_KEY server-side Worker secret হিসেবে যোগ করুন।",
+      providers: [providerNotConfigured("URLhaus",
+        "URLhaus is not configured. Add URLHAUS_AUTH_KEY as a server-side Worker secret to enable lookups.",
+        "URLhaus সংযুক্ত নয়। lookup চালু করতে URLHAUS_AUTH_KEY server-side Worker secret হিসেবে যোগ করুন।")]
     };
+  }
+  const results = await Promise.all(targets.map(async target => {
+    try { return await lookupUrlhausHost(target, urlhausKey, fetchImpl); }
+    catch {
+      return { host: target, status: "unavailable",
+        summary_en: "URLhaus did not return a usable response for this host.",
+        summary_bn: "এই host-এর জন্য URLhaus ব্যবহারযোগ্য response দেয়নি।" };
+    }
+  }));
+  const hasMatch = results.some(item => item.status === "malware_host");
+  const allNoMatch = results.every(item => item.status === "no_match");
+  const providerStatus = hasMatch ? "match_found" : allNoMatch ? "no_match" :
+    results.some(item => item.status === "unavailable") ? "unavailable" : "partial";
+  const status = providerStatus === "match_found" ? "matches_found" :
+    providerStatus === "no_match" ? "no_matches" : "partial_or_unavailable";
+  const provider = {
+    name: "URLhaus",
+    status: providerStatus,
+    summary_en: hasMatch
+      ? results.filter(item => item.status === "malware_host").map(item => item.summary_en).join(" ")
+      : allNoMatch
+        ? "No URLhaus malware-hosting record matched the checked hostnames. Absence from this database is not proof of safety."
+        : "One or more URLhaus host lookups could not be completed. No clean or malicious verdict was inferred.",
+    summary_bn: hasMatch
+      ? results.filter(item => item.status === "malware_host").map(item => item.summary_bn).join(" ")
+      : allNoMatch
+        ? "পরীক্ষা করা hostname-এর সঙ্গে URLhaus malware-hosting record মেলেনি। এই database-এ না থাকা নিরাপদ হওয়ার প্রমাণ নয়।"
+        : "এক বা একাধিক URLhaus host lookup সম্পন্ন হয়নি। নিরাপদ বা ক্ষতিকর—কোনো verdict অনুমান করা হয়নি।",
+    targets: results
   };
-
-  const providers = await Promise.all([
-    runProvider("PhishTank", phishTankKey, lookupPhishTankHost),
-    runProvider("URLhaus", urlhausKey, lookupUrlhausHost)
-  ]);
-  const configured = providers.filter(item => item.status !== "not_configured");
-  const unconfigured = providers.filter(item => item.status === "not_configured");
-  const allProvidersConfigured = configured.length === providers.length;
-  const hasMatch = providers.some(item => item.status === "match_found");
-  const hasConfiguredNoMatch = configured.some(item => item.status === "no_match");
-  const onlyMissingCoverage = unconfigured.length > 0 &&
-    configured.length > 0 &&
-    configured.every(item => item.status === "no_match");
-  const status = configured.length === 0
-    ? "not_configured"
-    : hasMatch
-      ? "matches_found"
-      : allProvidersConfigured && configured.every(item => item.status === "no_match")
-        ? "no_matches"
-        : onlyMissingCoverage
-          ? "partial_coverage"
-          : "partial_or_unavailable";
-  const configuredNames = configured.map(item => item.name);
-  const unconfiguredNames = unconfigured.map(item => item.name);
-
   return {
     status,
     checkedAt: new Date().toISOString(),
-    configuredProviderCount: configured.length,
-    unconfiguredProviderCount: unconfigured.length,
-    configuredProviders: configuredNames,
-    unconfiguredProviders: unconfiguredNames,
-    summary_en: status === "not_configured"
-      ? "Threat-intelligence API keys are not configured. No provider lookups were made."
-      : status === "matches_found"
-        ? "At least one configured threat-intelligence provider returned a record. " + (unconfiguredNames.length ? unconfiguredNames.join(" and ") + " was not configured, so coverage is partial. " : "") + "Review the provider, verification state and date; a database record is not a live malware scan."
-        : status === "no_matches"
-          ? "No records were found in the configured threat-intelligence feeds. This does not establish that the website is safe."
-          : status === "partial_coverage"
-            ? configuredNames.join(" and ") + " was checked and returned no matching record; " + unconfiguredNames.join(" and ") + " is not configured. This is partial feed coverage, not a safety confirmation."
-            : "Some threat-intelligence providers were not configured or could not complete a lookup. The reputation check is incomplete.",
-    summary_bn: status === "not_configured"
-      ? "Threat-intelligence API key সংযুক্ত নেই। কোনো provider lookup করা হয়নি।"
-      : status === "matches_found"
-        ? "সংযুক্ত threat-intelligence provider-এর অন্তত একটি record দিয়েছে। " + (unconfiguredNames.length ? unconfiguredNames.join(" ও ") + " সংযুক্ত নয়, তাই coverage আংশিক। " : "") + "Provider, verification state ও তারিখ দেখুন; database record live malware scan নয়।"
-        : status === "no_matches"
-          ? "সংযুক্ত threat-intelligence feed-এ কোনো record পাওয়া যায়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
-          : status === "partial_coverage"
-            ? configuredNames.join(" ও ") + " পরীক্ষা করে কোনো matching record পাওয়া যায়নি; " + unconfiguredNames.join(" ও ") + " সংযুক্ত নয়। এটি আংশিক feed coverage, নিরাপদ হওয়ার নিশ্চয়তা নয়।"
-            : "কিছু threat-intelligence provider সংযুক্ত ছিল না বা lookup সম্পন্ন করতে পারেনি। Reputation check অসম্পূর্ণ।",
-    providers
+    configuredProviderCount: 1,
+    unconfiguredProviderCount: 0,
+    configuredProviders: ["URLhaus"],
+    unconfiguredProviders: [],
+    summary_en: status === "matches_found"
+      ? "URLhaus returned one or more malware-hosting records. Review the hostname, report date and provider reference; this is not a live malware scan."
+      : status === "no_matches"
+        ? "URLhaus returned no malware-hosting records for the checked hostnames. This does not establish that the website is safe."
+        : "The URLhaus lookup could not be completed for every checked hostname. The reputation check is incomplete.",
+    summary_bn: status === "matches_found"
+      ? "URLhaus এক বা একাধিক malware-hosting record দিয়েছে। Hostname, report date ও provider reference দেখুন; এটি live malware scan নয়।"
+      : status === "no_matches"
+        ? "পরীক্ষা করা hostname-এর জন্য URLhaus কোনো malware-hosting record দেয়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
+        : "সব hostname-এর জন্য URLhaus lookup সম্পন্ন হয়নি। Reputation check অসম্পূর্ণ.",
+    providers: [provider]
   };
 }
 
@@ -710,10 +596,7 @@ async function searchDomain(domain, hostname, runtimeEnv, fetchImpl) {
   // Threat-feed configuration can change independently of the hostname.
   // Partition cache entries by provider-key presence so a pre-secret
   // "not_configured" result is never reused after a secret is added.
-  const threatFeedConfigKey = [
-    runtimeEnv.PHISHTANK_APP_KEY ? "phishtank:on" : "phishtank:off",
-    runtimeEnv.URLHAUS_AUTH_KEY ? "urlhaus:on" : "urlhaus:off"
-  ].join(",");
+  const threatFeedConfigKey = runtimeEnv.URLHAUS_AUTH_KEY ? "urlhaus:on" : "urlhaus:off";
   const cacheKey = searchTargets.join("|") + "|" + threatFeedConfigKey;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
