@@ -495,7 +495,9 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
   const observedUrls = Array.isArray(payload.urls) ? payload.urls : [];
   const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
   const offlineCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "offline").length;
-  const allReturnedRecordsOffline = observedUrls.length > 0 && offlineCount === observedUrls.length;
+  const allReturnedRecordsOffline = observedUrls.length > 0 &&
+    observedUrls.length >= urlCount &&
+    offlineCount === observedUrls.length;
   const recordStatus = activeCount > 0
     ? "active_malware_urls"
     : allReturnedRecordsOffline
