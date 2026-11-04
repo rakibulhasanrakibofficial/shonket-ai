@@ -217,7 +217,7 @@ const REVIEW_REFERENCE_HOSTS = [
 ];
 const SECURITY_REFERENCE_TERMS = /\\b(scam|scams|phishing|phish|malware|abuse|blacklist(?:ed)?|blocklist|compromised|malicious|security report|security alert|fraud|threat|unsafe|suspicious|reputation|reported)\\b/i;
 const REVIEW_REFERENCE_TERMS = /\\b(reviews?|ratings?|complaints?|experiences?|trustpilot|sitejabber|community discussion)\\b/i;
-const IDENTITY_REFERENCE_TERMS = /\\b(official website|official site|company profile|about us|contact|support|product|platform|service|website|business|developer|documentation|domain information|whois)\\b/i;
+const IDENTITY_REFERENCE_TERMS = /\\b(official website|official site|company profile|about us|contact|support|help centre|help center|security page|trust center|status page|terms of service|privacy policy|product|platform|developer|documentation|domain information|whois)\\b/i;
 const EXCLUDED_FIRST_PARTY_PATH = /(?:^|\\/)(?:login|log-in|signin|sign-in|search|download|desktop|register|signup|account|auth)(?:\\/|$)/i;
 const USEFUL_FIRST_PARTY_PATH = /(?:^|\\/)(?:about|company|contact|support|help|security|trust|status|terms|privacy|docs|developers?|report|abuse)(?:\\/|$)/i;
 

@@ -54,11 +54,13 @@ test("domain search returns relevant exact-domain references and deduplicates re
   assert.match(body.webEvidence.sources[0].userBenefit_en, /first-party page/i);
   assert.equal(body.webEvidence.identityReferenceCount, 1);
   assert.equal(body.webEvidence.securityReferenceCount, 0);
-  assert.equal(body.webEvidence.provider, "DuckDuckGo");
-  // The first, security-focused query must reject this non-security page before
-  // the identity query is allowed to surface it.
+  assert.ok(body.webEvidence.provider.includes("DuckDuckGo"));
+  // The first, security-focused query rejects this non-security page and
+  // tries its fallback providers; the identity query then finds the /about page.
   assert.equal(calls.length, 4);
-  assert.ok(calls.every(url => url.startsWith("https://html.duckduckgo.com/html/?q=")));
+  assert.ok(calls.some(url => url.startsWith("https://html.duckduckgo.com/html/?q=")));
+  assert.ok(calls.some(url => url.startsWith("https://lite.duckduckgo.com/lite/?q=")));
+  assert.ok(calls.some(url => url.startsWith("https://www.bing.com/search?q=")));
   assert.ok(calls.every(url => !url.includes("www.example.com/path")));
 });
 
@@ -398,7 +400,7 @@ test("a domain appearing in a generic title is not enough to publish an unrelate
   const html = resultPage({
     title: "Example.com in a list of popular websites",
     url: "https://random-directory.example.org/top-sites",
-    snippet: "A generic list of popular websites, with no review or useful service information."
+    snippet: "A generic list of popular websites with no official listing, review, security warning or contact information."
   });
   const response = await domainSearchHandler(
     makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
