@@ -440,6 +440,7 @@ try{
   const result=await analyzeMessage({
     message:linkContext,
     language:analysisLanguage,
+    contextType:"url",
     onOfficialSearch
   });
   if(linkInspectionRequestRef.current===requestId){
