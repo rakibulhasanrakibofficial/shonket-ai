@@ -7,6 +7,13 @@ const MAX_CACHE_ENTRIES = 300;
 const MAX_LOCAL_RATE_BUCKETS = 1000;
 const cache = new Map();
 const localRateBuckets = new Map();
+const PUBLIC_SUFFIX_ONLY = new Set([
+  "com.bd", "net.bd", "org.bd", "gov.bd", "edu.bd", "ac.bd",
+  "co.uk", "org.uk", "gov.uk", "ac.uk",
+  "com.au", "net.au", "org.au", "com.in", "co.in",
+  "com.pk", "com.sg", "com.my", "com.ph", "com.ng",
+  "github.io", "pages.dev", "vercel.app", "netlify.app", "workers.dev"
+]);
 
 function cleanText(value, maxLength = 500) {
   return String(value || "")
@@ -82,7 +89,7 @@ function validateDomain(value) {
   if (parsed.hostname !== host || parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.port) {
     throw new Error("Send only a hostname, not a full URL or port.");
   }
-  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")
     || host.endsWith(".test") || host.endsWith(".invalid") || host.endsWith(".example")) {
     throw new Error("Local and reserved hostnames cannot be searched.");
   }
@@ -387,13 +394,15 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
   }
 
   const declaredLength = Number((event.headers && (event.headers["content-length"] || event.headers["Content-Length"])) || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+  const rawBody = typeof event.body === "string" ? event.body : "";
+  const actualLength = new TextEncoder().encode(rawBody).byteLength;
+  if ((Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) || actualLength > MAX_BODY_BYTES) {
     return makeResponse(413, { error: "Request is too large." }, headers);
   }
 
   let body;
   try {
-    body = event.body ? JSON.parse(event.body) : {};
+    body = rawBody ? JSON.parse(rawBody) : {};
   } catch {
     return makeResponse(400, { error: "Request body must be valid JSON." }, headers);
   }
