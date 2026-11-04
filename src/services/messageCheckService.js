@@ -24,7 +24,7 @@ function localAssessment(message, language, status = "not_configured", contextTy
   const noteBn = isUrlContext
     ? status === "pending"
       ? "স্থানীয় URL structure পরীক্ষা প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
-      : "AI ব্যাখ্যা পাওয়া যাচ্ছে না। URL structure পরীক্ষা স্থানীয়ভাবে করা হয়েছে; কোনো domain reputation lookup হয়নি।"
+      : "AI ব্যাখ্যা পাওয়া যাচ্ছে না। URL structure পরীক্ষা স্থানীয়ভাবে করা হয়েছে; আলাদা Web Evidence অংশে public domain search-এর ফল দেখানো হবে।"
     : status === "pending"
       ? "নিয়মভিত্তিক ফলাফল প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
       : status === "not_configured"
@@ -33,7 +33,7 @@ function localAssessment(message, language, status = "not_configured", contextTy
   const noteEn = isUrlContext
     ? status === "pending"
       ? "Local URL-structure checks are ready. The AI explanation is still being generated..."
-      : "The AI explanation service is unavailable. URL structure was checked locally; no domain-reputation lookup was performed."
+      : "The AI explanation service is unavailable. The URL-structure score was checked locally; separate public Web Evidence search results appear below and are not a full reputation scan."
     : status === "pending"
       ? "The rule-based result is ready. The AI explanation is still being generated..."
       : status === "not_configured"
