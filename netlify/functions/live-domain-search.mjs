@@ -8,17 +8,17 @@ const localRateBuckets = new Map();
 
 function cleanText(value, maxLength = 500) {
   return String(value || "")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
 }
 
 function htmlToText(value) {
   return String(value || "")
-    .replace(/<!--[\\s\\S]*?-->/g, " ")
-    .replace(/<script\\b[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style\\b[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -26,7 +26,7 @@ function htmlToText(value) {
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/&#(\\d+);/g, (_, code) => {
+    .replace(/&#(\d+);/g, (_, code) => {
       const point = Number(code);
       return Number.isInteger(point) && point >= 0 && point <= 0x10ffff
         ? String.fromCodePoint(point)
@@ -38,13 +38,13 @@ function htmlToText(value) {
         ? String.fromCodePoint(point)
         : " ";
     })
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function isPrivateIpv4(host) {
   const parts = host.split(".");
-  if (parts.length !== 4 || !parts.every(part => /^\\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
+  if (parts.length !== 4 || !parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
   const [a, b] = parts.map(Number);
   return a === 0 || a === 10 || a === 127 || a >= 224
     || (a === 169 && b === 254)
@@ -57,8 +57,8 @@ function isPrivateIpv4(host) {
 }
 
 function validateDomain(value) {
-  const host = String(value || "").trim().toLowerCase().replace(/\\.$/, "");
-  if (!host || host.length > MAX_DOMAIN_LENGTH || /[\\s\\/?#@\\\\]/.test(host)) {
+  const host = String(value || "").trim().toLowerCase().replace(/\.$/, "");
+  if (!host || host.length > MAX_DOMAIN_LENGTH || /[\s\/?#@\\]/.test(host)) {
     throw new Error("A valid hostname is required for web search.");
   }
 
@@ -79,7 +79,7 @@ function validateDomain(value) {
   if (host.startsWith("[") || host.includes(":") || isPrivateIpv4(host)) {
     throw new Error("Private or local IP addresses cannot be searched.");
   }
-  if (!/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9-]{2,63}$/i.test(host)) {
+  if (!/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/i.test(host)) {
     throw new Error("The hostname format is not supported for web search.");
   }
   return host;
@@ -107,11 +107,11 @@ function parseSearchResults(html, targetDomain, queryType) {
     throw new Error("The search provider returned a verification page.");
   }
 
-  const anchors = [...source.matchAll(/<a\\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+  const anchors = [...source.matchAll(/<a\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\s\S]*?)<\/a>/gi)];
   const results = [];
   for (let index = 0; index < anchors.length; index += 1) {
     const match = anchors[index];
-    const hrefMatch = match[1].match(/\\bhref\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))/i);
+    const hrefMatch = match[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
     const rawHref = hrefMatch && (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]);
     const url = rawHref ? safeResultUrl(htmlToText(rawHref)) : null;
     const title = cleanText(htmlToText(match[2]), 180);
@@ -119,14 +119,14 @@ function parseSearchResults(html, targetDomain, queryType) {
 
     const nextIndex = anchors[index + 1]?.index ?? Math.min(source.length, match.index + 2200);
     const tail = source.slice(match.index + match[0].length, Math.min(nextIndex, match.index + 2200));
-    const snippetMatch = tail.match(/<(?:div|td|span|a)\\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:div|td|span|a)>/i);
+    const snippetMatch = tail.match(/<(?:div|td|span|a)\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|td|span|a)>/i);
     const snippet = cleanText(htmlToText(snippetMatch?.[1] || ""), 360);
     let resultHost = "";
     try { resultHost = new URL(url).hostname.toLowerCase(); } catch {}
 
     const searchableText = (title + " " + snippet).toLowerCase();
     const domainMention = searchableText.includes(targetDomain)
-      || searchableText.includes(targetDomain.replace(/^www\\./, ""));
+      || searchableText.includes(targetDomain.replace(/^www\./, ""));
     const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
     const hostInPath = (() => {
       try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
@@ -135,7 +135,7 @@ function parseSearchResults(html, targetDomain, queryType) {
     const relevanceScore = (domainMention ? (title.toLowerCase().includes(targetDomain) ? 5 : 4) : 0)
       + (resultIsTarget ? 2 : 0)
       + (hostInPath ? 1 : 0);
-    if (relevanceScore < 3) continue;
+    if (relevanceScore < 2) continue;
 
     results.push({
       id: queryType + ":" + results.length,
@@ -185,13 +185,13 @@ async function fetchSearchPage(query, fetchImpl) {
 
 function allowedOrigins(runtimeEnv) {
   const configured = String(runtimeEnv.CORS_ALLOWED_ORIGINS || "")
-    .split(",").map(value => value.trim().replace(/\\/+$/, "")).filter(Boolean);
+    .split(",").map(value => value.trim().replace(/\/+$/, "")).filter(Boolean);
   return new Set([
     "https://rakibulhasanrakibofficial.github.io",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     ...configured,
-    ...(runtimeEnv.URL ? [String(runtimeEnv.URL).replace(/\\/+$/, "")] : [])
+    ...(runtimeEnv.URL ? [String(runtimeEnv.URL).replace(/\/+$/, "")] : [])
   ]);
 }
 
@@ -330,7 +330,7 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
   let domain;
   try {
     const hostname = validateDomain(body.hostname);
-    const requestedRoot = String(body.rootDomain || "").trim().toLowerCase().replace(/\\.$/, "");
+    const requestedRoot = String(body.rootDomain || "").trim().toLowerCase().replace(/\.$/, "");
     domain = requestedRoot && (hostname === requestedRoot || hostname.endsWith("." + requestedRoot))
       ? validateDomain(requestedRoot)
       : hostname;
