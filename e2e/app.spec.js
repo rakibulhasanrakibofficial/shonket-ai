@@ -759,8 +759,8 @@ test('Link Inspector searches the submitted hostname and never sends the full UR
           status: 'results_found',
           domain: 'bkash-bonus.xyz',
           searchedAt: new Date().toISOString(),
-          queryCount: 2,
-          successfulQueryCount: 2,
+          queryCount: 4,
+          successfulQueryCount: 4,
           failedQueryCount: 0,
           sourceCount: 1,
           sources: [{
@@ -1051,7 +1051,7 @@ test('URL-only inspection runs domain search but does not use generic official-s
           failedQueryCount: 0,
           sourceCount: 0,
           sources: [],
-          summary_en: 'The search completed, but no domain-specific references passed the relevance filter. No results do not prove that the website is safe.',
+          summary_en: 'The search completed for the exact hostname and estimated base domain, but no relevant references passed the filter. No results do not prove that the website is safe.',
           summary_bn: 'সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিক ডোমেইন-নির্দিষ্ট reference পাওয়া যায়নি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।'
         }
       })
@@ -1097,7 +1097,7 @@ test('URL-only inspection runs domain search but does not use generic official-s
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
 
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
-  await expect(page.getByText(/URL pattern score only/i)).toBeVisible();
+  await expect(page.getByText(/Heuristic URL points · not probability/i)).toBeVisible();
   const evidence = page.getByTestId('link-analysis-evidence');
   await expect(evidence).toBeVisible();
   await expect(evidence.getByText(/LIVE WEB SEARCH · DOMAIN EVIDENCE/i)).toBeVisible();
