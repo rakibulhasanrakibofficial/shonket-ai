@@ -1172,6 +1172,15 @@ test('age-restricted category is not sent to public web search and does not beco
   await expect(evidence).toBeVisible();
   await expect(evidence.getByText(/NOT SEARCHED/i)).toBeVisible();
   await expect(evidence.getByText(/Search results are not surfaced for this age-restricted category/i)).toBeVisible();
+
+  // A known brand label must not hide a restricted path category.
+  await page.locator('#url').fill('https://google.com/xxx');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+  await expect(page.getByText(/Google Search \/ web services/i)).toBeVisible();
+  const knownDomainEvidence = page.getByTestId('link-analysis-evidence');
+  await expect(knownDomainEvidence.getByText(/NOT SEARCHED/i)).toBeVisible();
+  await expect(page.locator('#workspace-panel .text-2xl.font-extrabold.tabular-nums')).toHaveText('0/100');
+
   expect(domainSearchCalls).toBe(0);
   expect(officialSearchCalls).toBe(0);
 });
