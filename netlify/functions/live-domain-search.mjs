@@ -195,9 +195,11 @@ function mentionsExactDomain(text, domain) {
     const after = value[afterIndex] || "";
     const leftBoundary = !before || !/[a-z0-9.-]/i.test(before);
     let rightBoundary = !after || !/[a-z0-9-.]/i.test(after);
-    if (after === "." && (afterIndex + 1 >= value.length || /\\s/.test(value[afterIndex + 1]))) {
-      rightBoundary = true;
-    }
+    const nextChar = value[afterIndex + 1] || "";
+    const afterSentencePeriod = after === "." && (
+      !nextChar || nextChar === " " || nextChar === "\\t" || nextChar === "\\n" || nextChar === "\\r"
+    );
+    if (afterSentencePeriod) rightBoundary = true;
     if (leftBoundary && rightBoundary) return true;
     index = value.indexOf(token, index + 1);
   }
