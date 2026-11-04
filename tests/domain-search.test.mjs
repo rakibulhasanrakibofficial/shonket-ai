@@ -610,8 +610,14 @@ test("overall intelligence status stays incomplete when URLhaus has no match but
   assert.equal(response.statusCode, 200);
   assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
   assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
-  assert.equal(intelligence.status, "partial_or_unavailable");
-  assert.match(intelligence.summary_en, /incomplete/i);
+  assert.equal(intelligence.status, "partial_coverage");
+  assert.equal(intelligence.configuredProviderCount, 1);
+  assert.equal(intelligence.unconfiguredProviderCount, 1);
+  assert.deepEqual(intelligence.configuredProviders, ["URLhaus"]);
+  assert.deepEqual(intelligence.unconfiguredProviders, ["PhishTank"]);
+  assert.match(intelligence.summary_en, /URLhaus was checked/i);
+  assert.match(intelligence.summary_en, /PhishTank is not configured/i);
+  assert.match(intelligence.summary_en, /not a safety confirmation/i);
 });
 
 
