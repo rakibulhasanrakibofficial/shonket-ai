@@ -882,9 +882,26 @@ test('link inspector detail cards use readable typography without horizontal ove
       technicalTitle: size('.link-detail-check-title'),
       technicalNote: size('.link-detail-check-note'),
       workspaceWidth: element.clientWidth,
-      contentWidth: element.scrollWidth
+      contentWidth: element.scrollWidth,
+      overflowingChildren: [...element.querySelectorAll('*')].map(node => {
+        const rect = node.getBoundingClientRect();
+        const parent = element.getBoundingClientRect();
+        return {
+          tag: node.tagName,
+          id: node.id,
+          classes: typeof node.className === 'string' ? node.className.slice(0, 140) : '',
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          parentRight: Math.round(parent.right),
+          width: Math.round(rect.width),
+          scrollWidth: node.scrollWidth,
+          clientWidth: node.clientWidth
+        };
+      }).filter(node => node.right > Math.round(element.getBoundingClientRect().right) + 1)
+        .sort((a,b) => b.right-a.right).slice(0,12)
     };
   });
+  console.log('[link-detail-layout]', JSON.stringify(typography));
 
   expect(typography.heading).toBeGreaterThanOrEqual(15);
   expect(typography.warningTitle).toBeGreaterThanOrEqual(13.5);
