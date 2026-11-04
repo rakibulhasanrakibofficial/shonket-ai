@@ -278,3 +278,57 @@ test("domain web search rejects requests from untrusted browser origins", async 
   assert.equal(response.status, 403);
   assert.equal(calls.officialRate, 0);
 });
+
+
+test("Worker uses the server-side URLhaus secret and never returns it to the browser", async () => {
+  const authKey = "worker-only-urlhaus-test-secret";
+  const hostname = "worker-urlhaus-integration.example.net";
+  const { env, calls } = makeEnv({ URLHAUS_AUTH_KEY: authKey });
+  const originalFetch = globalThis.fetch;
+  const providerRequests = [];
+  globalThis.fetch = async (input, options = {}) => {
+    const url = String(input);
+    if (url === "https://urlhaus-api.abuse.ch/v1/host/") {
+      providerRequests.push({
+        authKey: options.headers?.["Auth-Key"],
+        body: String(options.body || "")
+      });
+      return new Response(JSON.stringify({ query_status: "no_results" }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+    return new Response("<html><body></body></html>", {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://example.workers.dev/api/domain-search", {
+      method: "POST",
+      headers: {
+        Origin: allowedOrigin,
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": "203.0.113.61"
+      },
+      body: JSON.stringify({
+        hostname,
+        rootDomain: hostname
+      })
+    }), env);
+    const responseText = await response.text();
+    const body = JSON.parse(responseText);
+
+    assert.equal(response.status, 200);
+    assert.equal(providerRequests.length, 1);
+    assert.equal(providerRequests[0].authKey, authKey);
+    assert.equal(new URLSearchParams(providerRequests[0].body).get("host"), hostname);
+    assert.equal(body.webEvidence.threatIntelligence.status, "no_matches");
+    assert.equal(body.webEvidence.threatIntelligence.providers[0].name, "URLhaus");
+    assert.equal(body.webEvidence.threatIntelligence.providers[0].status, "no_match");
+    assert.doesNotMatch(responseText, /worker-only-urlhaus-test-secret/i);
+    assert.equal(calls.officialRate, 1);
+    assert.equal(calls.officialKey, "203.0.113.61");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
