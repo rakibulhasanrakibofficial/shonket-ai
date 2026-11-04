@@ -613,3 +613,38 @@ test("overall intelligence status stays incomplete when URLhaus has no match but
   assert.equal(intelligence.status, "partial_or_unavailable");
   assert.match(intelligence.summary_en, /incomplete/i);
 });
+
+
+test("domain search does not reuse a cached not-configured threat result after a URLhaus key is added", async () => {
+  const hostname = "cache-config-transition.example.net";
+  const limiter = { async limit() { return { success: true }; } };
+  const noKey = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    {},
+    limiter,
+    async url => new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } })
+  );
+  assert.equal(JSON.parse(noKey.body).webEvidence.threatIntelligence.status, "not_configured");
+
+  let urlhausCalls = 0;
+  const withKey = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { URLHAUS_AUTH_KEY: "cache-transition-test-key" },
+    limiter,
+    async url => {
+      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+        urlhausCalls += 1;
+        return new Response(JSON.stringify({ query_status: "no_results" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+  const intelligence = JSON.parse(withKey.body).webEvidence.threatIntelligence;
+  assert.equal(urlhausCalls, 1);
+  assert.equal(intelligence.status, "partial_or_unavailable");
+  assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
+  assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
+});
