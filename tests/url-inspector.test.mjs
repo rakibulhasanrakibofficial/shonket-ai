@@ -208,6 +208,21 @@ test("URL review context explains that separate public web evidence may be shown
   assert.doesNotMatch(context, /secret-token-value|reset_token|\/login/i);
 });
 
+test("recognizes common gambling-brand hostnames as restricted search categories", () => {
+  for (const hostname of [
+    "https://bet365.com",
+    "https://betway.com",
+    "https://1xbet.com",
+    "https://parimatch.com",
+    "https://mostbet.com"
+  ]) {
+    const result = inspectUrl(hostname);
+    assert.equal(result.publicSearchRestricted, true, hostname);
+    assert.match(result.restrictedSearchCategory, /Gambling/i, hostname);
+    assert.equal(result.riskScore, 0, hostname);
+  }
+});
+
 test("restricted path categories are preserved even when a known domain label wins display identity", () => {
   const adultPath = inspectUrl("https://google.com/xxx");
   assert.match(adultPath.linkCategory, /Google/i);
