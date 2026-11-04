@@ -98,22 +98,30 @@ function getLiveSourceDomain(source) {
 }
 
 function LiveSourceLogo({ source, compact = false }) {
-  const [failed, setFailed] = useState(false);
+  const [logoIndex, setLogoIndex] = useState(0);
   const host = getLiveSourceHost(source);
   const brand = getSourceBrand(source);
   if (!host) return null;
   if (brand) return <SourceBrand source={source} size={compact ? 'compact' : 'regular'}/>;
-  if (failed) return <span className={'live-source-domain-fallback ' + (compact ? 'is-compact' : '')}>{host}</span>;
-  const iconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=128';
+
+  const encodedHost = encodeURIComponent(host);
+  const logoCandidates = [
+    'https://icons.duckduckgo.com/ip3/' + encodedHost + '.ico',
+    'https://www.google.com/s2/favicons?domain=' + encodedHost + '&sz=128',
+    'https://' + host + '/favicon.ico'
+  ];
+  if (logoIndex >= logoCandidates.length) {
+    return <span className={'live-source-domain-fallback ' + (compact ? 'is-compact' : '')}>{host}</span>;
+  }
   return (
     <span className={'live-source-logo live-source-favicon ' + (compact ? 'live-source-logo-compact' : '')}>
       <img
-        src={iconUrl}
+        src={logoCandidates[logoIndex]}
         alt={host + ' website icon'}
-        loading="eager"
+        loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
+        onError={() => setLogoIndex(index => index + 1)}
       />
     </span>
   );
@@ -681,7 +689,7 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
 <span className="official-source-title">{source.title}</span>
 {source.publishedDate&&<span className="official-source-published">{resultLanguage==='bn'?'প্রকাশের তারিখ':'Published'} · {source.publishedDate}</span>}
 {source.matchedTerms?.length>0&&<span className="official-source-matched"><span className="official-source-matched-label">{resultLanguage==='bn'?'মিল পাওয়া শব্দ':'MATCHED TERMS'}</span>{source.matchedTerms.map(term=><span key={term} className="official-source-term">{term}</span>)}</span>}
-<span className="official-source-excerpt">{source.excerpt}</span>
+<span className="official-source-usefulness"><strong>{resultLanguage==='bn'?'এই উৎসটি কীভাবে কাজে লাগবে':'WHY THIS SOURCE HELPS'}</strong>{source.evidenceType==='government_listing_match'?(resultLanguage==='bn'?'নোটিশের শিরোনাম, অঙ্ক, তারিখ ও যোগ্যতা বার্তার দাবির সঙ্গে মিলিয়ে দেখুন। এটি প্রেরকের পরিচয় নিশ্চিত করে না।':'Compare the notice title, amount, date and eligibility with the message. It does not authenticate the sender.'):source.evidenceType==='official_listing_context'?(resultLanguage==='bn'?'অফিসিয়াল তালিকায় বিজ্ঞপ্তির নাম ও আবেদনের সময়সীমা মিলিয়ে নিন।':'Use the official listing to compare the vacancy or programme name and application dates.'): (resultLanguage==='bn'?'এই নির্দেশনা মিলে যাওয়া scam pattern বা নিরাপদ করণীয় বুঝতে সাহায্য করে; এটি এই নির্দিষ্ট বার্তা বা প্রেরককে সত্যায়ন করে না。':'This guidance helps explain the matching scam pattern or safer next steps; it does not verify this exact message or sender.')}</span><span className="official-source-excerpt">{source.excerpt}</span>
 <span className="official-source-open-button" data-source-brand={getSourceBrand(source)?.key || "default"}><ExternalLink size={15}/>{source.evidenceType==='government_listing_match'?(resultLanguage==='bn'?'মূল সরকারি নোটিশ খুলুন':'OPEN ORIGINAL GOVERNMENT NOTICE'):source.evidenceType==='official_listing_context'?(resultLanguage==='bn'?'সরকারি নিয়োগ তালিকা খুলুন':'OPEN OFFICIAL RECRUITMENT LISTING'):(resultLanguage==='bn'?'মূল নিরাপত্তা নির্দেশনা খুলুন':'OPEN ORIGINAL SAFETY GUIDANCE')}<ArrowUpRight size={15}/></span>
 </a>)}
 </div>:analysis.officialSearch.status==='pending'?<div className="official-search-pending mt-4" role="status" aria-live="polite"><span className="official-search-spinner"/><div><p className="text-xs font-bold text-cyan-100">{resultLanguage==='bn'?'সরকারি উৎস পরীক্ষা করা হচ্ছে':'Checking official source listings'}</p><p className="mt-1 text-[11px] leading-5 text-slate-400">{resultLanguage==='bn'?'পোর্টালগুলো থেকে ফলাফল আসার সঙ্গে সঙ্গে এখানে যোগ হবে।':'Results will be added here as each selected portal responds.'}</p></div></div>:<div className="mt-4 rounded-xl border border-dashed border-amber-200/20 bg-amber-200/[.035] p-4"><p className="text-xs font-bold text-amber-100">{resultLanguage==='bn'?'কোনো matching notice পাওয়া যায়নি':'No matching notice was found'}</p><p className="mt-1 text-[11px] leading-5 text-slate-400">{resultLanguage==='bn'?'এটি দাবিটি মিথ্যা প্রমাণ করে না। নিচের সাধারণ নিরাপত্তা নির্দেশনা প্রাসঙ্গিক হতে পারে।':'This does not prove the claim is false. General safety guidance may still be relevant.'}</p></div>}
@@ -711,7 +719,7 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
 <p className="mt-2 break-all text-xs font-semibold text-slate-200">{linkAnalysis.webEvidence?.domain||urlResult.rootDomain}</p>
 <p className="mt-2 text-xs leading-5 text-slate-300">{analysisLanguage==='bn'?(linkAnalysis.webEvidence?.summary_bn||'ডোমেইন-সম্পর্কিত ওয়েব ফলাফল খোঁজা হচ্ছে।'):(linkAnalysis.webEvidence?.summary_en||'Searching for domain-related web references.')}</p>
 {linkAnalysis.webEvidence?.status==='pending'&&<div className="official-search-pending mt-3" role="status"><span className="official-search-spinner"/><span className="text-xs text-slate-300">{t('Searching the web for domain mentions, identity and security reports…','ডোমেইনের উল্লেখ, পরিচয় ও নিরাপত্তা রিপোর্ট খোঁজা হচ্ছে…')}</span></div>}
-{linkAnalysis.webEvidence?.sources?.length>0&&<div className="mt-3 grid gap-2.5">{linkAnalysis.webEvidence.sources.map((source,i)=><a key={source.url||i} href={source.url} target="_blank" rel="noopener noreferrer" className="web-evidence-source group flex min-w-0 items-start gap-3 rounded-xl p-3"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/[.06]"><Globe2 size={15} className="text-cyan-100"/></span><span className="min-w-0 flex-1"><span className="block text-xs font-extrabold leading-5 text-slate-100 group-hover:text-cyan-100">{source.title}</span><span className="mt-1 block break-all text-[10px] text-cyan-100/70">{source.domain||getLiveSourceDomain(source)||source.url}</span>{source.snippet&&<span className="mt-1.5 block text-[11px] leading-5 text-slate-400">{source.snippet}</span>}<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-100">{t('OPEN SEARCH RESULT','সার্চ ফলাফল খুলুন')} <ExternalLink size={12}/></span></span></a>)}</div>}
+{linkAnalysis.webEvidence?.sources?.length>0&&<div className="mt-3 grid gap-2.5">{linkAnalysis.webEvidence.sources.map((source,i)=><a key={source.url||i} href={source.url} target="_blank" rel="noopener noreferrer" className="web-evidence-source domain-search-result-card group flex min-w-0 items-start gap-3 rounded-xl p-3"><span className="domain-search-result-logo shrink-0"><LiveSourceLogo source={source} compact/></span><span className="min-w-0 flex-1"><span className="domain-search-result-meta"><span className="domain-search-result-type">{analysisLanguage==='bn'?(source.evidenceLabel_bn||'সম্পর্কিত ওয়েব রেফারেন্স'):(source.evidenceLabel_en||'RELATED WEB REFERENCE')}</span><span className="domain-search-result-domain">{source.domain||getLiveSourceDomain(source)||source.url}</span></span><span className="mt-2 block text-xs font-extrabold leading-5 text-slate-100 group-hover:text-cyan-100">{source.title}</span>{source.snippet&&<span className="mt-1.5 block text-[11px] leading-5 text-slate-300">{source.snippet}</span>}{(source.userBenefit_en||source.userBenefit_bn)&&<span className="domain-search-result-benefit"><strong>{t('Why this helps','এটি যেভাবে কাজে লাগবে')}</strong>{analysisLanguage==='bn'?(source.userBenefit_bn||source.userBenefit_en):(source.userBenefit_en||source.userBenefit_bn)}</span>}<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-100">{t('OPEN ORIGINAL RESULT','মূল ওয়েবসাইটের ফল খুলুন')} <ExternalLink size={12}/></span></span></a>)}</div>}
 {linkAnalysis.webEvidence?.status!=='pending'&&(!linkAnalysis.webEvidence?.sources||linkAnalysis.webEvidence.sources.length===0)&&<p className="mt-3 rounded-xl border border-white/10 bg-white/[.025] p-3 text-xs text-slate-400">{linkAnalysis.webEvidence?.status==='restricted_category'?t('Search results are not surfaced for this age-restricted category.','এই বয়স-সীমাবদ্ধ ক্যাটাগরির সার্চ ফলাফল দেখানো হয় না।'):t('No relevant source cards are available. This is not a clean bill of health; review the URL warnings and verify the owner independently.','প্রাসঙ্গিক কোনো উৎস পাওয়া যায়নি। এটিকে নিরাপদ হওয়ার প্রমাণ ভাববেন না; URL সতর্কতা দেখুন এবং মালিকানা আলাদাভাবে যাচাই করুন।')}</p>}
 <p className="mt-3 border-t border-white/[.07] pt-3 text-[10px] leading-5 text-slate-500">{t('Search engine: ','সার্চ ইঞ্জিন: ')}{linkAnalysis.webEvidence?.provider||'DuckDuckGo'} · {t('Queries completed: ','সম্পন্ন query: ')}{linkAnalysis.webEvidence?.successfulQueryCount??0}/{linkAnalysis.webEvidence?.queryCount??0}. {t('Search snippets are not proof of site safety or maliciousness.','সার্চ snippet সাইট নিরাপদ বা ক্ষতিকর হওয়ার প্রমাণ নয়।')}</p>
 </section>}

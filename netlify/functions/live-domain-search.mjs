@@ -205,25 +205,115 @@ function mentionsExactDomain(text, domain) {
   return false;
 }
 
+const SECURITY_REFERENCE_HOSTS = [
+  "virustotal.com", "urlscan.io", "abuseipdb.com", "urlvoid.com",
+  "scamadviser.com", "scamdoc.com", "securitytrails.com",
+  "safebrowsing.google.com", "transparencyreport.google.com",
+  "cisa.gov", "consumer.ftc.gov", "reportfraud.ftc.gov"
+];
+const REVIEW_REFERENCE_HOSTS = [
+  "trustpilot.com", "sitejabber.com", "reddit.com", "g2.com",
+  "trustindex.io", "productreview.com.au"
+];
+const SECURITY_REFERENCE_TERMS = /\\b(scam|scams|phishing|phish|malware|abuse|blacklist(?:ed)?|blocklist|compromised|malicious|security report|security alert|fraud|threat|unsafe|suspicious|reputation|reported)\\b/i;
+const REVIEW_REFERENCE_TERMS = /\\b(reviews?|ratings?|complaints?|experiences?|trustpilot|sitejabber|community discussion)\\b/i;
+const IDENTITY_REFERENCE_TERMS = /\\b(official website|official site|company profile|about us|contact|support|product|platform|service|website|business|developer|documentation|domain information|whois)\\b/i;
+const EXCLUDED_FIRST_PARTY_PATH = /(?:^|\\/)(?:login|log-in|signin|sign-in|search|download|desktop|register|signup|account|auth)(?:\\/|$)/i;
+const USEFUL_FIRST_PARTY_PATH = /(?:^|\\/)(?:about|company|contact|support|help|security|trust|status|terms|privacy|docs|developers?|report|abuse)(?:\\/|$)/i;
+
+function hostMatchesAny(host, domains) {
+  return domains.some(domain => host === domain || host.endsWith("." + domain));
+}
+
 function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
-  let resultHost = "";
-  try { resultHost = new URL(url).hostname.toLowerCase(); } catch { return null; }
-  const searchableText = title + " " + snippet;
-  const domainMention = mentionsExactDomain(searchableText, targetDomain)
-    || mentionsExactDomain(searchableText, "www." + targetDomain);
-  const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
-  const hostInPath = (() => {
-    try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
-    catch { return false; }
+  let parsed;
+  try { parsed = new URL(url); } catch { return null; }
+  const resultHost = parsed.hostname.toLowerCase();
+  const decodedPath = (() => {
+    try { return decodeURIComponent(parsed.pathname).toLowerCase(); }
+    catch { return parsed.pathname.toLowerCase(); }
   })();
-  const relevanceScore = (domainMention ? (title.toLowerCase().includes(targetDomain) ? 5 : 4) : 0)
-    + (resultIsTarget ? 2 : 0)
-    + (hostInPath ? 1 : 0);
-  if (relevanceScore < 2) return null;
+  const searchableText = [title, snippet, decodedPath].join(" ");
+  const domainMention = mentionsExactDomain(title + " " + snippet, targetDomain)
+    || mentionsExactDomain(title + " " + snippet, "www." + targetDomain);
+  const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
+  const hostInPath = decodedPath.includes(targetDomain);
+  const securityHost = hostMatchesAny(resultHost, SECURITY_REFERENCE_HOSTS);
+  const reviewHost = hostMatchesAny(resultHost, REVIEW_REFERENCE_HOSTS);
+  const securityMatch = SECURITY_REFERENCE_TERMS.test(searchableText) || securityHost;
+  const reviewMatch = REVIEW_REFERENCE_TERMS.test(searchableText) || reviewHost;
+
+  if (!domainMention && !hostInPath && !resultIsTarget) return null;
+
+  let evidenceCategory = "";
+  let evidenceLabel_en = "";
+  let evidenceLabel_bn = "";
+  let userBenefit_en = "";
+  let userBenefit_bn = "";
+  let matchReason = "";
+  let relevanceScore = 0;
+
+  if (queryType === "security_mentions") {
+    // A domain appearing in an ordinary homepage/search result is not a security report.
+    if (!securityMatch) return null;
+    evidenceCategory = "security_reference";
+    evidenceLabel_en = securityHost ? "Security database / report" : "Security-related mention";
+    evidenceLabel_bn = securityHost ? "সিকিউরিটি ডেটাবেস / রিপোর্ট" : "নিরাপত্তা-সম্পর্কিত উল্লেখ";
+    userBenefit_en = "Use this to inspect whether a public security report or abuse discussion mentions the hostname. Check the report date and evidence before drawing a conclusion.";
+    userBenefit_bn = "এই ফলাফলে ডোমেইনটি নিয়ে কোনো public security report বা abuse discussion আছে কি না দেখুন। সিদ্ধান্তের আগে রিপোর্টের তারিখ ও প্রমাণ যাচাই করুন।";
+    matchReason = domainMention
+      ? "The exact hostname appears in a security-related title or snippet."
+      : "The submitted hostname appears in a security-related URL or report.";
+    relevanceScore = 8 + (title.toLowerCase().includes(targetDomain) ? 3 : domainMention ? 2 : 0)
+      + (securityHost ? 2 : 0);
+  } else {
+    if (resultIsTarget) {
+      const genericTitle = /\\b(sign in|log in|login|search results|download|desktop app|create account|register)\\b/i.test(title);
+      const usefulPage = decodedPath === "/" || USEFUL_FIRST_PARTY_PATH.test(decodedPath);
+      if (genericTitle || EXCLUDED_FIRST_PARTY_PATH.test(decodedPath) || !usefulPage) return null;
+      evidenceCategory = "official_site_page";
+      evidenceLabel_en = "Website's own page";
+      evidenceLabel_bn = "ওয়েবসাইটের নিজস্ব পেজ";
+      userBenefit_en = "This is a first-party page on the submitted hostname. It can help identify the service, but it is not an independent safety or reputation check.";
+      userBenefit_bn = "এটি দেওয়া ডোমেইনের নিজস্ব পেজ। সেবাটি শনাক্ত করতে সাহায্য করে, তবে এটি স্বাধীন safety বা reputation যাচাই নয়।";
+      matchReason = decodedPath === "/"
+        ? "The result is the submitted website's homepage."
+        : "The result is a useful about, support, security or policy page on the submitted hostname.";
+      relevanceScore = 5 + (decodedPath !== "/" ? 2 : 0) + (domainMention ? 1 : 0);
+    } else if (domainMention && securityMatch) {
+      evidenceCategory = "security_reference";
+      evidenceLabel_en = securityHost ? "Security database / report" : "Security-related mention";
+      evidenceLabel_bn = securityHost ? "সিকিউরিটি ডেটাবেস / রিপোর্ট" : "নিরাপত্তা-সম্পর্কিত উল্লেখ";
+      userBenefit_en = "This third-party page discusses a security issue or report mentioning the exact hostname. Check its publication date and underlying evidence.";
+      userBenefit_bn = "এই third-party পেজে নির্দিষ্ট ডোমেইনটির উল্লেখসহ নিরাপত্তা-সংক্রান্ত আলোচনা বা রিপোর্ট আছে। প্রকাশের তারিখ ও মূল প্রমাণ যাচাই করুন।";
+      matchReason = "The exact hostname appears in a third-party security-related result.";
+      relevanceScore = 9 + (title.toLowerCase().includes(targetDomain) ? 2 : 0) + (securityHost ? 2 : 0);
+    } else if (domainMention && reviewMatch) {
+      evidenceCategory = "independent_review";
+      evidenceLabel_en = "Independent review / discussion";
+      evidenceLabel_bn = "স্বতন্ত্র রিভিউ / আলোচনা";
+      userBenefit_en = "This is a third-party review or discussion mentioning the hostname. Treat user posts as unverified experiences, not proof of safety or fraud.";
+      userBenefit_bn = "এটি ডোমেইনটির উল্লেখসহ third-party review বা আলোচনা। ব্যবহারকারীর পোস্টকে যাচাইহীন অভিজ্ঞতা হিসেবে দেখুন—নিরাপত্তা বা প্রতারণার চূড়ান্ত প্রমাণ নয়।";
+      matchReason = "The exact hostname appears in a review or discussion result.";
+      relevanceScore = 7 + (title.toLowerCase().includes(targetDomain) ? 2 : 0) + (reviewHost ? 1 : 0);
+    } else if (domainMention && IDENTITY_REFERENCE_TERMS.test(searchableText)) {
+      evidenceCategory = "third_party_reference";
+      evidenceLabel_en = "Third-party website reference";
+      evidenceLabel_bn = "তৃতীয় পক্ষের ওয়েব রেফারেন্স";
+      userBenefit_en = "This page contains identifying information about the hostname. Check who published it and whether the details match the service you expected.";
+      userBenefit_bn = "এই পেজে ডোমেইনটি সম্পর্কে পরিচয়-সংক্রান্ত তথ্য আছে। প্রকাশক কে এবং তথ্যগুলো প্রত্যাশিত সেবার সঙ্গে মেলে কি না যাচাই করুন।";
+      matchReason = "The exact hostname appears in a third-party identity or service reference.";
+      relevanceScore = 5 + (title.toLowerCase().includes(targetDomain) ? 2 : 0);
+    } else {
+      return null;
+    }
+  }
+
   return {
-    id: queryType + ":" + resultHost + ":" + relevanceScore,
+    id: queryType + ":" + resultHost + ":" + relevanceScore + ":" + parsed.pathname,
     title, url, domain: resultHost, snippet, queryType, relevanceScore,
-    matchReason: domainMention ? "Exact domain mention in result text" : "Result belongs to the submitted domain"
+    evidenceCategory, evidenceLabel_en, evidenceLabel_bn,
+    userBenefit_en, userBenefit_bn, matchReason
   };
 }
 
@@ -380,6 +470,8 @@ async function searchDomain(domain, fetchImpl) {
       ? (sources.length ? "partial_results" : "partial_unavailable")
       : sources.length ? "results_found" : "no_results";
   const provider = [...usedProviders].join(" + ") || "DuckDuckGo / Bing";
+  const securityReferenceCount = sources.filter(source => source.evidenceCategory === "security_reference").length;
+  const identityReferenceCount = sources.filter(source => source.evidenceCategory !== "security_reference").length;
   const value = {
     searched: true,
     searchExecuted: completed.length > 0,
@@ -392,18 +484,20 @@ async function searchDomain(domain, fetchImpl) {
     failedQueryCount: failedCount,
     queries: querySpecs.map(item => item.query),
     sourceCount: sources.length,
+    securityReferenceCount,
+    identityReferenceCount,
     sources,
     summary_en: status === "results_found" || status === "partial_results"
-      ? "Live web search returned domain-related references. Search snippets can be incomplete or outdated and do not prove that the website is safe or malicious."
+      ? "Filtered results: " + securityReferenceCount + " security-related reference(s) and " + identityReferenceCount + " identity, review or first-party reference(s). Open the original pages and check their dates; search snippets alone do not prove that the website is safe or malicious."
       : status === "no_results"
-        ? "The search completed, but no domain-specific references passed the relevance filter. No results do not prove that the website is safe."
+        ? "The search completed, but no relevant security, review or useful identity references passed the filter. No results do not prove that the website is safe."
         : status === "partial_unavailable"
           ? "Some search providers were unavailable and no relevant references were found in the completed searches. The website's reputation remains unchecked."
           : "The live search providers could not return usable results. The website's reputation remains unchecked.",
     summary_bn: status === "results_found" || status === "partial_results"
-      ? "লাইভ ওয়েব সার্চে ডোমেইন-সম্পর্কিত কিছু রেফারেন্স পাওয়া গেছে। সার্চের snippet অসম্পূর্ণ বা পুরোনো হতে পারে; এগুলো সাইট নিরাপদ বা ক্ষতিকর—কোনোটিই প্রমাণ করে না।"
+      ? "প্রাসঙ্গিকতা যাচাই করে " + securityReferenceCount + "টি security-related এবং " + identityReferenceCount + "টি পরিচয়, review বা নিজস্ব-সাইট reference পাওয়া গেছে। মূল পেজ ও তারিখ খুলে দেখুন; search snippet একা সাইট নিরাপদ বা ক্ষতিকর প্রমাণ করে না।"
       : status === "no_results"
-        ? "সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিকতার শর্ত পূরণ করে এমন ডোমেইন-নির্দিষ্ট রেফারেন্স পাওয়া যায়নি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
+        ? "সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিক security report, review বা পরিচয়-সংক্রান্ত রেফারেন্স মেলেনি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
         : "লাইভ সার্চ সেবাগুলো ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
   };
   if (status !== "unavailable") cacheSearchResult(domain, value);

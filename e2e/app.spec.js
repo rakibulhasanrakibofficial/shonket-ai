@@ -805,6 +805,7 @@ test('Link Inspector searches the submitted hostname and never sends the full UR
   await expect(evidence.getByText(/LIVE WEB SEARCH · DOMAIN EVIDENCE/i)).toBeVisible();
   await expect(evidence.getByText(/RESULTS FOUND/i)).toBeVisible();
   await expect(evidence.locator('.web-evidence-source')).toHaveCount(1);
+  await expect(evidence.locator('.domain-search-result-logo')).toBeVisible();
   await expect(evidence.getByText(/Public report mentioning bkash-bonus.xyz/i)).toBeVisible();
   await expect(evidence.getByText(/AI EXPLANATION/i).first()).toBeVisible();
 

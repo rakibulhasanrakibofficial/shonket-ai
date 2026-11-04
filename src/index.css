@@ -2771,3 +2771,112 @@
     transform: none !important;
   }
 }
+
+
+/* Publisher identity and user-focused context for both search surfaces. */
+.domain-search-result-logo {
+  display:grid;
+  width:44px;
+  min-width:44px;
+  height:44px;
+  place-items:center;
+  overflow:hidden;
+  border:1px solid rgba(191,219,254,.28);
+  border-radius:12px;
+  background:linear-gradient(145deg,#fff,#e8eef8);
+  box-shadow:0 4px 12px rgba(0,0,0,.18);
+}
+.domain-search-result-logo .live-source-logo,
+.domain-search-result-logo .live-source-domain-fallback {
+  width:100% !important;
+  min-width:0 !important;
+  height:100% !important;
+  flex:1 1 auto !important;
+  border:0 !important;
+  border-radius:0 !important;
+  padding:5px !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.domain-search-result-logo .live-source-logo img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.domain-search-result-meta {
+  display:flex;
+  min-width:0;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+}
+.domain-search-result-type {
+  display:inline-flex;
+  border:1px solid rgba(103,232,249,.24);
+  border-radius:999px;
+  padding:4px 8px;
+  background:rgba(34,211,238,.07);
+  color:#a5f3fc;
+  font-size:9px;
+  font-weight:900;
+  line-height:1.35;
+}
+.domain-search-result-domain {
+  color:#91a8c7;
+  font-size:10px;
+  font-weight:800;
+  overflow-wrap:anywhere;
+}
+.domain-search-result-benefit {
+  display:block;
+  margin-top:9px;
+  border-left:2px solid rgba(103,232,249,.5);
+  border-radius:0 9px 9px 0;
+  padding:8px 10px;
+  background:rgba(34,211,238,.045);
+  color:#b9c9de;
+  font-size:10px;
+  line-height:1.65;
+}
+.domain-search-result-benefit strong {
+  display:block;
+  margin-bottom:3px;
+  color:#a5f3fc;
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.official-source-usefulness {
+  display:block;
+  margin-top:10px;
+  border:1px solid rgba(103,232,249,.16);
+  border-radius:10px;
+  padding:10px 11px;
+  background:rgba(34,211,238,.045);
+  color:#c4d2e4;
+  font-size:11px;
+  line-height:1.65;
+}
+.official-source-usefulness strong {
+  display:block;
+  margin-bottom:3px;
+  color:#a5f3fc;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.1em;
+}
+@media(max-width:560px) {
+  .domain-search-result-card {
+    align-items:flex-start;
+    gap:10px;
+    padding:11px !important;
+  }
+  .domain-search-result-logo {
+    width:40px;
+    min-width:40px;
+    height:40px;
+  }
+  .domain-search-result-benefit {
+    font-size:10px;
+  }
+}

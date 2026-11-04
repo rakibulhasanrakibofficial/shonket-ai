@@ -49,9 +49,15 @@ test("domain search returns relevant exact-domain references and deduplicates re
   assert.equal(body.webEvidence.domain, "example.com");
   assert.equal(body.webEvidence.sourceCount, 1);
   assert.equal(body.webEvidence.sources[0].url, "https://example.com/about");
-  assert.equal(body.webEvidence.sources[0].queryType, "security_mentions");
+  assert.equal(body.webEvidence.sources[0].queryType, "domain_identity");
+  assert.equal(body.webEvidence.sources[0].evidenceCategory, "official_site_page");
+  assert.match(body.webEvidence.sources[0].userBenefit_en, /first-party page/i);
+  assert.equal(body.webEvidence.identityReferenceCount, 1);
+  assert.equal(body.webEvidence.securityReferenceCount, 0);
   assert.equal(body.webEvidence.provider, "DuckDuckGo");
-  assert.equal(calls.length, 2);
+  // The first, security-focused query must reject this non-security page before
+  // the identity query is allowed to surface it.
+  assert.equal(calls.length, 4);
   assert.ok(calls.every(url => url.startsWith("https://html.duckduckgo.com/html/?q=")));
   assert.ok(calls.every(url => !url.includes("www.example.com/path")));
 });
@@ -340,4 +346,68 @@ test("domain search enforces CORS and handles OPTIONS without running search", a
   );
   assert.equal(preflight.statusCode, 204);
   assert.equal(preflight.headers["Access-Control-Allow-Origin"], origin);
+});
+
+test("domain evidence filters generic homepage-adjacent pages and labels useful source types", async () => {
+  const html = [
+    resultPage({
+      title: "GitHub — Change is constant",
+      url: "https://github.com/",
+      snippet: "GitHub is a software development platform."
+    }),
+    resultPage({
+      title: "Sign in to GitHub",
+      url: "https://github.com/login",
+      snippet: "Sign in to GitHub and access your account."
+    }),
+    resultPage({
+      title: "Download GitHub Desktop",
+      url: "https://desktop.github.com/",
+      snippet: "Download GitHub Desktop for your computer."
+    }),
+    resultPage({
+      title: "GitHub.com security and malware report",
+      url: "https://www.virustotal.com/gui/domain/github.com",
+      snippet: "Public security analysis and malware detections for github.com."
+    }),
+    resultPage({
+      title: "GitHub Reviews",
+      url: "https://www.trustpilot.com/review/github.com",
+      snippet: "Customer reviews and ratings for github.com."
+    })
+  ].join("");
+  const response = await domainSearchHandler(
+    makeEvent({ hostname: "github.com", rootDomain: "github.com" }),
+    {},
+    null,
+    async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html" } })
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+
+  assert.equal(evidence.status, "results_found");
+  assert.ok(evidence.sources.some(source => source.evidenceCategory === "security_reference"));
+  assert.ok(evidence.sources.some(source => source.evidenceCategory === "independent_review"));
+  assert.ok(evidence.sources.some(source => source.evidenceCategory === "official_site_page"));
+  assert.ok(!evidence.sources.some(source => /login|download/i.test(source.title + " " + source.url)));
+  assert.ok(evidence.securityReferenceCount >= 1);
+  assert.ok(evidence.identityReferenceCount >= 1);
+  assert.ok(evidence.sources.every(source => source.userBenefit_en && source.evidenceLabel_en));
+});
+
+test("a domain appearing in a generic title is not enough to publish an unrelated third-party page", async () => {
+  const html = resultPage({
+    title: "Example.com in a list of popular websites",
+    url: "https://random-directory.example.org/top-sites",
+    snippet: "A generic list of popular websites, with no review or useful service information."
+  });
+  const response = await domainSearchHandler(
+    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    {},
+    null,
+    async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html" } })
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+
+  assert.equal(evidence.status, "no_results");
+  assert.deepEqual(evidence.sources, []);
 });
