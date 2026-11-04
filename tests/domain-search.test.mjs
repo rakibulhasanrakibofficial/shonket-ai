@@ -110,7 +110,7 @@ test("domain search rejects full URLs, reserved domains and private IP addresses
 test("a mismatched root-domain hint never replaces the submitted hostname", async () => {
   const html = resultPage({
     title: "Example.com public information",
-    url: "https://example.com/about"
+    url: "https://www.example.com/about"
   });
   const response = await domainSearchHandler(
     makeEvent({ hostname: "www.example.com", rootDomain: "attacker.example.net" }),
