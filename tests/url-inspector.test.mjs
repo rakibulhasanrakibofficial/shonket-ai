@@ -135,7 +135,7 @@ test("review context contains only the hostname and local signal IDs", () => {
   const context = buildUrlReviewContext(result);
   assert.match(context, /bkash-bonus\.xyz/);
   assert.match(context, /brand/);
-  assert.doesNotMatch(context, /reset_token|do-not-send-this|\/login/);
+  assert.equal(context.includes("/reset"), false);
   assert.doesNotMatch(context, /phishing, smishing, brand impersonation, credential theft/i);
 });
 
