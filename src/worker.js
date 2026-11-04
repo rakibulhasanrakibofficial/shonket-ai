@@ -123,7 +123,9 @@ export async function handleDomainSearchRequest(request, env) {
   if (declaredLength > 4096) return json(413, { error: "Request is too large." });
 
   const body = await request.text();
-  headers["content-length"] = String(new TextEncoder().encode(body).byteLength);
+  const actualLength = new TextEncoder().encode(body).byteLength;
+  if (actualLength > 4096) return json(413, { error: "Request is too large." });
+  headers["content-length"] = String(actualLength);
   const result = await domainSearchHandler({
     httpMethod: request.method,
     headers,
