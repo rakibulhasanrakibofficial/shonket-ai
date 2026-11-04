@@ -59,9 +59,9 @@ const KNOWN_SITES = {
 };
 
 const CATEGORY_RULES = [
-  { label: "Age-restricted / 18+ category", labelBn: "বয়স-সীমাবদ্ধ / ১৮+ ক্যাটাগরি", test: /\b(adult|18plus|18\+|xxx|x-rated|explicit|nsfw|onlyfans|xvideos|xnxx|porn|pornography|sexchat|adultvideo|adultcontent|erotic)\b|pornhub|porn[-_]?hub|adult[-_]?site|adult[-_]?video/i },
+  { label: "Age-restricted / 18+ category", labelBn: "বয়স-সীমাবদ্ধ / ১৮+ ক্যাটাগরি", suppressPublicSearch: true, test: /\b(adult|18plus|18\+|xxx|x-rated|explicit|nsfw|onlyfans|xvideos|xnxx|porn|pornography|sexchat|adultvideo|adultcontent|erotic)\b|pornhub|porn[-_]?hub|adult[-_]?site|adult[-_]?video/i },
   { label: "Dating or relationship service", labelBn: "ডেটিং বা সম্পর্কের সার্ভিস", test: /\b(dating|matchmaking|singles|romance|meet-?up)\b/i },
-  { label: "Gambling, casino or betting", labelBn: "জুয়া, ক্যাসিনো বা বেটিং", test: /\b(casino|betting|gambling|sportsbook|slots|wager|jackpot|poker)\b/i },
+  { label: "Gambling, casino or betting", labelBn: "জুয়া, ক্যাসিনো বা বেটিং", suppressPublicSearch: true, test: /\b(casino|betting|gambling|sportsbook|slots|wager|jackpot|poker)\b/i },
   { label: "Lottery or prize promotion", labelBn: "লটারি বা পুরস্কারের প্রচারণা", test: /\b(lottery|raffle|jackpot|giveaway|prize|winner|claim)\b/i },
   { label: "Banking or digital payment", labelBn: "ব্যাংকিং বা ডিজিটাল পেমেন্ট", test: /\b(bank|banking|payment|wallet|bkash|nagad|rocket|paypal|payoneer)\b/i },
   { label: "Loan or credit service", labelBn: "ঋণ বা ক্রেডিট সার্ভিস", test: /\b(loan|lending|credit|borrow|microfinance|installment)\b/i },
@@ -384,6 +384,8 @@ export function inspectUrl(input) {
     linkCategoryBn,
     categorySource,
     categoryMatched,
+    publicSearchRestricted: Boolean(matchedCategory?.suppressPublicSearch),
+    restrictedSearchCategory: matchedCategory?.suppressPublicSearch ? matchedCategory.label : "",
     riskScore,
     riskLevel,
     signals,
