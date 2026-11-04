@@ -998,7 +998,7 @@ test('URL-only inspection does not show generic official sources or RAG as domai
 test('adult-content category hint does not become a scam-risk score', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
-  await page.locator('#url').fill('https://www.xnxx.com');
+  await page.locator('#url').fill('https://18plus.example');
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/Age-restricted \/ 18\+ category/i)).toBeVisible();
   await expect(page.locator('#workspace-panel').getByText('0', { exact: true })).toBeVisible();
