@@ -400,7 +400,7 @@ test("a domain appearing in a generic title is not enough to publish an unrelate
   const html = resultPage({
     title: "Example.com in a list of popular websites",
     url: "https://random-directory.example.org/top-sites",
-    snippet: "A generic list of popular websites with no official listing, review, security warning or contact information."
+    snippet: "A generic list of popular websites with no further information about the submitted hostname."
   });
   const response = await domainSearchHandler(
     makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
