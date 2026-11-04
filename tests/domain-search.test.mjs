@@ -563,7 +563,7 @@ test("a failed threat-intelligence provider does not erase a no-match response f
   const response = await domainSearchHandler(
     makeEvent({ hostname, rootDomain: hostname }),
     { PHISHTANK_APP_KEY: "test-phishtank-key", URLHAUS_AUTH_KEY: "test-urlhaus-key" },
-    null,
+    { async limit() { return { success: true }; } },
     async url => {
       const target = String(url);
       if (target === "https://checkurl.phishtank.com/checkurl/") {
