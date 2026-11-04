@@ -175,7 +175,7 @@ The repository's automated tests cover representative cases, not every possible 
 
 - English, Bangla, and Banglish scam patterns, including OTP requests, prize claims, advance fees, job fees, phishing links, and contradictory anti-scam wording.
 - Benign notices and safety warnings to reduce false positives.
-- Empty/low-signal and unverified claims, heuristic score boundaries, and the 4,000-character assessment limit.
+- Low-signal and unverified claims, representative heuristic-score cases, and the 4,000-character assessment limit.
 - API method/body handling, rate-limit configuration and rejection, trusted client-IP handling, and screenshot payload rejection.
 - Screenshot OCR language selection, invalid/oversized image rejection, OCR cleanup, and local-only OCR behavior.
 - URL Inspector domain parsing, brand/domain mismatch patterns, hostname-only provider requests, and rate-limit/no-result states.
