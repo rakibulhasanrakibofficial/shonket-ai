@@ -459,7 +459,22 @@ export async function officialSearchHandler(event, runtimeEnv, rateLimiter = nul
   const searchApplies = contextType !== "url" && !searchDisabled && isOfficialSourceSearchApplicable(message);
   let officialSearch;
 
-  if (searchDisabled) {
+  if (contextType === "url") {
+    officialSearch = {
+      status: "not_applicable",
+      scope: "URL-only reviews do not search general message-safety sources.",
+      searchedAt: new Date().toISOString(),
+      searchedPortals: [],
+      sources: [],
+      evidenceAssessment: {
+        status: "not_applicable",
+        summary_bn: "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।",
+        summary_en: "URL-only reviews do not search general message-safety sources."
+      },
+      summary_bn: "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।",
+      summary_en: "URL-only reviews do not search general message-safety sources."
+    };
+  } else if (searchDisabled) {
     officialSearch = {
       status: "disabled",
       scope: "Selected Bangladesh official and institutional sources based on message category",
@@ -594,26 +609,34 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
   const searchApplies = !isUrlContext && !searchDisabled && isOfficialSourceSearchApplicable(message);
   const searchScope = "Selected Bangladesh official and institutional sources based on message category";
   const notApplicableSearch = {
-    status: searchDisabled ? "disabled" : "not_applicable",
-    scope: searchScope,
+    status: isUrlContext ? "not_applicable" : searchDisabled ? "disabled" : "not_applicable",
+    scope: isUrlContext ? "URL-only reviews do not search general message-safety sources." : searchScope,
     searchedAt: new Date().toISOString(),
     searchedPortals: [],
     sources: [],
     evidenceAssessment: {
       status: searchDisabled ? "not_checked" : "not_applicable",
-      summary_bn: searchDisabled
+      summary_bn: isUrlContext
+        ? "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।"
+        : searchDisabled
+          ? "এই deployment-এ live official-source search বন্ধ আছে।"
+          : "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
+      summary_en: isUrlContext
+        ? "URL-only reviews do not search general message-safety sources."
+        : searchDisabled
+          ? "Live official-source search is disabled for this deployment."
+          : "No supported official-source category matched this message."
+    },
+    summary_bn: isUrlContext
+      ? "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।"
+      : searchDisabled
         ? "এই deployment-এ live official-source search বন্ধ আছে।"
         : "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
-      summary_en: searchDisabled
+    summary_en: isUrlContext
+      ? "URL-only reviews do not search general message-safety sources."
+      : searchDisabled
         ? "Live official-source search is disabled for this deployment."
         : "No supported official-source category matched this message."
-    },
-    summary_bn: searchDisabled
-      ? "এই deployment-এ live official-source search বন্ধ আছে।"
-      : "এই বার্তার জন্য কোনো সমর্থিত official-source category মেলেনি।",
-    summary_en: searchDisabled
-      ? "Live official-source search is disabled for this deployment."
-      : "No supported official-source category matched this message."
   };
 
   // Portal retrieval and the concise LLM explanation run concurrently.
