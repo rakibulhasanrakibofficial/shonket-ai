@@ -622,7 +622,7 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
     searchedPortals: [],
     sources: [],
     evidenceAssessment: {
-      status: searchDisabled ? "not_checked" : "not_applicable",
+      status: isUrlContext ? "not_applicable" : searchDisabled ? "not_checked" : "not_applicable",
       summary_bn: isUrlContext
         ? "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।"
         : searchDisabled
