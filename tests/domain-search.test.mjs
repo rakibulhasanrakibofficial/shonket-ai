@@ -413,3 +413,42 @@ test("a domain appearing in a generic title is not enough to publish an unrelate
   assert.equal(evidence.status, "no_results");
   assert.deepEqual(evidence.sources, []);
 });
+
+test("domain search checks both the exact submitted hostname and estimated base domain", async () => {
+  const requestedQueries = [];
+  const hostname = "google-security-update2026.com-login.xyz";
+  const rootDomain = "com-login.xyz";
+  const exactHostPage = resultPage({
+    title: "Security report mentioning google-security-update2026.com-login.xyz",
+    url: "https://www.virustotal.com/gui/domain/google-security-update2026.com-login.xyz",
+    snippet: "A public security report mentions google-security-update2026.com-login.xyz."
+  });
+  const rootDomainPage = resultPage({
+    title: "com-login.xyz — website information and support",
+    url: "https://com-login.xyz/about",
+    snippet: "Information published by com-login.xyz."
+  });
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain }),
+    {},
+    null,
+    async url => {
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      requestedQueries.push(query);
+      return new Response(query.includes(hostname) ? exactHostPage : rootDomainPage, {
+        status: 200, headers: { "Content-Type": "text/html" }
+      });
+    }
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(evidence.hostname, hostname);
+  assert.equal(evidence.domain, rootDomain);
+  assert.deepEqual(evidence.searchedTargets, [hostname, rootDomain]);
+  assert.equal(evidence.queryCount, 4);
+  assert.equal(evidence.successfulQueryCount, 4);
+  assert.ok(requestedQueries.some(query => query.startsWith('"' + hostname + '"')));
+  assert.ok(requestedQueries.some(query => query.startsWith('"' + rootDomain + '"')));
+  assert.ok(evidence.sources.some(source => source.evidenceCategory === "security_reference"));
+  assert.ok(evidence.sources.some(source => source.evidenceCategory === "official_site_page"));
+});
