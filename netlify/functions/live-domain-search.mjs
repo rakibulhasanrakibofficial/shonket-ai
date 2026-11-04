@@ -388,3 +388,10 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
     }, headers);
   }
 }
+
+
+// Netlify Functions compatibility adapter (Cloudflare Worker imports the handler above directly).
+export async function handler(event) {
+  const runtimeEnv = typeof process !== "undefined" ? process.env : {};
+  return domainSearchHandler(event, runtimeEnv);
+}
