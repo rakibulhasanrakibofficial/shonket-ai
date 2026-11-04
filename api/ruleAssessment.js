@@ -112,7 +112,7 @@ function hasBangla(text) {
 }
 
 const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i;
-const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|\b(?:age|aage|prothome)\s+\d{2,7}\s*(?:tk|taka|bdt)\s+(?:pathan|diben|den|din)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
+const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:\d{1,7}\s*(?:tk|taka|bdt)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds))\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:\d{1,7}\s*(?:tk|taka|bdt)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment))\b(?:\s+(?:now|today|first|to claim|to release))?|\bfee(?:\s+ta)?\s+(?:pathan|diben|den|dite hobe)\b|\b(?:age|aage|prothome)\s+\d{2,7}\s*(?:tk|taka|bdt)\s+(?:pathan|diben|den|din)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে|দিন|দেন)|(?:প্রসেসিং|রেজিস্ট্রেশন|রিলিজ|আগাম)?\s*ফি\s*(?:পাঠান|দেন|দিন|দিতে হবে)/i;
 const DIRECT_SENSITIVE_ID_REQUEST = /\b(?:send|share|provide|submit|upload|enter|give)\s+(?:your\s+)?(?:nid|national id(?:entification)?(?: number)?|passport(?: number)?|birth certificate(?: number)?|date of birth|dob|bank account details|account number|credit card details|debit card details)\b|\b(?:nid|national id|passport|birth certificate|dob|date of birth|bank account details|card details)\b.{0,35}\b(?:diben|din|den|pathan|share koren|submit korun|upload korun)\b|(?:এনআইডি|জাতীয় পরিচয়পত্র|জাতীয় পরিচয়পত্র|পাসপোর্ট|জন্মনিবন্ধন|জন্ম নিবন্ধন|জন্মতারিখ|ব্যাংক অ্যাকাউন্টের তথ্য|কার্ডের তথ্য|কার্ড নম্বর)\s*(?:নম্বর)?\s*(?:দিন|দেন|পাঠান|শেয়ার করুন|শেয়ার করুন|জমা দিন|আপলোড করুন)/i;
 
 function stripNegatedInstructions(text) {
@@ -138,18 +138,28 @@ export function buildRuleAssessment(inputText, responseLanguage = "bn") {
   const hasConflictingRequest = DIRECT_CREDENTIAL_REQUEST.test(actionableText) || DIRECT_PAYMENT_REQUEST.test(actionableText) || DIRECT_SENSITIVE_ID_REQUEST.test(actionableText);
   const warningContext = WARNING_CONTEXT.test(text) && !hasConflictingRequest;
   const credentialWarning = isCredentialWarning(text, actionableText);
+  const explicitlyRequestsPayment = DIRECT_PAYMENT_REQUEST.test(actionableText);
 
   const matches = RULES.flatMap(rule => {
     if (rule.id === "credential_request" && credentialWarning) return [];
     if (warningContext && rule.id !== "url_present") return [];
     const match = actionableText.match(rule.regex);
-    return match ? [{ ...rule, quote: text.slice(match.index, match.index + match[0].length).slice(0, 180) }] : [];
+    if (!match) return [];
+    const adjustedRule = rule.id === "upfront_fee" && !explicitlyRequestsPayment
+      ? {
+          ...rule,
+          weight: 12,
+          reasonBn: "ফি উল্লেখ আছে, কিন্তু বার্তাটি স্পষ্টভাবে টাকা পাঠাতে বলছে না। প্রতিষ্ঠানের অফিসিয়াল ওয়েবসাইটে ফি ও পেমেন্ট নির্দেশনা যাচাই করুন।",
+          reasonEn: "A fee is mentioned, but the message does not clearly ask you to pay it. Verify the fee and payment instructions on the organisation's official website."
+        }
+      : rule;
+    return [{ ...adjustedRule, quote: text.slice(match.index, match.index + match[0].length).slice(0, 180) }];
   });
 
   const ids = new Set(matches.map(item => item.id));
-  const prizeAndFee = ids.has("prize_claim") && ids.has("upfront_fee");
-  const jobAndFee = ids.has("job_offer") && ids.has("upfront_fee");
-  const paymentAndPressure = ids.has("upfront_fee") && ids.has("urgency");
+  const prizeAndFee = explicitlyRequestsPayment && ids.has("prize_claim") && ids.has("upfront_fee");
+  const jobAndFee = explicitlyRequestsPayment && ids.has("job_offer") && ids.has("upfront_fee");
+  const paymentAndPressure = explicitlyRequestsPayment && ids.has("upfront_fee") && ids.has("urgency");
   const credentialAndPressure = ids.has("credential_request") && (ids.has("urgency") || ids.has("authority_claim"));
   const phishingPattern = ids.has("suspicious_link_prompt") && ids.has("urgency") && (ids.has("url_present") || ids.has("credential_request"));
   // An unsolicited request to install remote-access software is a strong warning
