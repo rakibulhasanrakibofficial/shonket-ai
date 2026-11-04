@@ -156,14 +156,20 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function searchDomainEvidence({ hostname, rootDomain = hostname } = {}) {
-  const fallback = (status, summaryEn, summaryBn) => ({
-    searched: false,
+export async function searchDomainEvidence({
+  hostname,
+  rootDomain = hostname,
+  categoryHint = ""
+} = {}) {
+  const fallback = (status, summaryEn, summaryBn, searched = false) => ({
+    searched,
     searchExecuted: false,
-    provider: "DuckDuckGo",
+    provider: "DuckDuckGo / Bing",
     status,
     domain: String(rootDomain || hostname || ""),
     queryCount: 0,
+    successfulQueryCount: 0,
+    failedQueryCount: 0,
     sourceCount: 0,
     sources: [],
     summary_en: summaryEn,
@@ -189,29 +195,47 @@ export async function searchDomainEvidence({ hostname, rootDomain = hostname } =
       signal: controller.signal,
       body: JSON.stringify({
         hostname: String(hostname || ""),
-        rootDomain: String(rootDomain || hostname || "")
+        rootDomain: String(rootDomain || hostname || ""),
+        categoryHint: String(categoryHint || "")
       })
     });
     const payload = await parseResponse(response);
-    return {
-      webEvidence: payload.webEvidence || fallback(
-        "unavailable",
-        "The domain-search endpoint returned no evidence payload.",
-        "Domain search endpoint থেকে কোনো evidence পাওয়া যায়নি।"
-      )
-    };
+    const evidence = payload?.webEvidence;
+    if (!evidence || typeof evidence !== "object" || !Array.isArray(evidence.sources)) {
+      return {
+        webEvidence: fallback(
+          "invalid_response",
+          "The domain-search endpoint returned an invalid evidence response.",
+          "Domain search endpoint থেকে সঠিক evidence response পাওয়া যায়নি।",
+          true
+        )
+      };
+    }
+    return { webEvidence: evidence };
   } catch (error) {
-    const status = error?.status === 429 ? "rate_limited" : "unavailable";
+    const status = error?.status === 429
+      ? "rate_limited"
+      : error?.status === 400
+        ? "not_searchable"
+        : error?.status === 403
+          ? "blocked"
+          : "unavailable";
+    const summaryEn = status === "rate_limited"
+      ? "The live search limit was reached. Please retry later."
+      : status === "not_searchable"
+        ? String(error?.message || "This hostname cannot be searched.")
+        : status === "blocked"
+          ? "This site is not permitted to use the domain-search service."
+          : "The live search service could not be reached. No domain reputation conclusion was made.";
+    const summaryBn = status === "rate_limited"
+      ? "Live search-এর সীমা পূর্ণ হয়েছে। পরে আবার চেষ্টা করুন।"
+      : status === "not_searchable"
+        ? "এই hostname-এ search করা যাচ্ছে না।"
+        : status === "blocked"
+          ? "এই website-এর domain-search service ব্যবহারের অনুমতি নেই।"
+          : "Live search সেবায় সংযোগ করা যায়নি। ডোমেইন সম্পর্কে কোনো reputation সিদ্ধান্ত দেওয়া হয়নি।";
     return {
-      webEvidence: fallback(
-        status,
-        status === "rate_limited"
-          ? "The live search limit was reached. Please retry later."
-          : "The live search service could not be reached. No domain reputation conclusion was made.",
-        status === "rate_limited"
-          ? "Live search-এর সীমা পূর্ণ হয়েছে। পরে আবার চেষ্টা করুন।"
-          : "Live search সেবায় সংযোগ করা যায়নি। ডোমেইন সম্পর্কে কোনো reputation সিদ্ধান্ত দেওয়া হয়নি।"
-      )
+      webEvidence: fallback(status, summaryEn, summaryBn, status === "unavailable" || status === "invalid_response")
     };
   } finally {
     clearTimeout(timeout);
