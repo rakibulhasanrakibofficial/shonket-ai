@@ -37,7 +37,7 @@ const OFFICIAL_BRAND_DOMAINS = {
   meta: ["meta.com", "meta.ai"],
   microsoft: ["microsoft.com", "microsoftonline.com"],
   apple: ["apple.com", "icloud.com", "mzstatic.com"],
-  amazon: ["amazon.com", "amazonaws.com", "media-amazon.com"]
+  amazon: ["amazon.com", "amazonaws.com", "media-amazon.com", "ssl-images-amazon.com", "amazon-adsystem.com"]
 };
 
 const KNOWN_SITES = {
