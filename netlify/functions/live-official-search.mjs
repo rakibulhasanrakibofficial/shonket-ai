@@ -355,11 +355,13 @@ export function detectSearchCategories(query) {
   if (banking && !mobileMoney) categories.push("banking");
 
   const courier = has(/\b(courier|parcel|delivery|tracking number|shipment|customs fee|customs charge|redelivery fee|delivery fee|parcel release fee)\b|কুরিয়ার|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|চালান/i);
-  // A routine parcel update is not a cybersecurity incident. Route courier
-  // messages only when they combine a delivery context with a concrete fee
-  // request or an explicit phishing/credential warning.
+  // A routine parcel update is not an incident. Route it only when it also
+  // contains a concrete delivery-fee demand or a suspicious link/code request.
   const courierFeeRequest = courier
     && has(/\b(?:pay|send|transfer|deposit)\b.{0,45}\b(?:customs|delivery|redelivery|parcel release|handling)\s+(?:fee|charge)\b|\b(?:customs|delivery|redelivery|parcel release|handling)\s+(?:fee|charge)\b.{0,45}\b(?:pay|send|transfer|deposit)\b|\b(?:customs|delivery|redelivery|parcel release)\s+(?:fee|charge)\s+(?:is )?required\b|\bfee\s+(?:to release|for delivery|to redeliver)\b|কাস্টমস ফি.{0,35}(?:দিন|দেন|পাঠান)|ডেলিভারি ফি.{0,35}(?:দিন|দেন|পাঠান)/i);
+  const courierCredentialOrLink = courier
+    && has(/\b(?:otp|one[- ]time password|verification code|pin|password|phishing|smishing|malicious link|fake link|suspicious link|click this link|verify your account)\b|ওটিপি|পিন|পাসওয়ার্ড|ফিশিং|স্মিশিং|জাল লিংক/i);
+  if (courier && (courierFeeRequest || courierCredentialOrLink)) categories.push("courier");
 
   const telecom = has(/\b(sim card|sim registration|mobile operator|telecom|recharge|mobile number|phone number|network provider)\b|সিম|মোবাইল অপারেটর|রিচার্জ|টেলিকম|নম্বর বন্ধ/i);
   if (telecom) categories.push("telecom");
@@ -380,7 +382,9 @@ export function detectSearchCategories(query) {
 }
 
 export function isOfficialSourceSearchApplicable(query) {
-  return detectSearchCategories(query).length > 0;
+  // A category match alone is insufficient: at least one context-approved
+  // source must be eligible before the UI shows an official-search state.
+  return searchPlan(query).sources.length > 0;
 }
 
 function sourceMatchesQueryContext(source, query) {
