@@ -650,7 +650,7 @@ test("domain search does not reuse a cached not-configured threat result after a
   );
   const intelligence = JSON.parse(withKey.body).webEvidence.threatIntelligence;
   assert.equal(urlhausCalls, 1);
-  assert.equal(intelligence.status, "partial_or_unavailable");
+  assert.equal(intelligence.status, "partial_coverage");
   assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
   assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
 });
