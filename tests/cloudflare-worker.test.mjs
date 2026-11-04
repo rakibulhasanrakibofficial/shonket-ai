@@ -5,7 +5,7 @@ import worker from "../src/worker.js";
 const allowedOrigin = "https://rakibulhasanrakibofficial.github.io";
 
 function makeEnv(overrides = {}) {
-  const calls = { ai: 0, rate: 0, officialRate: 0, model: "", options: null, key: "" };
+  const calls = { ai: 0, rate: 0, officialRate: 0, model: "", options: null, key: "", systemPrompt: "", userPrompt: "" };
   const env = {
     CLOUDFLARE_AI_MODEL: "@cf/google/gemma-4-26b-a4b-it",
     OFFICIAL_SOURCE_SEARCH_ENABLED: "false",
@@ -15,6 +15,8 @@ function makeEnv(overrides = {}) {
         calls.ai += 1;
         calls.model = model;
         calls.options = options;
+        calls.systemPrompt = input.messages[0].content;
+        calls.userPrompt = input.messages[1].content;
         assert.equal(input.max_completion_tokens, 240);
         assert.equal(input.chat_template_kwargs.enable_thinking, false);
         assert.equal(input.messages.length, 2);
@@ -159,6 +161,38 @@ test("official-source search preflight returns CORS headers for the configured s
   assert.equal(response.status, 204);
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), allowedOrigin);
   assert.equal(calls.officialRate, 0);
+});
+
+test("Cloudflare Worker uses URL-specific instructions and never requires the submitted path or query", async () => {
+  const { env, calls } = makeEnv({ OFFICIAL_SOURCE_SEARCH_ENABLED: "false" });
+  const response = await worker.fetch(new Request("https://example.workers.dev/api/analyze", {
+    method: "POST",
+    headers: {
+      Origin: allowedOrigin,
+      "Content-Type": "application/json",
+      "CF-Connecting-IP": "203.0.113.29"
+    },
+    body: JSON.stringify({
+      contextType: "url",
+      message: [
+        "Link Inspector security review.",
+        "Domain only: bkash-bonus.xyz",
+        "Estimated registered domain: bkash-bonus.xyz",
+        "Locally detected URL indicators: brand, phishing",
+        "The full URL path and query were deliberately kept in the browser."
+      ].join("\n"),
+      language: "en"
+    })
+  }), env);
+  const body = await response.json();
+  const prompt = JSON.parse(calls.userPrompt);
+  assert.equal(response.status, 200);
+  assert.equal(body.aiAnalysis.status, "ready");
+  assert.match(calls.systemPrompt, /URL-context review/i);
+  assert.match(calls.systemPrompt, /not a verdict about the real domain/i);
+  assert.equal(prompt.analysisContextType, "url");
+  assert.match(prompt.message, /bkash-bonus\.xyz/);
+  assert.doesNotMatch(prompt.message, /reset_token|private-reset-secret|\/login/);
 });
 
 test("Cloudflare Worker returns 429 when its rate-limit binding rejects a request", async () => {
