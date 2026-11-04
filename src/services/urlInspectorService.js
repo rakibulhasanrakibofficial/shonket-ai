@@ -146,6 +146,9 @@ export function inspectUrl(input) {
   if (/[\u0000-\u001f\u007f\s]/u.test(raw)) {
     throw new Error("Remove spaces or control characters from the website address.");
   }
+  if (raw.includes("\\\\")) {
+    throw new Error("Backslashes are not valid in a website address. Paste the exact HTTP or HTTPS link.");
+  }
 
   const explicitScheme = raw.match(/^([a-z][a-z0-9+.-]*):\/\//i);
   if (explicitScheme && !/^https?$/i.test(explicitScheme[1])) {
