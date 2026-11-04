@@ -431,22 +431,24 @@ function cacheSearchResult(domain, value) {
   cache.set(domain, { cachedAt: Date.now(), value });
 }
 
-async function searchDomain(domain, fetchImpl) {
-  const cached = cache.get(domain);
+async function searchDomain(domain, hostname, fetchImpl) {
+  const searchTargets = [...new Set([hostname, domain].filter(Boolean))];
+  const cacheKey = searchTargets.join("|");
+  const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
     // Refresh insertion order so the cache behaves as a bounded LRU.
-    cache.delete(domain);
-    cache.set(domain, cached);
+    cache.delete(cacheKey);
+    cache.set(cacheKey, cached);
     return cached.value;
   }
-  if (cached) cache.delete(domain);
+  if (cached) cache.delete(cacheKey);
 
-  const querySpecs = [
-    { type: "security_mentions", query: '"' + domain + '" scam phishing malware fraud abuse blacklist' },
-    { type: "domain_identity", query: '"' + domain + '" official website company service review' }
-  ];
+  const querySpecs = searchTargets.flatMap(target => [
+    { target, type: "security_mentions", query: '"' + target + '" scam phishing malware fraud abuse blacklist' },
+    { target, type: "domain_identity", query: '"' + target + '" official website company service review' }
+  ]);
   const attempts = await Promise.allSettled(querySpecs.map(spec =>
-    searchQuery(spec.query, domain, spec.type, fetchImpl)
+    searchQuery(spec.query, spec.target, spec.type, fetchImpl)
   ));
   const completed = attempts.filter(item => item.status === "fulfilled");
   const failedCount = attempts.length - completed.length;
@@ -477,6 +479,8 @@ async function searchDomain(domain, fetchImpl) {
     provider,
     status,
     domain,
+    hostname,
+    searchedTargets: searchTargets,
     searchedAt: new Date().toISOString(),
     queryCount: querySpecs.length,
     successfulQueryCount: completed.length,
@@ -487,16 +491,16 @@ async function searchDomain(domain, fetchImpl) {
     identityReferenceCount,
     sources,
     summary_en: status === "results_found" || status === "partial_results"
-      ? "Filtered results: " + securityReferenceCount + " security-related reference(s) and " + identityReferenceCount + " identity, review or first-party reference(s). Open the original pages and check their dates; search snippets alone do not prove that the website is safe or malicious."
+      ? "Filtered public references were found for the exact hostname and estimated base domain: " + securityReferenceCount + " security-related and " + identityReferenceCount + " identity, review or first-party reference(s). Open original pages and check dates; snippets are not proof of site safety or maliciousness."
       : status === "no_results"
-        ? "The search completed, but no relevant security, review or useful identity references passed the filter. No results do not prove that the website is safe."
+        ? "The search completed for the exact hostname and estimated base domain, but no relevant security, review or useful identity references passed the filter. No results do not prove that the website is safe."
         : status === "partial_unavailable"
-          ? "Some search providers were unavailable and no relevant references were found in the completed searches. The website's reputation remains unchecked."
+          ? "Some search providers were unavailable and no relevant references were found for the exact hostname or estimated base domain. The website's reputation remains unchecked."
           : "The live search providers could not return usable results. The website's reputation remains unchecked.",
     summary_bn: status === "results_found" || status === "partial_results"
-      ? "প্রাসঙ্গিকতা যাচাই করে " + securityReferenceCount + "টি security-related এবং " + identityReferenceCount + "টি পরিচয়, review বা নিজস্ব-সাইট reference পাওয়া গেছে। মূল পেজ ও তারিখ খুলে দেখুন; search snippet একা সাইট নিরাপদ বা ক্ষতিকর প্রমাণ করে না।"
+      ? "নির্দিষ্ট hostname ও estimated base domain—দুটোর জন্য প্রাসঙ্গিকতা যাচাই করে " + securityReferenceCount + "টি security-related এবং " + identityReferenceCount + "টি পরিচয়, review বা নিজস্ব-সাইট reference পাওয়া গেছে। মূল পেজ ও তারিখ দেখুন; snippet একা সাইট নিরাপদ বা ক্ষতিকর প্রমাণ করে না।"
       : status === "no_results"
-        ? "সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিক security report, review বা পরিচয়-সংক্রান্ত রেফারেন্স মেলেনি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
+        ? "নির্দিষ্ট hostname ও estimated base domain—দুটোতেই সার্চ হয়েছে, কিন্তু প্রাসঙ্গিক security report, review বা পরিচয়-সংক্রান্ত রেফারেন্স মেলেনি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
         : "লাইভ সার্চ সেবাগুলো ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
   };
   if (status !== "unavailable") cacheSearchResult(domain, value);
@@ -530,10 +534,11 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
     return makeResponse(400, { error: "Request body must be valid JSON." }, headers);
   }
 
+  let hostname;
   let domain;
   const categoryHint = cleanText(body.categoryHint, 120);
   try {
-    const hostname = validateDomain(body.hostname);
+    hostname = validateDomain(body.hostname);
     const requestedRoot = String(body.rootDomain || "").trim().toLowerCase().replace(/\.$/, "");
     domain = requestedRoot && (hostname === requestedRoot || hostname.endsWith("." + requestedRoot))
       ? validateDomain(requestedRoot)
@@ -553,7 +558,7 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
     }, headers);
   }
 
-  if (isRestrictedCategoryDomain(domain, categoryHint)) {
+  if (isRestrictedCategoryDomain(domain, categoryHint) || isRestrictedCategoryDomain(hostname, categoryHint)) {
     return makeResponse(200, {
       webEvidence: {
         searched: false,
@@ -561,6 +566,8 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
         provider: "DuckDuckGo",
         status: "restricted_category",
         domain,
+        hostname,
+        searchedTargets: [],
         queryCount: 0,
         successfulQueryCount: 0,
         failedQueryCount: 0,
@@ -591,7 +598,7 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
   }
 
   try {
-    const webEvidence = await searchDomain(domain, fetchImpl);
+    const webEvidence = await searchDomain(domain, hostname, fetchImpl);
     return makeResponse(200, { webEvidence }, headers);
   } catch {
     return makeResponse(200, {
