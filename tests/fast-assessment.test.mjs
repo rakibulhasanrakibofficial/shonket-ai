@@ -522,7 +522,8 @@ test("static GitHub Pages analysis uses local rules and RAG without calling a mi
     assert.equal(result.aiAnalysis.status, "not_configured");
     assert.equal(result.verdict, "suspicious");
     assert.equal(result.engine, "Rule-based");
-    assert.ok(result.retrievedSources.some(source => source.id === "bkash-security-tips"));
+    assert.ok(result.retrievedSources.some(source => source.id === "scamcheck-common-scams"));
+    assert.ok(!result.retrievedSources.some(source => source.id === "bkash-security-tips" || source.id === "bkash-fraud-awareness"));
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -688,12 +689,13 @@ test("live prize-fee sample produces the expected explainable 70-point heuristic
   assert.deepEqual(result.matchedSignals, ["upfront_payment", "unverified_prize_claim", "urgency"]);
 });
 
-test("curated guidance retrieval avoids substring-only false matches", () => {
+test("curated guidance retrieval selects a prize-scam advisory without brand or incident leakage", () => {
   const results = retrieveKnowledge(
     "Congratulations! You won a cash prize. Pay a processing fee today to claim it.",
     5
   );
-  assert.ok(results.some(source => source.id === "bkash-security-tips"));
+  assert.ok(results.some(source => source.id === "scamcheck-common-scams"));
+  assert.ok(!results.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));
   assert.ok(!results.some(source => source.id === "bgd-cirt-error524"));
   assert.ok(!results.some(source => source.id === "scamcheck-victim-support"));
 });

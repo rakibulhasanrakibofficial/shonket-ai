@@ -767,7 +767,17 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
 </div>
 </div>
 </section></main>
-<footer className="relative z-10 border-t border-white/[.08]"><div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-5 py-8 sm:px-8 md:flex-row md:items-center md:justify-between"><Brand/><p className="max-w-lg text-xs leading-5 text-slate-500">{t('Rule-based guidance, not a guarantee. Verify important requests through official channels. Never share OTPs or passwords.','নিয়মভিত্তিক নির্দেশনা, নিশ্চয়তা নয়। গুরুত্বপূর্ণ অনুরোধ অফিসিয়াল মাধ্যমে যাচাই করুন। কখনো OTP বা পাসওয়ার্ড শেয়ার করবেন না।')}</p></div></footer></div>
+<footer className="relative z-10 border-t border-white/[.08]"><div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-5 py-8 sm:px-8 md:flex-row md:items-center md:justify-between"><Brand/><p className="max-w-lg text-xs leading-5 text-slate-500">{t('Rule-based guidance, not a guarantee. Verify important requests through official channels. Never share OTPs or passwords.','নিয়মভিত্তিক নির্দেশনা, নিশ্চয়তা নয়। গুরুত্বপূর্ণ অনুরোধ অফিসিয়াল মাধ্যমে যাচাই করুন। কখনো OTP বা পাসওয়ার্ড শেয়ার করবেন না।')}</p></div></footer>
+<nav className="mobile-tool-dock" aria-label={t('Quick tool navigation','দ্রুত টুল নেভিগেশন')}>
+  {nav.map(([id,label])=>{
+    const Icon=id==='checker'?ShieldCheck:id==='links'?Link2:id==='simulator'?BrainCircuit:History;
+    return <button key={id} type="button" aria-label={label} aria-pressed={active===id} onClick={()=>go(id)} className={active===id?'is-active':''}>
+      <Icon size={18} strokeWidth={2.2} aria-hidden="true"/>
+      <span>{label}</span>
+    </button>;
+  })}
+</nav>
+</div>
 }
 
 class AppErrorBoundary extends Component{

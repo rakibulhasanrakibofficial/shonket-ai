@@ -1174,3 +1174,36 @@ test('age-restricted category is not sent to public web search and does not beco
   expect(domainSearchCalls).toBe(0);
   expect(officialSearchCalls).toBe(0);
 });
+
+
+test('mobile workspace stays inside a narrow viewport and quick navigation works', async ({ page }) => {
+  for (const width of [320, 360, 390, 430]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    await expect(page.locator('.mobile-tool-dock')).toBeVisible();
+    await expect(page.locator('.mobile-tool-dock button')).toHaveCount(4);
+
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+      dock: (() => {
+        const rect = document.querySelector('.mobile-tool-dock').getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width };
+      })()
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+    expect(dimensions.dock.left).toBeGreaterThanOrEqual(0);
+    expect(dimensions.dock.right).toBeLessThanOrEqual(dimensions.viewport);
+
+    await page.locator('.mobile-tool-dock').getByRole('button', { name: 'Link Inspector' }).click();
+    await expect(page.locator('#url')).toBeVisible();
+    await expect(page.locator('.mobile-tool-dock button[aria-pressed="true"]')).toHaveAttribute('aria-label', 'Link Inspector');
+  }
+});
+
+test('desktop layout keeps the mobile quick-navigation hidden', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect(page.locator('.mobile-tool-dock')).toBeHidden();
+  await expect(page.locator('header nav')).toBeVisible();
+});
