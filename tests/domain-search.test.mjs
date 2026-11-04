@@ -455,3 +455,131 @@ test("domain search checks both the exact submitted hostname and estimated base 
   assert.ok(evidence.sources.some(source => source.evidenceCategory === "security_reference"));
   assert.ok(evidence.sources.some(source => source.evidenceCategory === "official_site_page"));
 });
+
+
+test("threat-intelligence lookups stay disabled until server-side API keys are configured", async () => {
+  const providerCalls = [];
+  const response = await domainSearchHandler(
+    makeEvent({ hostname: "no-threat-feed-keys.example.net", rootDomain: "no-threat-feed-keys.example.net" }),
+    {},
+    null,
+    async url => {
+      const value = String(url);
+      if (value.includes("urlhaus-api.abuse.ch") || value.includes("checkurl.phishtank.com")) {
+        providerCalls.push(value);
+      }
+      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(evidence.threatIntelligence.status, "not_configured");
+  assert.deepEqual(providerCalls, []);
+  assert.deepEqual(
+    evidence.threatIntelligence.providers.map(provider => provider.status),
+    ["not_configured", "not_configured"]
+  );
+});
+
+test("PhishTank and URLhaus host lookups return safe references without leaking submitted paths or malware URLs", async () => {
+  const hostname = "security-feed-fixture.example.net";
+  const appKey = "test-phishtank-key";
+  const authKey = "test-urlhaus-key";
+  const providerRequests = [];
+
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { PHISHTANK_APP_KEY: appKey, URLHAUS_AUTH_KEY: authKey },
+    null,
+    async (url, options = {}) => {
+      const target = String(url);
+      if (target === "https://checkurl.phishtank.com/checkurl/") {
+        const form = new URLSearchParams(options.body || "");
+        providerRequests.push({ provider: "PhishTank", form: form.toString() });
+        assert.equal(form.get("url"), "https://" + hostname + "/");
+        assert.equal(form.get("app_key"), appKey);
+        assert.equal(form.get("format"), "json");
+        assert.equal(options.headers["User-Agent"], "SHONKET-AI/1.0 (domain threat-intelligence lookup)");
+        return new Response(JSON.stringify({
+          results: {
+            url: "https://" + hostname + "/",
+            in_database: true,
+            phish_id: 123456,
+            phish_detail_page: "https://www.phishtank.com/phish_detail.php?phish_id=123456",
+            verified: "y",
+            verified_at: "2026-11-04T10:00:00+00:00",
+            valid: "y"
+          }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
+        const form = new URLSearchParams(options.body || "");
+        providerRequests.push({ provider: "URLhaus", form: form.toString() });
+        assert.equal(form.get("host"), hostname);
+        assert.equal(options.headers["Auth-Key"], authKey);
+        return new Response(JSON.stringify({
+          query_status: "ok",
+          urlhaus_reference: "https://urlhaus.abuse.ch/host/" + hostname + "/",
+          host: hostname,
+          firstseen: "2026-11-03 12:00:00 UTC",
+          url_count: "1",
+          blacklists: { spamhaus_dbl: "abused_legit_malware", surbl: "listed" },
+          urls: [{
+            url: "https://" + hostname + "/private-payload-fixture.bin?private=not-for-ui",
+            url_status: "online",
+            date_added: "2026-11-03 12:00:00 UTC"
+          }]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(providerRequests.length, 2);
+  assert.equal(evidence.threatIntelligence.status, "matches_found");
+
+  const phishTank = evidence.threatIntelligence.providers.find(provider => provider.name === "PhishTank");
+  assert.equal(phishTank.status, "match_found");
+  assert.equal(phishTank.targets[0].status, "verified_phishing");
+  assert.equal(phishTank.targets[0].phishId, 123456);
+  assert.equal(phishTank.targets[0].sourceUrl, "https://www.phishtank.com/phish_detail.php?phish_id=123456");
+
+  const urlhaus = evidence.threatIntelligence.providers.find(provider => provider.name === "URLhaus");
+  assert.equal(urlhaus.status, "match_found");
+  assert.equal(urlhaus.targets[0].status, "malware_host");
+  assert.equal(urlhaus.targets[0].urlCount, 1);
+  assert.equal(urlhaus.targets[0].activeCount, 1);
+  assert.equal(urlhaus.targets[0].sourceUrl, "https://urlhaus.abuse.ch/host/" + hostname + "/");
+
+  const serialised = JSON.stringify(evidence.threatIntelligence);
+  assert.doesNotMatch(serialised, /private-payload-fixture\.bin|not-for-ui/i);
+  assert.doesNotMatch(JSON.stringify(providerRequests), /private|token|reset/i);
+});
+
+test("a failed threat-intelligence provider does not erase a no-match response from another provider", async () => {
+  const hostname = "partial-threat-feed.example.net";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { PHISHTANK_APP_KEY: "test-phishtank-key", URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+    null,
+    async url => {
+      const target = String(url);
+      if (target === "https://checkurl.phishtank.com/checkurl/") {
+        return new Response("temporarily unavailable", { status: 503 });
+      }
+      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
+        return new Response(JSON.stringify({ query_status: "no_results" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+
+  const providers = JSON.parse(response.body).webEvidence.threatIntelligence.providers;
+  assert.equal(providers.find(provider => provider.name === "PhishTank").status, "unavailable");
+  assert.equal(providers.find(provider => provider.name === "URLhaus").status, "no_match");
+});
