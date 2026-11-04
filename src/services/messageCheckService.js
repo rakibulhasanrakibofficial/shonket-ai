@@ -79,7 +79,7 @@ function localAssessment(message, language, status = "not_configured", contextTy
 
   return {
     ...result,
-    analysisMode: "local-rules+rag",
+    analysisMode: isUrlContext ? "local-url-structure" : "local-rules+rag",
     aiAnalysis: {
       status,
       provider: null,
