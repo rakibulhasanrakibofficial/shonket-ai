@@ -3,6 +3,8 @@ const MAX_BODY_BYTES = 4096;
 const QUERY_TIMEOUT_MS = 2800;
 const CACHE_TTL_MS = 120_000;
 const MAX_RESULTS = 8;
+const MAX_CACHE_ENTRIES = 300;
+const MAX_LOCAL_RATE_BUCKETS = 1000;
 const cache = new Map();
 const localRateBuckets = new Map();
 
@@ -56,11 +58,13 @@ function isPrivateIpv4(host) {
     || (a === 203 && b === 0);
 }
 
-function isRestrictedCategoryDomain(domain) {
+function isRestrictedCategoryDomain(domain, categoryHint = "") {
   const labels = String(domain || "").toLowerCase().split(".");
-  return labels.some(label =>
+  const restrictedLabel = labels.some(label =>
     /^(?:adult|18plus|xxx|porn|casino|gambling|betting|sportsbook)(?:[-_]|$)/i.test(label)
   );
+  const restrictedHint = /age[- ]restricted|18\\+|gambling|casino|betting|sportsbook/i.test(String(categoryHint || ""));
+  return restrictedLabel || restrictedHint;
 }
 function validateDomain(value) {
   const host = String(value || "").trim().toLowerCase().replace(/\.$/, "");
@@ -267,24 +271,49 @@ function makeResponse(statusCode, payload, headers = {}) {
 
 function localRateLimit(ip) {
   const now = Date.now();
-  const entry = localRateBuckets.get(ip);
-  if (!entry || now - entry.startedAt >= 60_000) {
+  let entry = localRateBuckets.get(ip);
+  if (entry && now - entry.startedAt >= 60_000) {
+    localRateBuckets.delete(ip);
+    entry = null;
+  }
+
+  if (!entry) {
+    if (localRateBuckets.size >= MAX_LOCAL_RATE_BUCKETS) {
+      for (const [key, value] of localRateBuckets) {
+        if (now - value.startedAt >= 60_000) localRateBuckets.delete(key);
+      }
+    }
+    if (localRateBuckets.size >= MAX_LOCAL_RATE_BUCKETS) {
+      const oldestKey = localRateBuckets.keys().next().value;
+      if (oldestKey !== undefined) localRateBuckets.delete(oldestKey);
+    }
     localRateBuckets.set(ip, { startedAt: now, count: 1 });
     return true;
   }
+
   if (entry.count >= 12) return false;
   entry.count += 1;
-  if (localRateBuckets.size > 1000) {
-    for (const [key, value] of localRateBuckets) {
-      if (now - value.startedAt >= 60_000) localRateBuckets.delete(key);
-    }
-  }
   return true;
+}
+
+function cacheSearchResult(domain, value) {
+  if (cache.has(domain)) cache.delete(domain);
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
+  cache.set(domain, { cachedAt: Date.now(), value });
 }
 
 async function searchDomain(domain, fetchImpl) {
   const cached = cache.get(domain);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) return cached.value;
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    // Refresh insertion order so the cache behaves as a bounded LRU.
+    cache.delete(domain);
+    cache.set(domain, cached);
+    return cached.value;
+  }
+  if (cached) cache.delete(domain);
 
   const querySpecs = [
     { type: "security_mentions", query: '"' + domain + '" scam phishing malware fraud abuse blacklist' },
@@ -316,7 +345,7 @@ async function searchDomain(domain, fetchImpl) {
   const provider = [...usedProviders].join(" + ") || "DuckDuckGo / Bing";
   const value = {
     searched: true,
-    searchExecuted: true,
+    searchExecuted: completed.length > 0,
     provider,
     status,
     domain,
@@ -340,7 +369,7 @@ async function searchDomain(domain, fetchImpl) {
         ? "সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিকতার শর্ত পূরণ করে এমন ডোমেইন-নির্দিষ্ট রেফারেন্স পাওয়া যায়নি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
         : "লাইভ সার্চ সেবাগুলো ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
   };
-  if (status !== "unavailable") cache.set(domain, { cachedAt: Date.now(), value });
+  if (status !== "unavailable") cacheSearchResult(domain, value);
   return value;
 }
 
@@ -384,13 +413,14 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
         searchExecuted: false,
         provider: "DuckDuckGo",
         status: "not_searchable",
+        message: cleanText(error?.message || "The submitted hostname cannot be searched.", 240),
         sourceCount: 0,
         sources: []
       }
     }, headers);
   }
 
-  if (isRestrictedCategoryDomain(domain)) {
+  if (isRestrictedCategoryDomain(domain, categoryHint)) {
     return makeResponse(200, {
       webEvidence: {
         searched: false,
@@ -434,16 +464,16 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
     return makeResponse(200, {
       webEvidence: {
         searched: true,
-        searchExecuted: true,
-        provider: "DuckDuckGo",
+        searchExecuted: false,
+        provider: "DuckDuckGo / Bing",
         status: "unavailable",
         domain,
         searchedAt: new Date().toISOString(),
         queryCount: 0,
         sourceCount: 0,
         sources: [],
-        summary_en: "The live search provider could not be reached. No reputation conclusion was made.",
-        summary_bn: "লাইভ সার্চ সেবায় সংযোগ করা যায়নি। ডোমেইন সম্পর্কে কোনো reputation সিদ্ধান্ত দেওয়া হয়নি।"
+        summary_en: "The live search providers could not be reached. No reputation conclusion was made.",
+        summary_bn: "লাইভ সার্চ সেবাগুলোতে সংযোগ করা যায়নি। ডোমেইন সম্পর্কে কোনো reputation সিদ্ধান্ত দেওয়া হয়নি।"
       }
     }, headers);
   }
