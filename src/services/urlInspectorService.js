@@ -83,7 +83,7 @@ const CATEGORY_RULES = [
 
 function safeDecode(value) {
   try {
-    return decodeURIComponent(String(value || "").replace(/\+/g, " ")).toLowerCase();
+    return decodeURIComponent(String(value || "")).toLowerCase();
   } catch {
     return String(value || "").toLowerCase();
   }
@@ -185,7 +185,11 @@ export function inspectUrl(input) {
   const oddPort = Boolean(parsed.port);
   const deepSubdomains = !isIp && labels.length - (rootDomain.split(".").length) > 1;
   const isShortener = SHORTENER_DOMAINS.has(rootDomain);
-  const fullPath = safeDecode(parsed.pathname + " " + parsed.search + " " + parsed.hash);
+  const fullPath = [
+    safeDecode(parsed.pathname),
+    safeDecode(parsed.search.replace(/\+/g, " ")),
+    safeDecode(parsed.hash)
+  ].join(" ");
 
   const signals = [];
   const impersonatedBrand = !isIp && Object.keys(OFFICIAL_BRAND_DOMAINS).find(brand => {
