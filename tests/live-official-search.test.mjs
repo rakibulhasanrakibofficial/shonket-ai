@@ -210,3 +210,24 @@ test("education scholarships still trigger live official portal search", async (
   assert.equal(calls, 3);
   assert.equal(result.searchedPortals.length, 3);
 });
+
+
+test("guidance references with no matching message terms are not surfaced as relevant", async () => {
+  const result = await searchOfficialSources(
+    "You have won a cash prize. Pay a processing fee to claim it.",
+    {
+      fetchImpl: async url => {
+        const address = String(url);
+        const html = address.includes("scamcheck.gov.bd")
+          ? "<html><body><h1>Common Scams</h1><p>Prize scams may ask people to pay a processing fee before receiving a reward.</p></body></html>"
+          : "<html><body><nav>About us Home Who we are Services Contact and publications</nav><main>General information and institutional contact details.</main></body></html>";
+        return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+    }
+  );
+
+  assert.equal(result.status, "guidance_only");
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].id, "scamcheck-common-scams");
+  assert.ok(result.sources[0].matchedTerms.length > 0);
+});
