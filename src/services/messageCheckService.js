@@ -121,7 +121,8 @@ export async function analyzeMessage({
   language = "bn",
   ocrExtractor = extractScreenshotText,
   onOfficialSearch = null,
-  onLocalPreview = null
+  onLocalPreview = null,
+  contextType = "message"
 }) {
   const cleanMessage = String(message || "").trim();
   if (!cleanMessage && !imageFile) throw new Error("Add a message or screenshot to check.");
@@ -147,7 +148,8 @@ export async function analyzeMessage({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: requestMessage,
-        language: language === "bn" || language === "en" ? language : "auto"
+        language: language === "bn" || language === "en" ? language : "auto",
+        contextType: contextType === "url" ? "url" : "message"
       })
     })
       .then(parseResponse)
@@ -204,7 +206,8 @@ export async function analyzeMessage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: requestMessage,
-          language: language === "en" || language === "bn" ? language : "auto"
+          language: language === "en" || language === "bn" ? language : "auto",
+          contextType: contextType === "url" ? "url" : "message"
         })
       });
       assessment = await parseResponse(response);
