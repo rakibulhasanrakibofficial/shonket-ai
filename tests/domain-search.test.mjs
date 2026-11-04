@@ -696,3 +696,81 @@ test("malformed URLhaus success payload is unavailable, never a false NO MATCH",
   assert.equal(intelligence.providers[0].status, "unavailable");
   assert.match(intelligence.summary_en, /lookup could not be completed/i);
 });
+
+
+test("URLhaus response must match the requested hostname before attribution", async () => {
+  const hostname = "requested-host.example.net";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+    { async limit() { return { success: true }; } },
+    async url => {
+      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+        return new Response(JSON.stringify({
+          query_status: "ok",
+          host: "different-host.example.net",
+          url_count: "1",
+          urls: [{ url_status: "online" }]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(intelligence.status, "partial_or_unavailable");
+  assert.equal(intelligence.providers[0].status, "unavailable");
+  assert.match(intelligence.summary_en, /lookup could not be completed/i);
+});
+
+test("incomplete URLhaus offline lists are not classified as historical-only", async () => {
+  const hostname = "incomplete-history.example.net";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+    { async limit() { return { success: true }; } },
+    async url => {
+      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+        return new Response(JSON.stringify({
+          query_status: "ok",
+          host: hostname,
+          url_count: "4",
+          urlhaus_reference: "https://urlhaus.abuse.ch/host/" + hostname + "/",
+          urls: [{ url_status: "offline" }]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(intelligence.status, "records_found");
+  assert.equal(intelligence.providers[0].status, "records_found");
+  assert.equal(intelligence.providers[0].targets[0].urlCount, 4);
+  assert.equal(intelligence.providers[0].targets[0].returnedRecordCount, 1);
+  assert.equal(intelligence.providers[0].targets[0].status, "records_found");
+});
+
+test("URLhaus rejects negative, fractional and non-numeric URL counts", async () => {
+  const invalidCounts = ["-1", "1.5", "NaN", "1x", null];
+  for (let index = 0; index < invalidCounts.length; index += 1) {
+    const hostname = "invalid-count-" + index + ".example.net";
+    const response = await domainSearchHandler(
+      makeEvent({ hostname, rootDomain: hostname }),
+      { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+      { async limit() { return { success: true }; } },
+      async url => {
+        if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+          return new Response(JSON.stringify({
+            query_status: "ok",
+            host: hostname,
+            url_count: invalidCounts[index],
+            urls: []
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+    );
+    const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+    assert.equal(intelligence.status, "partial_or_unavailable", String(invalidCounts[index]));
+    assert.equal(intelligence.providers[0].status, "unavailable", String(invalidCounts[index]));
+  }
+});
