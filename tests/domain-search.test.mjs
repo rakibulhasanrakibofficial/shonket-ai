@@ -606,3 +606,93 @@ test("domain search refreshes its threat result after the URLhaus API key is add
   assert.equal(intelligence.providers[0].status,"no_match");
 });
 
+
+
+test("security result URL paths require an exact hostname token boundary", async () => {
+  const html = resultPage({
+    title: "Malware and phishing security advisory",
+    url: "https://www.virustotal.com/gui/domain/exact-path-boundary-unique.net.evil",
+    snippet: "A security advisory for a different hostname."
+  });
+  const response = await domainSearchHandler(
+    makeEvent({ hostname: "exact-path-boundary-unique.net", rootDomain: "exact-path-boundary-unique.net" }),
+    {},
+    { async limit() { return { success: true }; } },
+    async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html" } })
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(evidence.status, "no_results");
+  assert.equal(evidence.sourceCount, 0);
+  assert.deepEqual(evidence.sources, []);
+});
+
+test("search evidence never publishes private, local or reserved destination links", async () => {
+  const cases = [
+    { hostname: "exact-private-result-unique.net", url: "http://127.0.0.1/security/exact-private-result-unique.net" },
+    { hostname: "exact-doc-result-unique.net", url: "http://192.0.2.10/security/exact-doc-result-unique.net" },
+    { hostname: "exact-ipv6-result-unique.net", url: "http://[::1]/security/exact-ipv6-result-unique.net" },
+    { hostname: "exact-local-result-unique.net", url: "http://localhost/security/exact-local-result-unique.net" }
+  ];
+  for (const item of cases) {
+    const html = resultPage({
+      title: "Security advisory mentioning " + item.hostname,
+      url: item.url,
+      snippet: "A security report for " + item.hostname
+    });
+    const response = await domainSearchHandler(
+      makeEvent({ hostname: item.hostname, rootDomain: item.hostname }),
+      {},
+      { async limit() { return { success: true }; } },
+      async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html" } })
+    );
+    const evidence = JSON.parse(response.body).webEvidence;
+    assert.equal(evidence.sourceCount, 0, item.url);
+    assert.deepEqual(evidence.sources, [], item.url);
+  }
+});
+
+test("domain search rejects documentation, benchmark, onion and home.arpa destinations", async () => {
+  let fetchCount = 0;
+  const blocked = [
+    "192.0.2.10", "198.18.0.1", "198.19.255.254", "198.51.100.10",
+    "203.0.113.10", "192.88.99.1", "service.example.onion", "router.home.arpa"
+  ];
+  for (const hostname of blocked) {
+    const response = await domainSearchHandler(
+      makeEvent({ hostname }),
+      {},
+      { async limit() { return { success: true }; } },
+      async () => {
+        fetchCount += 1;
+        return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+    );
+    assert.equal(response.statusCode, 400, hostname);
+    assert.equal(JSON.parse(response.body).webEvidence.status, "not_searchable", hostname);
+  }
+  assert.equal(fetchCount, 0);
+});
+
+test("malformed URLhaus success payload is unavailable, never a false NO MATCH", async () => {
+  const hostname = "malformed-urlhaus-payload.example.net";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+    { async limit() { return { success: true }; } },
+    async url => {
+      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+        return new Response(JSON.stringify({ query_status: "ok", host: hostname, urls: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(intelligence.status, "partial_or_unavailable");
+  assert.equal(intelligence.providers.length, 1);
+  assert.equal(intelligence.providers[0].status, "unavailable");
+  assert.match(intelligence.summary_en, /lookup could not be completed/i);
+});
