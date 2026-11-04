@@ -1113,7 +1113,7 @@ test('URL-only inspection runs domain search but does not use generic official-s
   const threatIntel = page.getByTestId('threat-intelligence-results');
   await expect(threatIntel).toBeVisible();
   await expect(threatIntel.getByText(/URLHAUS THREAT INTELLIGENCE/i)).toBeVisible();
-  await expect(threatIntel.getByText(/URLhaus/i)).toBeVisible();
+  await expect(threatIntel.getByText('URLhaus', { exact: true })).toBeVisible();
   await expect(threatIntel.getByText(/API KEY NEEDED/i)).toBeVisible();
   await expect(evidence.locator('.web-evidence-source')).toHaveCount(0);
   await expect(evidence.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
