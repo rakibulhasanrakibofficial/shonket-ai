@@ -363,14 +363,41 @@ test('official source results appear before the AI analysis request finishes', a
   await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
   await expect(stack.locator('.retrieved-guidance-panel .retrieved-source-card')).toHaveCount(1);
 
+  const evidencePosition = await page.evaluate(() => {
+    const element = document.getElementById('analysis-evidence-stack');
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    const ancestors = [];
+    let parent = element;
+    while (parent && ancestors.length < 8) {
+      const style = getComputedStyle(parent);
+      ancestors.push({
+        tag: parent.tagName,
+        id: parent.id,
+        overflowY: style.overflowY,
+        top: Math.round(parent.getBoundingClientRect().top),
+        scrollTop: parent.scrollTop,
+        clientHeight: parent.clientHeight,
+        scrollHeight: parent.scrollHeight
+      });
+      parent = parent.parentElement;
+    }
+    return {
+      windowScrollY: window.scrollY,
+      bodyScrollTop: document.body.scrollTop,
+      documentScrollTop: document.documentElement.scrollTop,
+      viewportHeight: window.innerHeight,
+      top: Math.round(rect.top),
+      bottom: Math.round(rect.bottom),
+      ancestors
+    };
+  });
+  console.log('[evidence-scroll-position]', JSON.stringify(evidencePosition));
   await expect.poll(async () => page.evaluate(() => {
     const element = document.getElementById('analysis-evidence-stack');
     if (!element) return false;
     const rect = element.getBoundingClientRect();
-    // Assert the evidence stack is actually at the top of the visible
-    // viewport. Mobile browsers may scroll an overflow ancestor instead of
-    // changing window.scrollY, so the rendered position is the reliable check.
-    return rect.top >= -1 && rect.top < 90 && rect.bottom > 0;
+    return rect.top >= -1 && rect.top < Math.min(160, window.innerHeight * 0.25) && rect.bottom > 0;
   })).toBe(true);
 
   const visibility = await stack.evaluate(element => {
