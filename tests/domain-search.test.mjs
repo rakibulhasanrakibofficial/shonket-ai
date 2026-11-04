@@ -55,9 +55,12 @@ test("domain search returns relevant exact-domain references and deduplicates re
   assert.equal(body.webEvidence.identityReferenceCount, 1);
   assert.equal(body.webEvidence.securityReferenceCount, 0);
   assert.ok(body.webEvidence.provider.includes("DuckDuckGo"));
-  // The first, security-focused query rejects this non-security page and
-  // tries its fallback providers; the identity query then finds the /about page.
-  assert.equal(calls.length, 4);
+  // The exact hostname query is tried first, then its estimated base domain.
+  // Each security query exhausts the three providers before the identity query matches.
+  assert.equal(body.webEvidence.queryCount, 4);
+  assert.equal(calls.length, 10);
+  assert.ok(calls.some(url => decodeURIComponent(url).includes('"www.example.com"')));
+  assert.ok(calls.some(url => decodeURIComponent(url).includes('"example.com"')));
   assert.ok(calls.some(url => url.startsWith("https://html.duckduckgo.com/html/?q=")));
   assert.ok(calls.some(url => url.startsWith("https://lite.duckduckgo.com/lite/?q=")));
   assert.ok(calls.some(url => url.startsWith("https://www.bing.com/search?q=")));
@@ -435,7 +438,7 @@ test("domain search checks both the exact submitted hostname and estimated base 
     async url => {
       const query = new URL(String(url)).searchParams.get("q") || "";
       requestedQueries.push(query);
-      return new Response(query.includes(hostname) ? exactHostPage : rootDomainPage, {
+      return new Response(query.startsWith('"' + hostname + '"') ? exactHostPage : rootDomainPage, {
         status: 200, headers: { "Content-Type": "text/html" }
       });
     }
