@@ -980,7 +980,7 @@ test('a slower official search from an earlier message cannot overwrite a newer 
   await page.locator('#message').fill('SECOND REQUEST: an OTP is requested urgently.');
   await page.getByRole('button', { name: /Analyze message/i }).click();
   await expect(page.getByText(/Analysis response for SECOND REQUEST/i).first()).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
 
   await expect.poll(() => firstSearchFinished).toBe(true, { timeout: 10_000 });
   await page.waitForTimeout(200);
