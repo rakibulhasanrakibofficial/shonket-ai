@@ -1,6 +1,6 @@
 const MAX_DOMAIN_LENGTH = 253;
 const MAX_BODY_BYTES = 4096;
-const QUERY_TIMEOUT_MS = 4500;
+const QUERY_TIMEOUT_MS = 2800;
 const CACHE_TTL_MS = 120_000;
 const MAX_RESULTS = 8;
 const cache = new Map();
@@ -99,6 +99,14 @@ function safeResultUrl(value) {
       if (!destination) return null;
       parsed = new URL(destination);
     }
+    if (parsed.hostname === "bing.com" || parsed.hostname.endsWith(".bing.com")) {
+      const encoded = parsed.searchParams.get("u") || "";
+      const payload = encoded.startsWith("a1") ? encoded.slice(2) : encoded;
+      if (!payload) return null;
+      const binary = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      parsed = new URL(new TextDecoder().decode(bytes));
+    }
     if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return null;
     parsed.hash = "";
     return parsed.href;
@@ -109,65 +117,90 @@ function safeResultUrl(value) {
 
 function parseSearchResults(html, targetDomain, queryType) {
   const source = String(html || "");
-  if (/anomaly-modal|challenge-form|bots use duckduckgo|select all squares/i.test(source.slice(0, 12000))) {
+  if (/anomaly-modal|challenge-form|bots use duckduckgo|select all squares|unusual traffic|verify you are human/i.test(source.slice(0, 16000))) {
     throw new Error("The search provider returned a verification page.");
   }
 
-  const anchors = [...source.matchAll(/<a\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\s\S]*?)<\/a>/gi)];
+  const anchors = [...source.matchAll(/<a\\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\\s\\S]*?)<\\/a>/gi)];
   const results = [];
   for (let index = 0; index < anchors.length; index += 1) {
     const match = anchors[index];
-    const hrefMatch = match[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const hrefMatch = match[1].match(/\\bhref\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))/i);
     const rawHref = hrefMatch && (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]);
     const url = rawHref ? safeResultUrl(htmlToText(rawHref)) : null;
     const title = cleanText(htmlToText(match[2]), 180);
     if (!url || !title) continue;
-
     const nextIndex = anchors[index + 1]?.index ?? Math.min(source.length, match.index + 2200);
     const tail = source.slice(match.index + match[0].length, Math.min(nextIndex, match.index + 2200));
-    const snippetMatch = tail.match(/<(?:div|td|span|a)\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|td|span|a)>/i);
+    const snippetMatch = tail.match(/<(?:div|td|span|a)\\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:div|td|span|a)>/i);
     const snippet = cleanText(htmlToText(snippetMatch?.[1] || ""), 360);
-    let resultHost = "";
-    try { resultHost = new URL(url).hostname.toLowerCase(); } catch {}
-
-    const searchableText = (title + " " + snippet).toLowerCase();
-    const domainMention = searchableText.includes(targetDomain)
-      || searchableText.includes(targetDomain.replace(/^www\./, ""));
-    const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
-    const hostInPath = (() => {
-      try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
-      catch { return false; }
-    })();
-    const relevanceScore = (domainMention ? (title.toLowerCase().includes(targetDomain) ? 5 : 4) : 0)
-      + (resultIsTarget ? 2 : 0)
-      + (hostInPath ? 1 : 0);
-    if (relevanceScore < 2) continue;
-
-    results.push({
-      id: queryType + ":" + results.length,
-      title,
-      url,
-      domain: resultHost,
-      snippet,
-      queryType,
-      relevanceScore,
-      matchReason: domainMention ? "Exact domain mention in result text" : "Result belongs to the submitted domain"
-    });
+    const result = buildRelevantResult({ url, title, snippet, targetDomain, queryType });
+    if (result) results.push(result);
   }
   return results;
 }
 
-async function fetchSearchPage(query, fetchImpl) {
-  const endpoints = [
-    "https://html.duckduckgo.com/html/?q=",
-    "https://lite.duckduckgo.com/lite/?q="
+function parseBingResults(html, targetDomain, queryType) {
+  const source = String(html || "");
+  if (/captcha|unusual traffic|verify you are human|temporarily blocked/i.test(source.slice(0, 16000))) {
+    throw new Error("The search provider returned a verification page.");
+  }
+  const blocks = [...source.matchAll(/<li\\b[^>]*class=["'][^"']*\\bb_algo\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/li>/gi)];
+  const results = [];
+  for (const block of blocks) {
+    const anchor = block[1].match(/<h2\\b[^>]*>[\\s\\S]*?<a\\b([^>]*)>([\\s\\S]*?)<\\/a>[\\s\\S]*?<\\/h2>/i)
+      || block[1].match(/<a\\b([^>]*class=["'][^"']*\\bb_link\\b[^"']*["'][^>]*)>([\\s\\S]*?)<\\/a>/i);
+    if (!anchor) continue;
+    const hrefMatch = anchor[1].match(/\\bhref\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))/i);
+    const rawHref = hrefMatch && (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]);
+    const url = rawHref ? safeResultUrl(htmlToText(rawHref)) : null;
+    const title = cleanText(htmlToText(anchor[2]), 180);
+    const snippetMatch = block[1].match(/<(?:p|div)\\b[^>]*class=["'][^"']*(?:b_caption|b_algoSlug)[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:p|div)>/i);
+    const snippet = cleanText(htmlToText(snippetMatch?.[1] || ""), 360);
+    if (!url || !title) continue;
+    const result = buildRelevantResult({ url, title, snippet, targetDomain, queryType });
+    if (result) results.push(result);
+  }
+  return results;
+}
+
+function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
+  let resultHost = "";
+  try { resultHost = new URL(url).hostname.toLowerCase(); } catch { return null; }
+  const searchableText = (title + " " + snippet).toLowerCase();
+  const domainMention = searchableText.includes(targetDomain)
+    || searchableText.includes(targetDomain.replace(/^www\\./, ""));
+  const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
+  const hostInPath = (() => {
+    try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
+    catch { return false; }
+  })();
+  const relevanceScore = (domainMention ? (title.toLowerCase().includes(targetDomain) ? 5 : 4) : 0)
+    + (resultIsTarget ? 2 : 0)
+    + (hostInPath ? 1 : 0);
+  if (relevanceScore < 2) return null;
+  return {
+    id: queryType + ":" + resultHost + ":" + relevanceScore,
+    title, url, domain: resultHost, snippet, queryType, relevanceScore,
+    matchReason: domainMention ? "Exact domain mention in result text" : "Result belongs to the submitted domain"
+  };
+}
+
+async function searchQuery(query, targetDomain, queryType, fetchImpl) {
+  const providers = [
+    { name: "DuckDuckGo", endpoint: "https://html.duckduckgo.com/html/?q=", parse: parseSearchResults },
+    { name: "DuckDuckGo Lite", endpoint: "https://lite.duckduckgo.com/lite/?q=", parse: parseSearchResults },
+    { name: "Bing", endpoint: "https://www.bing.com/search?q=", parse: parseBingResults }
   ];
+  const successfulProviders = [];
+  let attemptedProviders = 0;
   let lastError = null;
-  for (const endpoint of endpoints) {
+  for (const provider of providers) {
+    attemptedProviders += 1;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
     try {
-      const response = await fetchImpl(endpoint + encodeURIComponent(query), {
+      const response = await fetchImpl(provider.endpoint + encodeURIComponent(query), {
         method: "GET",
         headers: {
           Accept: "text/html,application/xhtml+xml",
@@ -176,17 +209,22 @@ async function fetchSearchPage(query, fetchImpl) {
         signal: controller.signal,
         redirect: "follow"
       });
-      if (!response.ok) throw new Error("Search provider returned HTTP " + response.status + ".");
+      if (!response.ok) throw new Error(provider.name + " returned HTTP " + response.status + ".");
       const html = await response.text();
-      if (html.length > 2_000_000) throw new Error("Search provider response was too large.");
-      return html;
+      if (html.length > 2_000_000) throw new Error(provider.name + " response was too large.");
+      const results = provider.parse(html, targetDomain, queryType);
+      successfulProviders.push(provider.name);
+      if (results.length) return { results, provider: provider.name, successfulProviders, attemptedProviders };
     } catch (error) {
       lastError = error;
     } finally {
       clearTimeout(timeout);
     }
   }
-  throw lastError || new Error("The search provider could not be reached.");
+  if (successfulProviders.length) {
+    return { results: [], provider: successfulProviders.join(" + "), successfulProviders, attemptedProviders };
+  }
+  throw lastError || new Error("No search provider could be reached.");
 }
 
 function allowedOrigins(runtimeEnv) {
@@ -245,28 +283,27 @@ function localRateLimit(ip) {
 }
 
 async function searchDomain(domain, fetchImpl) {
-  const cacheKey = domain;
-  const cached = cache.get(cacheKey);
+  const cached = cache.get(domain);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) return cached.value;
 
   const querySpecs = [
     { type: "security_mentions", query: '"' + domain + '" scam phishing malware fraud abuse blacklist' },
     { type: "domain_identity", query: '"' + domain + '" official website company service review' }
   ];
-  const attempts = await Promise.allSettled(querySpecs.map(async spec => {
-    const html = await fetchSearchPage(spec.query, fetchImpl);
-    return { spec, results: parseSearchResults(html, domain, spec.type) };
-  }));
-
+  const attempts = await Promise.allSettled(querySpecs.map(spec =>
+    searchQuery(spec.query, domain, spec.type, fetchImpl)
+  ));
   const completed = attempts.filter(item => item.status === "fulfilled");
   const failedCount = attempts.length - completed.length;
   const merged = [];
   const seen = new Set();
+  const usedProviders = new Set();
   for (const item of completed) {
+    for (const provider of item.value.provider.split(" + ")) usedProviders.add(provider);
     for (const result of item.value.results) {
       if (seen.has(result.url)) continue;
       seen.add(result.url);
-      merged.push(result);
+      merged.push({ ...result, provider: item.value.provider });
     }
   }
   merged.sort((a, b) => b.relevanceScore - a.relevanceScore);
@@ -275,18 +312,16 @@ async function searchDomain(domain, fetchImpl) {
     ? "unavailable"
     : failedCount > 0
       ? (sources.length ? "partial_results" : "partial_unavailable")
-      : sources.length
-        ? "results_found"
-        : "no_results";
-
+      : sources.length ? "results_found" : "no_results";
+  const provider = [...usedProviders].join(" + ") || "DuckDuckGo / Bing";
   const value = {
     searched: true,
-    searchExecuted: completed.length > 0 || failedCount > 0,
-    provider: "DuckDuckGo",
+    searchExecuted: true,
+    provider,
     status,
     domain,
     searchedAt: new Date().toISOString(),
-    queryCount: completed.length + failedCount,
+    queryCount: querySpecs.length,
     successfulQueryCount: completed.length,
     failedQueryCount: failedCount,
     queries: querySpecs.map(item => item.query),
@@ -296,15 +331,16 @@ async function searchDomain(domain, fetchImpl) {
       ? "Live web search returned domain-related references. Search snippets can be incomplete or outdated and do not prove that the website is safe or malicious."
       : status === "no_results"
         ? "The search completed, but no domain-specific references passed the relevance filter. No results do not prove that the website is safe."
-        : "The live search provider could not return usable results. The website's reputation remains unchecked.",
+        : status === "partial_unavailable"
+          ? "Some search providers were unavailable and no relevant references were found in the completed searches. The website's reputation remains unchecked."
+          : "The live search providers could not return usable results. The website's reputation remains unchecked.",
     summary_bn: status === "results_found" || status === "partial_results"
       ? "লাইভ ওয়েব সার্চে ডোমেইন-সম্পর্কিত কিছু রেফারেন্স পাওয়া গেছে। সার্চের snippet অসম্পূর্ণ বা পুরোনো হতে পারে; এগুলো সাইট নিরাপদ বা ক্ষতিকর—কোনোটিই প্রমাণ করে না।"
       : status === "no_results"
         ? "সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিকতার শর্ত পূরণ করে এমন ডোমেইন-নির্দিষ্ট রেফারেন্স পাওয়া যায়নি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
-        : "লাইভ সার্চ সেবা ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
+        : "লাইভ সার্চ সেবাগুলো ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
   };
-
-  if (status !== "unavailable") cache.set(cacheKey, { cachedAt: Date.now(), value });
+  if (status !== "unavailable") cache.set(domain, { cachedAt: Date.now(), value });
   return value;
 }
 
