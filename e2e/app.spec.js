@@ -699,134 +699,97 @@ test('link inspector flags a brand lookalike domain', async ({ page }) => {
   await expect(page.getByText(/bkash-bonus\.xyz/i).first()).toBeVisible();
 });
 
-test('Link Inspector shows live web evidence, official references, RAG and AI without sending URL path or query secrets', async ({ page }) => {
+test('Link Inspector searches the submitted hostname and never sends the full URL to either service', async ({ page }) => {
   let submittedPayload = null;
+  let domainSearchPayload = null;
+  let genericOfficialSearchCalls = 0;
 
   await page.route('**/api/analyze', async route => {
     if (await fulfillApiPreflight(route)) return;
     submittedPayload = route.request().postDataJSON();
-    await new Promise(resolve => setTimeout(resolve, 1400));
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         isRelevant: true,
-        verdict: 'suspicious',
-        riskLevel: 'high',
-        riskScore: 72,
-        summary_en: 'This URL context contains locally detected domain and path warning indicators.',
-        summary_bn: 'এই URL-এ স্থানীয়ভাবে কিছু সতর্কতার সংকেত শনাক্ত হয়েছে।',
+        verdict: 'uncertain',
+        riskLevel: 'unknown',
+        riskScore: null,
+        summary_en: 'This is a URL-only structure review.',
+        summary_bn: 'এটি শুধু URL structure review.',
         responseLanguage: 'en',
         evidence: [],
-        tactics: ['suspicious_link_prompt'],
-        matchedSignals: ['suspicious_link_prompt'],
-        safe_actions: ['Do not enter passwords or payment details.', 'Verify the domain through an independently opened official service.'],
-        uncertainty: 'The submitted website was not opened or independently scanned.',
-        confidence: 'medium',
+        tactics: [],
+        matchedSignals: [],
+        safe_actions: ['Do not enter credentials or payment details until the domain is independently verified.'],
+        uncertainty: 'The live page was not opened and no malware scan was performed.',
+        confidence: 'low',
         engine: 'Rule-based',
-        analysisMode: 'rules+llm+rag+official-search',
-        webEvidence: {
-          searched: true,
-          searchExecuted: false,
-          status: 'pending',
-          officialSourcesFound: 0,
-          sources: [],
-          searchedPortals: [],
-          failedPortalCount: 0
-        },
-        claimVerification: {
-          status: 'unverified',
-          officialSearchAttempted: true,
-          officialSearchStatus: 'pending',
-          officialPortalCount: 0,
-          officialSourceCount: 0,
-          officialEvidenceStatus: 'pending',
-          summary_en: 'Official source lookup is still running.'
-        },
         aiAnalysis: {
           status: 'ready',
-          explanation_en: 'The hostname and locally detected URL patterns deserve careful review, but these indicators do not prove the live page is malicious.',
-          explanation_bn: 'ডোমেইন ও স্থানীয় URL সংকেত সতর্কভাবে দেখা দরকার, তবে এগুলো একা live page ক্ষতিকর প্রমাণ করে না।',
-          next_steps_en: ['Do not enter credentials or payment details.', 'Open the organisation’s known official app or website independently.'],
-          next_steps_bn: ['গোপন তথ্য বা পেমেন্ট দেবেন না।', 'প্রতিষ্ঠানের পরিচিত অফিসিয়াল অ্যাপ বা ওয়েবসাইট আলাদাভাবে খুলুন।']
+          explanation_en: 'The hostname and local URL patterns should be reviewed, but they do not prove that the live website is malicious.',
+          explanation_bn: 'Hostname ও local URL pattern সতর্কভাবে দেখুন; এগুলো একা live website ক্ষতিকর প্রমাণ করে না.',
+          next_steps_en: ['Verify the domain independently.'],
+          next_steps_bn: ['ডোমেইনটি আলাদাভাবে যাচাই করুন।']
         },
-        retrievedSources: [{
-          id: 'bgd-cirt-error524',
-          title: 'BGD e-GOV CIRT — Global Error524 Smishing Campaign',
-          summary: 'The advisory describes malicious message links that redirect to phishing websites designed to steal personal information and banking credentials.',
-          url: 'https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd',
-          relevanceScore: 3,
-          matchedTerms: ['phishing', 'link', 'credential']
-        }],
+        retrievedSources: [],
         officialSearch: {
-          status: 'pending',
-          summary_en: 'Selected official sources are being checked.',
-          summary_bn: 'নির্বাচিত সরকারি উৎস পরীক্ষা করা হচ্ছে।',
-          searchedPortals: [],
+          status: 'not_applicable',
+          summary_en: 'Generic official message-safety search does not apply to URL-only analysis.',
+          summary_bn: 'URL-only review-তে generic official message-safety search প্রযোজ্য নয়.',
           sources: [],
-          evidenceAssessment: { status: 'pending' }
+          searchedPortals: []
+        },
+        webEvidence: {
+          searched: false,
+          searchExecuted: false,
+          status: 'not_applicable',
+          sources: [],
+          searchedPortals: []
+        },
+        claimVerification: { status: 'not_applicable' }
+      })
+    });
+  });
+
+  await page.route('**/api/domain-search', async route => {
+    if (await fulfillApiPreflight(route)) return;
+    domainSearchPayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          provider: 'Bing + DuckDuckGo Lite',
+          status: 'results_found',
+          domain: 'bkash-bonus.xyz',
+          searchedAt: new Date().toISOString(),
+          queryCount: 2,
+          successfulQueryCount: 2,
+          failedQueryCount: 0,
+          sourceCount: 1,
+          sources: [{
+            id: 'security:reference',
+            title: 'Public report mentioning bkash-bonus.xyz',
+            url: 'https://example.org/security-report',
+            domain: 'example.org',
+            snippet: 'A public reference mentions the submitted hostname. This reference is not proof by itself.',
+            queryType: 'security_mentions',
+            relevanceScore: 5
+          }],
+          summary_en: 'Live web search returned a domain-related public reference. This does not prove whether the website is safe or malicious.',
+          summary_bn: 'লাইভ ওয়েব সার্চে ডোমেইন-সম্পর্কিত একটি public reference পাওয়া গেছে। এটি সাইট নিরাপদ বা ক্ষতিকর—কোনোটিই প্রমাণ করে না।'
         }
       })
     });
   });
 
   await page.route('**/api/official-search', async route => {
+    genericOfficialSearchCalls += 1;
     if (await fulfillApiPreflight(route)) return;
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        officialSearch: {
-          status: 'guidance_only',
-          category: ['cybersecurity'],
-          summary_en: 'Relevant official cybersecurity guidance was retrieved, but it does not verify this domain or the content of its live page.',
-          summary_bn: 'প্রাসঙ্গিক সরকারি সাইবার নিরাপত্তা নির্দেশনা পাওয়া গেছে, তবে এটি এই ডোমেইন বা পেজের content যাচাই করে না।',
-          evidenceAssessment: {
-            status: 'contextual_guidance',
-            summary_en: 'General cybersecurity guidance does not establish whether this exact website is malicious.'
-          },
-          searchedPortals: [
-            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
-            { agency: 'Government of Bangladesh — ScamCheck', listingUrl: 'https://scamcheck.gov.bd/common-scams-in-bangladesh/' }
-          ],
-          sources: [{
-            id: 'cirt-alerts',
-            agency: 'BGD e-GOV CIRT',
-            title: 'BGD e-GOV CIRT — Security Alerts',
-            url: 'https://cirt.gov.bd/alerts',
-            evidenceType: 'official_safety_guidance',
-            evidenceTypeLabel_en: 'OFFICIAL CYBERSECURITY ADVISORY',
-            excerpt: 'Official cybersecurity guidance for Bangladesh.'
-          }]
-        },
-        webEvidence: {
-          searched: true,
-          searchExecuted: true,
-          status: 'evidence_retrieved',
-          officialSourcesFound: 1,
-          sources: [{
-            title: 'BGD e-GOV CIRT — Security Alerts',
-            url: 'https://cirt.gov.bd/alerts',
-            domain: 'cirt.gov.bd',
-            id: 'cirt-alerts'
-          }],
-          searchedPortals: [
-            { agency: 'BGD e-GOV CIRT', listingUrl: 'https://cirt.gov.bd/alerts' },
-            { agency: 'Government of Bangladesh — ScamCheck', listingUrl: 'https://scamcheck.gov.bd/common-scams-in-bangladesh/' }
-          ],
-          failedPortalCount: 0
-        },
-        claimVerification: {
-          status: 'unverified',
-          officialSearchAttempted: true,
-          officialSearchStatus: 'guidance_only',
-          officialPortalCount: 2,
-          officialSourceCount: 1,
-          officialEvidenceStatus: 'contextual_guidance',
-          summary_en: 'Two selected portals were checked and general cybersecurity guidance was retrieved. This does not authenticate the submitted domain.'
-        }
-      })
-    });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
   });
 
   await page.goto('/');
@@ -839,22 +802,26 @@ test('Link Inspector shows live web evidence, official references, RAG and AI wi
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
   const evidence = page.getByTestId('link-analysis-evidence');
   await expect(evidence).toBeVisible();
-  await expect(evidence.getByText(/WEB EVIDENCE · LIVE SEARCH/i)).toBeVisible();
+  await expect(evidence.getByText(/LIVE WEB SEARCH · DOMAIN EVIDENCE/i)).toBeVisible();
+  await expect(evidence.getByText(/RESULTS FOUND/i)).toBeVisible();
   await expect(evidence.locator('.web-evidence-source')).toHaveCount(1);
-  await expect(evidence.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toBeVisible();
-  await expect(evidence.locator('.official-search-result-card')).toHaveCount(1);
-  await expect(evidence.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toBeVisible();
-  await expect(evidence.locator('.retrieved-source-card')).toHaveCount(1);
-  await expect(evidence.getByText('AI EXPLANATION', { exact: true })).toBeVisible();
-  await expect(evidence.getByText(/The hostname and locally detected URL patterns deserve careful review/i)).toBeVisible();
+  await expect(evidence.getByText(/Public report mentioning bkash-bonus.xyz/i)).toBeVisible();
+  await expect(evidence.getByText(/AI EXPLANATION/i)).toBeVisible();
 
   expect(submittedPayload.contextType).toBe('url');
   expect(submittedPayload.message).toContain('bkash-bonus.xyz');
   expect(submittedPayload.message).not.toContain('/login');
   expect(submittedPayload.message).not.toContain('reset_token');
   expect(submittedPayload.message).not.toContain('private-reset-secret-4821');
+
+  expect(domainSearchPayload.hostname).toBe('bkash-bonus.xyz');
+  expect(domainSearchPayload.rootDomain).toBe('bkash-bonus.xyz');
+  expect(domainSearchPayload.categoryHint).toMatch(/brand impersonation/i);
+  expect(JSON.stringify(domainSearchPayload)).not.toContain('/login');
+  expect(JSON.stringify(domainSearchPayload)).not.toContain('private-reset-secret-4821');
+  expect(genericOfficialSearchCalls).toBe(0);
 });
- 
+
 test('link inspector detail cards use readable typography without horizontal overflow', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
