@@ -462,7 +462,7 @@ test("threat-intelligence lookups stay disabled until server-side API keys are c
   const response = await domainSearchHandler(
     makeEvent({ hostname: "no-threat-feed-keys.example.net", rootDomain: "no-threat-feed-keys.example.net" }),
     {},
-    null,
+    { async limit() { return { success: true }; } },
     async url => {
       const value = String(url);
       if (value.includes("urlhaus-api.abuse.ch") || value.includes("checkurl.phishtank.com")) {
@@ -490,7 +490,7 @@ test("PhishTank and URLhaus host lookups return safe references without leaking 
   const response = await domainSearchHandler(
     makeEvent({ hostname, rootDomain: hostname }),
     { PHISHTANK_APP_KEY: appKey, URLHAUS_AUTH_KEY: authKey },
-    null,
+    { async limit() { return { success: true }; } },
     async (url, options = {}) => {
       const target = String(url);
       if (target === "https://checkurl.phishtank.com/checkurl/") {
