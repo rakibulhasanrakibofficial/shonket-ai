@@ -8,19 +8,37 @@ function localAssessment(message, language, status = "not_configured", contextTy
   const detectedLanguage = language === "bn" || language === "en"
     ? language
     : (/[ঀ-৿]/.test(message) ? "bn" : "en");
-  const result = buildRuleAssessment(message, detectedLanguage);
   const isUrlContext = contextType === "url";
+  const result = isUrlContext ? {
+    ...buildRuleAssessment(message, detectedLanguage),
+    isRelevant: true,
+    verdict: "uncertain",
+    riskLevel: "unknown",
+    riskScore: null,
+    matchedSignals: [],
+    summary_bn: "এটি URL structure review; message scam score এখানে প্রযোজ্য নয়।",
+    summary_en: "This is a URL-structure review; message scam scoring does not apply here.",
+    claimVerification: { status: "not_applicable", officialSearchAttempted: false }
+  } : buildRuleAssessment(message, detectedLanguage);
   const retrievedSources = isUrlContext ? [] : retrieveKnowledge(message, 3);
-  const noteBn = status === "pending"
-    ? "নিয়মভিত্তিক ফলাফল প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
-    : status === "not_configured"
-      ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
-      : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
-  const noteEn = status === "pending"
-    ? "The rule-based result is ready. The AI explanation is still being generated..."
-    : status === "not_configured"
-      ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
-      : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
+  const noteBn = isUrlContext
+    ? status === "pending"
+      ? "স্থানীয় URL structure পরীক্ষা প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
+      : "AI ব্যাখ্যা পাওয়া যাচ্ছে না। URL structure পরীক্ষা স্থানীয়ভাবে করা হয়েছে; কোনো domain reputation lookup হয়নি।"
+    : status === "pending"
+      ? "নিয়মভিত্তিক ফলাফল প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
+      : status === "not_configured"
+        ? "AI backend এখনো সংযুক্ত হয়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে। নিচে প্রাসঙ্গিক নিরাপত্তা-গাইডলাইনও দেখুন।"
+        : "AI backend সাময়িকভাবে পাওয়া যায়নি। আপনার বার্তা ব্রাউজারেই নিয়মভিত্তিকভাবে যাচাই করা হয়েছে।";
+  const noteEn = isUrlContext
+    ? status === "pending"
+      ? "Local URL-structure checks are ready. The AI explanation is still being generated..."
+      : "The AI explanation service is unavailable. URL structure was checked locally; no domain-reputation lookup was performed."
+    : status === "pending"
+      ? "The rule-based result is ready. The AI explanation is still being generated..."
+      : status === "not_configured"
+        ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
+        : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
   const officialSearch = isUrlContext ? {
     status: "not_applicable",
     scope: "URL-only checks do not search general Bangladesh message-safety sources.",
