@@ -147,6 +147,39 @@ test("irrelevant search results are filtered rather than shown as domain evidenc
   assert.match(evidence.summary_en, /do not prove that the website is safe/i);
 });
 
+test("domain mentions require hostname boundaries to avoid substring false positives", async () => {
+  const falsePositivePage = resultPage({
+    title: "Security advice for notexample-domain.test",
+    url: "https://security.example.org/advisory",
+    snippet: "The separate host is notexample-domain.test and example.com.evil."
+  });
+  const falsePositive = await domainSearchHandler(
+    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    {},
+    null,
+    async () => new Response(falsePositivePage, { status: 200 })
+  );
+  const falseEvidence = JSON.parse(falsePositive.body).webEvidence;
+  assert.equal(falseEvidence.status, "no_results");
+  assert.equal(falseEvidence.sourceCount, 0);
+
+  const exactMentionPage = resultPage({
+    title: "Security research bulletin",
+    url: "https://security.example.org/advisory",
+    snippet: "This bulletin contains a report about example.com."
+  });
+  const exactMention = await domainSearchHandler(
+    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    {},
+    null,
+    async () => new Response(exactMentionPage, { status: 200 })
+  );
+  const exactEvidence = JSON.parse(exactMention.body).webEvidence;
+  assert.equal(exactEvidence.status, "results_found");
+  assert.equal(exactEvidence.sourceCount, 1);
+  assert.equal(exactEvidence.sources[0].domain, "security.example.org");
+});
+
 test("provider failure is reported as unavailable and never as safe", async () => {
   const response = await domainSearchHandler(
     makeEvent({ hostname: "example-provider-outage.net" }),
