@@ -452,7 +452,7 @@ export async function officialSearchHandler(event, runtimeEnv, rateLimiter = nul
   }
 
   const language = languageFor(message, body.language);
-  const contextType = body.contextType === "url" ? "url" : "message";
+
   const rules = buildRuleAssessment(message, language);
   const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
   const searchApplies = !searchDisabled && isOfficialSourceSearchApplicable(message);
@@ -575,6 +575,7 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
   }
 
   const language = languageFor(message, body.language);
+  const contextType = body.contextType === "url" ? "url" : "message";
   const rules = buildRuleAssessment(message, language);
   const retrievedSources = retrieveKnowledge(message, 3);
   const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
