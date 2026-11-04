@@ -564,6 +564,9 @@ export async function searchOfficialSources(query, options = {}) {
       const pageText = htmlToText(html);
       const pageTokens = new Set(tokens(pageText));
       const matchedTerms = terms.filter(term => pageTokens.has(term)).slice(0, 8);
+      // A page from a relevant category is not automatically relevant to this
+      // exact message. Do not surface generic portal pages with zero lexical matches.
+      if (!matchedTerms.length) continue;
       guidanceSources.push({
         id: source.id,
         agency: source.agency,
