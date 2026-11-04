@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
-import analyzeHandler from "../api/analyze.js";\nimport { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
+import analyzeHandler from "../api/analyze.js";
+import { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
