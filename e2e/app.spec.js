@@ -685,7 +685,7 @@ test('link inspector explains brand mismatches and labels the score as heuristic
   await page.locator('#url').fill('https://bkash-bonus.xyz');
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
-  await expect(page.getByText(/bkash-bonus\\.xyz/i).first()).toBeVisible();
+  await expect(page.getByText(/bkash-bonus\.xyz/i).first()).toBeVisible();
   await expect(page.getByText(/The hostname contains a known brand name/i)).toBeVisible();
   await expect(page.getByText(/keyword-based category hint/i)).toHaveCount(0);
   await expect(page.getByText(/MEDIUM URL WARNING SCORE/i)).toBeVisible();
