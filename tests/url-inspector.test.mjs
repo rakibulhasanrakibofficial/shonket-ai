@@ -54,6 +54,36 @@ test("does not flag a genuine known brand subdomain as a brand mismatch", () => 
   assert.equal(result.linkCategory, "bKash digital financial service");
 });
 
+test("does not flag known official auxiliary brand domains as impersonation", () => {
+  const officialDomains = [
+    "https://accounts.googleusercontent.com",
+    "https://www.googleapis.com",
+    "https://fonts.gstatic.com",
+    "https://static.xx.fbcdn.net",
+    "https://www.facebook.net",
+    "https://www.paypalobjects.com",
+    "https://images-na.ssl-images-amazon.com",
+    "https://login.microsoftonline.com",
+    "https://www.icloud.com"
+  ];
+  for (const url of officialDomains) {
+    const result = inspectUrl(url);
+    assert.ok(!result.signals.some(signal => signal.id === "brand"), url + " must not be flagged as brand impersonation");
+  }
+});
+
+test("still flags brand words attached to an unrelated registered domain", () => {
+  for (const url of [
+    "https://google-login-secure.example.net",
+    "https://facebook-recovery.example.org",
+    "https://paypal-refund.example.com",
+    "https://amazon-prize.example.net"
+  ]) {
+    const result = inspectUrl(url);
+    assert.ok(result.signals.some(signal => signal.id === "brand"), url + " should be flagged");
+  }
+});
+
 test("recognises Punycode, URL credentials, unusual ports and subdomain chains", () => {
   assert.ok(inspectUrl("https://xn--e1afmkfd.xn--p1ai").signals.some(signal => signal.id === "punycode"));
   assert.ok(inspectUrl("https://user:pass@example.com").signals.some(signal => signal.id === "userinfo"));
