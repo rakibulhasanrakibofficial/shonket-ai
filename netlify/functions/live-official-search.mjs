@@ -120,6 +120,13 @@ const SOURCE_GROUPS = {
       listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     }
+    {
+      id: "scamcheck-online-safety",
+      agency: "Government of Bangladesh — ScamCheck",
+      title: "Online Safety Tips — Protect OTPs and Passwords",
+      listingUrl: "https://scamcheck.gov.bd/online-safety/",
+      kind: "official_guidance"
+    },
   ],
   courier: [
     {
@@ -387,6 +394,16 @@ export function isOfficialSourceSearchApplicable(query) {
   return searchPlan(query).sources.length > 0;
 }
 
+function isDirectCredentialRequest(query) {
+  const value = String(query || "");
+  const positiveRequest = /\b(?:send|share|provide|tell|give|reveal|disclose|read out)\b.{0,45}\b(?:your\s+)?(?:
+  const directCredentialRequest = isDirectCredentialRequest(value);otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|one[- ]time password|pin|password|verification code|passcode)\b.{0,45}\b(?:send|share|provide|tell|give|reveal|disclose|read out)\b|\b(?:otp|pin|password|verification code)\b.{0,50}\b(?:pathan|diben|den|din|bolun|bolben|janan|share koren|share korun|send korun)\b|(?:ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড)(?:\s*(?:কোড|টা|টি))?.{0,35}(?:দিন|দেন|পাঠান|বলুন|জানান|শেয়ার করুন|শেয়ার করুন)/i.test(value);
+  if (!positiveRequest) return false;
+
+  const protectiveWarning = /\b(?:never|do not|don't|dont|should not|shouldn't|must not|mustn't|avoid)\b.{0,70}\b(?:share|send|provide|tell|give|reveal|disclose)\b.{0,35}\b(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|one[- ]time password|pin|password|verification code|passcode)\b.{0,35}\b(?:should never|must not|should not|is never to be)\b.{0,25}\b(?:shared|sent|provided|revealed|disclosed)\b|(?:কখনো|কখনই|কোনোভাবেই).{0,30}(?:ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড).{0,35}(?:দেবেন না|দিন না|পাঠাবেন না|শেয়ার করবেন না|শেয়ার করবেন না)/i.test(value);
+  return !protectiveWarning;
+}
+
 function sourceMatchesQueryContext(source, query) {
   const value = String(query || "");
   const has = pattern => pattern.test(value);
@@ -415,6 +432,10 @@ function sourceMatchesQueryContext(source, query) {
   }
   if (source.id === "scamcheck-common-scams") {
     return commonScamContext;
+  }
+  if (source.id === "scamcheck-online-safety") {
+    // Surface OTP/password guidance only for a direct request to disclose a credential.
+    return directCredentialRequest;
   }
   return true;
 }
