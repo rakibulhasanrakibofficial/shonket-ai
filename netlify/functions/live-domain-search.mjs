@@ -494,6 +494,13 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
   const urlCount = Math.max(0, Number.parseInt(payload.url_count, 10) || 0);
   const observedUrls = Array.isArray(payload.urls) ? payload.urls : [];
   const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
+  const offlineCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "offline").length;
+  const allReturnedRecordsOffline = observedUrls.length > 0 && offlineCount === observedUrls.length;
+  const recordStatus = activeCount > 0
+    ? "active_malware_urls"
+    : allReturnedRecordsOffline
+      ? "historical_records"
+      : "records_found";
   const sourceUrl = safeHttpsReference(payload.urlhaus_reference, "urlhaus.abuse.ch");
   if (urlCount === 0) {
     return {
@@ -510,16 +517,28 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
         surbl: cleanText(payload.blacklists.surbl, 60)
       }
     : {};
+  const summaryEn = recordStatus === "active_malware_urls"
+    ? "URLhaus lists " + urlCount + " URL record(s) associated with this hostname; " + activeCount + " of the returned records are currently marked online. A host-level match applies to listed URL records, not automatically to every page or the entire domain. This is not a live scan."
+    : recordStatus === "historical_records"
+      ? "URLhaus lists " + urlCount + " historical/offline URL record(s) associated with this hostname; 0 of the returned records are currently marked online. These may relate to specific URL paths or a past compromise. This does not mean the entire domain is malicious."
+      : "URLhaus lists " + urlCount + " URL record(s) associated with this hostname. Current status could not be established for every returned record. A host-level match does not classify the entire domain.";
+  const summaryBn = recordStatus === "active_malware_urls"
+    ? "URLhaus এই hostname-এর সঙ্গে " + urlCount + "টি URL record যুক্ত করেছে; ফেরত আসা record-এর মধ্যে " + activeCount + "টি বর্তমানে online। Host-level match শুধু তালিকাভুক্ত URL record বোঝায়, প্রতিটি page বা পুরো domain নয়। এটি live scan নয়।"
+    : recordStatus === "historical_records"
+      ? "URLhaus এই hostname-এর সঙ্গে " + urlCount + "টি historical/offline URL record যুক্ত করেছে; ফেরত আসা record-এর ০টি বর্তমানে online। এগুলো নির্দিষ্ট URL path বা অতীতের compromise-এর সঙ্গে সম্পর্কিত হতে পারে। এর অর্থ পুরো domain ক্ষতিকর নয়।"
+      : "URLhaus এই hostname-এর সঙ্গে " + urlCount + "টি URL record যুক্ত করেছে। ফেরত আসা প্রতিটি record-এর বর্তমান অবস্থা নিশ্চিত করা যায়নি। Host-level match পুরো domain-কে ক্ষতিকর প্রমাণ করে না।";
   return {
     host,
-    status: "malware_host",
+    status: recordStatus,
     sourceUrl,
     firstSeen: cleanText(payload.firstseen, 80) || null,
     urlCount,
     activeCount,
+    offlineCount,
+    returnedRecordCount: observedUrls.length,
     blacklists,
-    summary_en: "URLhaus lists " + urlCount + " malware-related URL record(s) for this hostname; " + activeCount + " of the returned records are marked online. This is malware-hosting intelligence, not a phishing verdict or a live scan.",
-    summary_bn: "URLhaus এই hostname-এর জন্য " + urlCount + "টি malware-সম্পর্কিত URL record রেখেছে; ফেরত আসা record-এর মধ্যে " + activeCount + "টি online হিসেবে চিহ্নিত। এটি malware-hosting intelligence, phishing verdict বা live scan নয়।"
+    summary_en: summaryEn,
+    summary_bn: summaryBn
   };
 }
 
@@ -549,25 +568,52 @@ async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
         summary_bn: "এই host-এর জন্য URLhaus ব্যবহারযোগ্য response দেয়নি।" };
     }
   }));
-  const hasMatch = results.some(item => item.status === "malware_host");
+  const hasActiveRecords = results.some(item => item.status === "active_malware_urls");
+  const hasHistoricalRecords = results.some(item => item.status === "historical_records");
+  const hasAnyRecords = results.some(item => ["active_malware_urls", "historical_records", "records_found"].includes(item.status));
   const allNoMatch = results.every(item => item.status === "no_match");
-  const providerStatus = hasMatch ? "match_found" : allNoMatch ? "no_match" :
-    results.some(item => item.status === "unavailable") ? "unavailable" : "partial";
-  const status = providerStatus === "match_found" ? "matches_found" :
-    providerStatus === "no_match" ? "no_matches" : "partial_or_unavailable";
+  const hasUnavailable = results.some(item => item.status === "unavailable");
+  const providerStatus = hasActiveRecords
+    ? "active_records_found"
+    : hasHistoricalRecords
+      ? "historical_records"
+      : hasAnyRecords
+        ? "records_found"
+        : allNoMatch
+          ? "no_match"
+          : hasUnavailable
+            ? "unavailable"
+            : "partial";
+  const status = providerStatus === "active_records_found"
+    ? "active_records_found"
+    : providerStatus === "historical_records"
+      ? "historical_records"
+      : providerStatus === "records_found"
+        ? "records_found"
+        : providerStatus === "no_match"
+          ? "no_matches"
+          : "partial_or_unavailable";
   const provider = {
     name: "URLhaus",
     status: providerStatus,
-    summary_en: hasMatch
-      ? results.filter(item => item.status === "malware_host").map(item => item.summary_en).join(" ")
-      : allNoMatch
-        ? "No URLhaus malware-hosting record matched the checked hostnames. Absence from this database is not proof of safety."
-        : "One or more URLhaus host lookups could not be completed. No clean or malicious verdict was inferred.",
-    summary_bn: hasMatch
-      ? results.filter(item => item.status === "malware_host").map(item => item.summary_bn).join(" ")
-      : allNoMatch
-        ? "পরীক্ষা করা hostname-এর সঙ্গে URLhaus malware-hosting record মেলেনি। এই database-এ না থাকা নিরাপদ হওয়ার প্রমাণ নয়।"
-        : "এক বা একাধিক URLhaus host lookup সম্পন্ন হয়নি। নিরাপদ বা ক্ষতিকর—কোনো verdict অনুমান করা হয়নি।",
+    summary_en: providerStatus === "active_records_found"
+      ? "One or more URLhaus URL records for the checked hostnames are currently marked online. Review the specific host entries; this does not classify the entire domain."
+      : providerStatus === "historical_records"
+        ? "Only historical/offline URL records were returned for the checked hostnames. They may relate to specific paths or a past compromise, not the entire domain."
+        : providerStatus === "records_found"
+          ? "URLhaus returned host-associated URL records, but the current status of every returned record could not be established."
+          : providerStatus === "no_match"
+            ? "No URLhaus malware-hosting record matched the checked hostnames. Absence from this database is not proof of safety."
+            : "One or more URLhaus host lookups could not be completed. No clean or malicious verdict was inferred.",
+    summary_bn: providerStatus === "active_records_found"
+      ? "পরীক্ষা করা hostname-এর জন্য URLhaus-এর এক বা একাধিক URL record বর্তমানে online হিসেবে চিহ্নিত। নির্দিষ্ট host entry দেখুন; এটি পুরো domain-কে ক্ষতিকর বলে না।"
+      : providerStatus === "historical_records"
+        ? "পরীক্ষা করা hostname-এর জন্য শুধু historical/offline URL record পাওয়া গেছে। এগুলো নির্দিষ্ট path বা অতীতের compromise-এর হতে পারে, পুরো domain-এর নয়।"
+        : providerStatus === "records_found"
+          ? "URLhaus hostname-সংশ্লিষ্ট URL record দিয়েছে, তবে প্রতিটি record-এর বর্তমান অবস্থা নিশ্চিত করা যায়নি।"
+          : providerStatus === "no_match"
+            ? "পরীক্ষা করা hostname-এর সঙ্গে URLhaus malware-hosting record মেলেনি। এই database-এ না থাকা নিরাপদ হওয়ার প্রমাণ নয়।"
+            : "এক বা একাধিক URLhaus host lookup সম্পন্ন হয়নি। নিরাপদ বা ক্ষতিকর—কোনো verdict অনুমান করা হয়নি।",
     targets: results
   };
   return {
@@ -577,16 +623,24 @@ async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
     unconfiguredProviderCount: 0,
     configuredProviders: ["URLhaus"],
     unconfiguredProviders: [],
-    summary_en: status === "matches_found"
-      ? "URLhaus returned one or more malware-hosting records. Review the hostname, report date and provider reference; this is not a live malware scan."
-      : status === "no_matches"
-        ? "URLhaus returned no malware-hosting records for the checked hostnames. This does not establish that the website is safe."
-        : "The URLhaus lookup could not be completed for every checked hostname. The reputation check is incomplete.",
-    summary_bn: status === "matches_found"
-      ? "URLhaus এক বা একাধিক malware-hosting record দিয়েছে। Hostname, report date ও provider reference দেখুন; এটি live malware scan নয়।"
-      : status === "no_matches"
-        ? "পরীক্ষা করা hostname-এর জন্য URLhaus কোনো malware-hosting record দেয়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
-        : "সব hostname-এর জন্য URLhaus lookup সম্পন্ন হয়নি। Reputation check অসম্পূর্ণ.",
+    summary_en: status === "active_records_found"
+      ? "URLhaus returned one or more URL records currently marked online for the checked hostname(s). This is a host-level association, not proof that the entire domain is malicious."
+      : status === "historical_records"
+        ? "URLhaus returned historical/offline URL records associated with the checked hostname(s); none of the returned records are currently marked online. A record may refer to a specific path or past compromise, not the entire domain."
+        : status === "records_found"
+          ? "URLhaus returned URL records for the checked hostname(s), but the current status of every returned record could not be established. A host-level match does not classify the entire domain."
+          : status === "no_matches"
+            ? "URLhaus returned no malware-hosting records for the checked hostnames. This does not establish that the website is safe."
+            : "The URLhaus lookup could not be completed for every checked hostname. The reputation check is incomplete.",
+    summary_bn: status === "active_records_found"
+      ? "পরীক্ষা করা hostname-এর জন্য URLhaus বর্তমানে online হিসেবে চিহ্নিত এক বা একাধিক URL record দিয়েছে। এটি host-level association; পুরো domain ক্ষতিকর হওয়ার প্রমাণ নয়।"
+      : status === "historical_records"
+        ? "পরীক্ষা করা hostname-এর জন্য URLhaus historical/offline URL record দিয়েছে; ফেরত আসা কোনো record বর্তমানে online হিসেবে চিহ্নিত নয়। Record নির্দিষ্ট path বা অতীতের compromise-এর হতে পারে, পুরো domain-এর নয়।"
+        : status === "records_found"
+          ? "URLhaus hostname-এর জন্য URL record দিয়েছে, তবে সব record-এর বর্তমান অবস্থা নিশ্চিত করা যায়নি। Host-level match পুরো domain-কে ক্ষতিকর প্রমাণ করে না।"
+          : status === "no_matches"
+            ? "পরীক্ষা করা hostname-এর জন্য URLhaus কোনো malware-hosting record দেয়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
+            : "সব hostname-এর জন্য URLhaus lookup সম্পন্ন হয়নি। Reputation check অসম্পূর্ণ।",
     providers: [provider]
   };
 }
