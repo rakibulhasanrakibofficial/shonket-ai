@@ -160,8 +160,8 @@ test("domain mentions require hostname boundaries to avoid substring false posit
     async () => new Response(falsePositivePage, { status: 200 })
   );
   const falseEvidence = JSON.parse(falsePositive.body).webEvidence;
-  assert.equal(falseEvidence.status, "no_results");
-  assert.equal(falseEvidence.sourceCount, 0);
+  assert.equal(falseEvidence.status, "no_results", JSON.stringify(falseEvidence));
+  assert.equal(falseEvidence.sourceCount, 0, JSON.stringify(falseEvidence));
 
   const exactMentionPage = resultPage({
     title: "Security research bulletin",
