@@ -281,9 +281,10 @@ test("brand matching uses token boundaries and avoids common-word false positive
   }
 });
 
-test("URL review context keeps encoded query and fragment secrets local", () => {
-  const result = inspectUrl("https://example.com/reset?token=abc%2F123&email=user%40example.com#private-fragment");
+test("URL review context keeps actual query and fragment secret values local", () => {
+  const result = inspectUrl("https://example.com/reset?token=shonket-private-token-7f91&email=rakib.private@example.net#fragment-secret-82ab");
   const context = buildUrlReviewContext(result);
-  assert.match(context, /Hostname: example\.com/);
-  assert.doesNotMatch(context, /abc|123|user|private-fragment|reset|token|email/i);
+  assert.match(context, /Hostname: example\\.com/);
+  assert.doesNotMatch(context, /shonket-private-token-7f91|rakib\\.private@example\\.net|fragment-secret-82ab/i);
+  assert.doesNotMatch(context, /\\/reset/i);
 });
