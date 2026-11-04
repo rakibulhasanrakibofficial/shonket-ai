@@ -20,3 +20,9 @@
   to = "/.netlify/functions/official-search"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/domain-search"
+  to = "/.netlify/functions/live-domain-search"
+  status = 200
+  force = true
