@@ -11,17 +11,21 @@ test("accepts a bare domain and normalises it to HTTPS", () => {
   assert.equal(result.riskLevel, "no_obvious_signals");
 });
 
-test("accepts explicit HTTP and HTTPS URLs", () => {
+test("accepts explicit HTTP and HTTPS URLs and host:port input", () => {
   assert.equal(inspectUrl("https://example.com").protocol, "https:");
   assert.equal(inspectUrl("http://example.com").protocol, "http:");
   assert.ok(inspectUrl("http://example.com").signals.some(signal => signal.id === "insecure_http"));
+  assert.equal(inspectUrl("example.com:8080").protocol, "https:");
+  assert.ok(inspectUrl("example.com:8080").signals.some(signal => signal.id === "port"));
 });
 
 test("rejects empty, malformed, unsupported-scheme, local and incomplete addresses", () => {
   for (const input of [
     "", "   ", "not a url", "example", "localhost", "https://",
     "javascript:alert(1)", "ftp://example.com", "https://exa mple.com",
-    "https://example.com/" + "a".repeat(2050)
+    "https://example.com/" + "a".repeat(2050),
+    "https://999.999.999.999",
+    "https://com.bd"
   ]) {
     assert.throws(() => inspectUrl(input), undefined, "should reject: " + input.slice(0, 60));
   }
@@ -99,4 +103,37 @@ test("review context contains only the hostname and local signal IDs", () => {
   assert.match(context, /brand/);
   assert.doesNotMatch(context, /reset_token|do-not-send-this|\/login/);
   assert.doesNotMatch(context, /phishing, smishing, brand impersonation, credential theft/i);
+});
+
+test("common category hints are not treated as security warnings", () => {
+  const examples = [
+    ["https://xnxx.com", /18\+/i],
+    ["https://example.com/dating", /Dating/i],
+    ["https://casino.example", /Gambling/i],
+    ["https://bank.example", /Banking/i],
+    ["https://loan.example", /Loan/i],
+    ["https://crypto.example", /Cryptocurrency/i],
+    ["https://shop.example", /Shopping/i],
+    ["https://social.example", /Social media/i],
+    ["https://school.example", /Education/i],
+    ["https://news.example", /News/i],
+    ["https://video.example", /Video/i],
+    ["https://developer.example", /Developer/i],
+    ["https://cloud.example", /Cloud storage/i],
+    ["https://download.example", /Software/i],
+    ["https://government.example", /Government/i],
+    ["https://clinic.example", /Healthcare/i]
+  ];
+  for (const [url, category] of examples) {
+    const result = inspectUrl(url);
+    assert.match(result.linkCategory, category, url);
+    assert.equal(result.riskScore, 0, url + " category must not automatically increase scam score");
+    assert.deepEqual(result.signals, [], url + " category must not automatically create a scam signal");
+  }
+});
+
+test("port inputs are not mistaken for unsupported URL schemes", () => {
+  const result = inspectUrl("example.com:3000/path");
+  assert.equal(result.host, "example.com");
+  assert.ok(result.signals.some(signal => signal.id === "port"));
 });
