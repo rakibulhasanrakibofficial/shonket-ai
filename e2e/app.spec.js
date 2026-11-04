@@ -862,6 +862,132 @@ test('link inspector detail cards use readable typography without horizontal ove
   expect(typography.contentWidth).toBeLessThanOrEqual(typography.workspaceWidth + 1);
 });
 
+test('Link Inspector shows rate-limited search distinctly from completed no-result searches', async ({ page }) => {
+  let searchCalls = 0;
+  await page.route('**/api/domain-search', async route => {
+    searchCalls += 1;
+    await route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      headers: { 'Retry-After': '60' },
+      body: JSON.stringify({ error: 'Too many web searches. Please wait and try again.' })
+    });
+  });
+  await page.route('**/api/analyze', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'uncertain',
+        riskLevel: 'unknown',
+        riskScore: null,
+        summary_en: 'URL-only review.',
+        summary_bn: 'URL-only review.',
+        evidence: [],
+        tactics: [],
+        safe_actions: [],
+        uncertainty: 'No reputation conclusion was made.',
+        confidence: 'low',
+        engine: 'URL Inspector',
+        aiAnalysis: { status: 'ready', explanation_en: 'This is a URL-only review.', explanation_bn: 'এটি URL-only review.' },
+        retrievedSources: [],
+        officialSearch: { status: 'not_applicable', sources: [], searchedPortals: [] },
+        webEvidence: { searched: false, searchExecuted: false, status: 'not_applicable', sources: [] },
+        claimVerification: { status: 'not_applicable' }
+      })
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://sample-rate-limit-domain.net');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+
+  const evidence = page.getByTestId('link-analysis-evidence');
+  await expect(evidence.getByText(/RATE LIMITED/i)).toBeVisible();
+  await expect(evidence.getByText(/The live search limit was reached/i)).toBeVisible();
+  expect(searchCalls).toBe(1);
+});
+
+test('a slower official search from an earlier message cannot overwrite a newer analysis', async ({ page }) => {
+  let firstSearchFinished = false;
+  await page.route('**/api/analyze', async route => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'uncertain',
+        riskLevel: 'low',
+        riskScore: 10,
+        summary_en: 'Analysis response for ' + request.message,
+        summary_bn: 'বার্তা বিশ্লেষণ সম্পন্ন।',
+        evidence: [],
+        tactics: [],
+        safe_actions: ['Verify independently.'],
+        uncertainty: 'The sender has not been independently authenticated.',
+        confidence: 'low',
+        engine: 'Rule-based',
+        aiAnalysis: { status: 'ready', explanation_en: 'This is a test explanation.', explanation_bn: 'এটি একটি test explanation.' },
+        retrievedSources: [],
+        officialSearch: {
+          status: 'pending',
+          summary_en: 'Waiting for the official-source lookup.',
+          summary_bn: 'সরকারি উৎস অনুসন্ধানের অপেক্ষায়।',
+          sources: [],
+          searchedPortals: []
+        },
+        webEvidence: { searched: true, searchExecuted: false, status: 'pending', sources: [], searchedPortals: [] },
+        claimVerification: { status: 'unverified', summary_en: 'Search is still running.' }
+      })
+    });
+  });
+
+  await page.route('**/api/official-search', async route => {
+    const request = route.request().postDataJSON();
+    const isFirst = String(request.message || '').includes('FIRST REQUEST');
+    if (isFirst) {
+      await new Promise(resolve => setTimeout(resolve, 1800));
+      firstSearchFinished = true;
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    const label = isFirst ? 'STALE FIRST SEARCH RESULT' : 'CURRENT SECOND SEARCH RESULT';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        officialSearch: {
+          status: 'guidance_only',
+          summary_en: label,
+          summary_bn: label,
+          sources: [],
+          searchedPortals: []
+        },
+        webEvidence: { searched: true, searchExecuted: true, status: 'guidance_only', sources: [], searchedPortals: [] },
+        claimVerification: { status: 'unverified', summary_en: label }
+      })
+    });
+  });
+
+  await page.goto('/');
+  await page.locator('#message').fill('FIRST REQUEST: a prize offer asks for a processing fee.');
+  await page.getByRole('button', { name: /Analyze message/i }).click();
+  await expect(page.getByText(/Analysis response for FIRST REQUEST/i)).toBeVisible({ timeout: 60_000 });
+
+  await page.locator('#message').fill('SECOND REQUEST: an OTP is requested urgently.');
+  await page.getByRole('button', { name: /Analyze message/i }).click();
+  await expect(page.getByText(/Analysis response for SECOND REQUEST/i)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  await expect.poll(() => firstSearchFinished).toBe(true, { timeout: 10_000 });
+  await page.waitForTimeout(200);
+  await expect(page.getByText('STALE FIRST SEARCH RESULT', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true })).toBeVisible();
+});
+
 test('simulator can complete all scenarios and restart', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Scam Simulator/i }).click();
