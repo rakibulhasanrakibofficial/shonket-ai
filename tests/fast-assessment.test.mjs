@@ -572,3 +572,51 @@ test("Cloudflare Worker fails closed when its native rate-limit binding is missi
   const response = await handleAnalyzeRequest(request, {});
   assert.equal(response.status, 503);
 });
+
+test("sensitive identity and financial-detail requests are surfaced without automatically declaring fraud", () => {
+  const english = buildRuleAssessment(
+    "For your scholarship application, send your NID number and bank account details to process the grant.",
+    "en"
+  );
+  assert.equal(english.isRelevant, true);
+  assert.equal(english.verdict, "uncertain");
+  assert.equal(english.riskScore, 24);
+  assert.ok(english.tactics.includes("sensitive_identity_request"));
+  assert.match(english.evidence[0].reason_en, /independently verified official form/i);
+
+  const bangla = buildRuleAssessment(
+    "বৃত্তি পেতে আপনার এনআইডি নম্বর ও জন্মতারিখ পাঠান।",
+    "bn"
+  );
+  assert.equal(bangla.isRelevant, true);
+  assert.equal(bangla.verdict, "uncertain");
+  assert.equal(bangla.riskScore, 24);
+  assert.ok(bangla.tactics.includes("sensitive_identity_request"));
+
+  const banglish = buildRuleAssessment(
+    "Scholarship er jonno apnar NID number ta diben, grant process korte hobe.",
+    "en"
+  );
+  assert.equal(banglish.isRelevant, true);
+  assert.ok(banglish.tactics.includes("sensitive_identity_request"));
+});
+
+test("identity-protection warnings are not misclassified as identity-data requests", () => {
+  const english = buildRuleAssessment(
+    "Never share your NID number or passport with strangers.",
+    "en"
+  );
+  assert.equal(english.isRelevant, true);
+  assert.equal(english.verdict, "likely_safe");
+  assert.equal(english.riskScore, 0);
+  assert.deepEqual(english.tactics, []);
+
+  const bangla = buildRuleAssessment(
+    "জাতীয় পরিচয়পত্র বা পাসপোর্ট কারও সঙ্গে শেয়ার করবেন না।",
+    "bn"
+  );
+  assert.equal(bangla.isRelevant, true);
+  assert.equal(bangla.verdict, "likely_safe");
+  assert.equal(bangla.riskScore, 0);
+  assert.deepEqual(bangla.tactics, []);
+});
