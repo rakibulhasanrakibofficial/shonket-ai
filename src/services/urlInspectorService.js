@@ -32,12 +32,12 @@ const OFFICIAL_BRAND_DOMAINS = {
   rocket: ["dutchbanglabank.com"],
   upay: ["upaybd.com"],
   paypal: ["paypal.com", "paypalobjects.com"],
-  google: ["google.com", "googleusercontent.com", "googleapis.com", "gstatic.com"],
+  google: ["google.com", "google.co.uk", "google.com.bd", "google.co.in", "google.com.au", "google.ca", "google.de", "google.fr", "google.co.jp", "google.co.kr", "google.com.sg", "google.com.my", "google.com.pk", "google.com.ph", "google.com.ng", "google.com.br", "google.com.mx", "google.com.tr", "google.com.hk", "google.com.tw", "google.ae", "google.com.sa", "google.co.za", "googleusercontent.com", "googleapis.com", "gstatic.com"],
   facebook: ["facebook.com", "facebook.net", "fbcdn.net", "fbsbx.com"],
   meta: ["meta.com", "meta.ai"],
   microsoft: ["microsoft.com", "microsoftonline.com"],
   apple: ["apple.com", "icloud.com", "mzstatic.com"],
-  amazon: ["amazon.com", "amazonaws.com", "media-amazon.com", "ssl-images-amazon.com", "amazon-adsystem.com"]
+  amazon: ["amazon.com", "amazon.co.uk", "amazon.de", "amazon.fr", "amazon.it", "amazon.es", "amazon.ca", "amazon.in", "amazon.co.jp", "amazon.com.au", "amazon.com.br", "amazon.com.mx", "amazon.com.tr", "amazon.sg", "amazon.com.be", "amazon.nl", "amazon.se", "amazon.pl", "amazon.ae", "amazon.sa", "amazonaws.com", "media-amazon.com", "ssl-images-amazon.com", "amazon-adsystem.com"]
 };
 
 const KNOWN_SITES = {
