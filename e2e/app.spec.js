@@ -935,3 +935,72 @@ test('mobile layout has no horizontal page overflow, including screenshot previe
   await page.getByRole('button',{name:'Remove',exact:true}).click();
   await checkOverflow();
 });
+
+test('URL-only inspection does not show generic official sources or RAG as domain evidence', async ({ page }) => {
+  let searchCalls = 0;
+  let analysisPayload = null;
+  await page.route('**/api/official-search', async route => {
+    searchCalls += 1;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+  });
+  await page.route('**/api/analyze', async route => {
+    const body = route.request().postDataJSON();
+    analysisPayload = body;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'uncertain',
+        riskLevel: 'unknown',
+        riskScore: null,
+        summary_en: 'URL-only structure review.',
+        summary_bn: 'URL structure review.',
+        evidence: [],
+        tactics: [],
+        safe_actions: [],
+        uncertainty: 'No site reputation lookup was performed.',
+        confidence: 'low',
+        engine: 'URL Inspector',
+        aiAnalysis: { status: 'not_configured', note_en: 'Local structure checks only.', note_bn: 'স্থানীয় structure checks.' },
+        retrievedSources: [],
+        officialSearch: {
+          status: 'not_applicable',
+          summary_en: 'URL-only reviews do not search general message-safety sources.',
+          summary_bn: 'URL-only review-তে সাধারণ message-safety source search হয় না.',
+          sources: [],
+          searchedPortals: []
+        },
+        webEvidence: { searched: false, searchExecuted: false, status: 'not_applicable', officialSourcesFound: 0, sources: [], searchedPortals: [] },
+        claimVerification: { status: 'not_applicable', summary_en: 'Not applicable.' }
+      })
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://bkash-bonus.xyz/login?reset_token=private-token-value');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+
+  await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
+  await expect(page.getByText(/URL pattern score only/i)).toBeVisible();
+  await expect(page.getByTestId('link-analysis-evidence')).toBeVisible();
+  await expect(page.getByText(/WEB EVIDENCE · LIVE SEARCH/i)).toHaveCount(0);
+  await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
+  await expect(page.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toHaveCount(0);
+  expect(searchCalls).toBe(0);
+  expect(analysisPayload.contextType).toBe('url');
+  expect(analysisPayload.message).toContain('bkash-bonus.xyz');
+  expect(analysisPayload.message).not.toContain('private-token-value');
+  expect(analysisPayload.message).not.toContain('/login');
+});
+
+test('adult-content category hint does not become a scam-risk score', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://www.xnxx.com');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+  await expect(page.getByText(/Age-restricted \/ 18\+ category/i)).toBeVisible();
+  await expect(page.locator('#workspace-panel').getByText('0', { exact: true })).toBeVisible();
+  await expect(page.getByText(/not a website safety rating or reputation check/i)).toBeVisible();
+});
