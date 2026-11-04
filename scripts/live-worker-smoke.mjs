@@ -128,6 +128,27 @@ if (
   throw new Error("The live domain-search route did not return a relevant public web result.");
 }
 
+const threatIntelligence = domainEvidence.threatIntelligence;
+const urlhausProvider = threatIntelligence?.providers?.find(provider => provider.name === "URLhaus");
+const validThreatStatuses = [
+  "active_records_found",
+  "historical_records",
+  "records_found",
+  "no_matches",
+  "partial_or_unavailable"
+];
+if (
+  !threatIntelligence ||
+  !validThreatStatuses.includes(threatIntelligence.status) ||
+  !urlhausProvider ||
+  urlhausProvider.status === "not_configured"
+) {
+  throw new Error("The live Worker does not have its URLHAUS_AUTH_KEY secret configured.");
+}
+if (JSON.stringify(domainSearch).includes("URLHAUS_AUTH_KEY")) {
+  throw new Error("The domain-search API exposed a server-side secret name.");
+}
+
 console.log("Worker health: OK");
 console.log("AI binding: configured");
 console.log("Analysis rate limiter: configured");
@@ -137,4 +158,5 @@ console.log("Live Workers AI: ACTIVE");
 console.log("Official-source search: " + officialSearch.officialSearch.status + " · " + officialSearch.officialSearch.category.join(", "));
 console.log("Official sources checked: " + (officialSearch.officialSearch.searchedPortals || []).length);
 console.log("Domain web search: " + domainEvidence.status + " · " + (domainEvidence.provider || "unknown provider") + " · " + domainEvidence.sourceCount + " relevant sources");
+console.log("URLhaus threat intelligence: " + threatIntelligence.status + " · provider " + urlhausProvider.status);
 console.log("Explanation received: " + analysis.aiAnalysis.explanation_en.slice(0, 220));
