@@ -94,10 +94,32 @@ test("an OTP warning is not classified as credential theft", () => {
   assert.deepEqual(result.matchedSignals, []);
 });
 
-test("an ordinary processing-fee reminder remains uncertain", () => {
+test("a fee mention without a direct payment request receives a lower heuristic score", () => {
   const result = buildRuleAssessment("Your application processing fee is due.", "en");
   assert.equal(result.verdict, "uncertain");
-  assert.equal(result.riskScore, 30);
+  assert.equal(result.riskScore, 12);
+  assert.equal(result.riskLevel, "low");
+  assert.match(result.evidence[0].reason_en, /does not clearly ask you to pay/i);
+});
+
+test("a prize claim plus a fee mention is not high risk without a payment request", () => {
+  const result = buildRuleAssessment(
+    "You have won a prize. The processing fee is listed in the official terms.",
+    "en"
+  );
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.riskScore, 34);
+  assert.ok(!result.matchedSignals.includes("upfront_payment") || result.riskScore < 50);
+});
+
+test("a direct numeric processing-fee request still receives the full payment signal", () => {
+  const result = buildRuleAssessment(
+    "You have won a prize. Pay a 500 BDT processing fee today to claim it.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.riskScore, 55);
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
 });
 
 test("a prize claim without a fee is unverified, not labelled a scam", () => {
