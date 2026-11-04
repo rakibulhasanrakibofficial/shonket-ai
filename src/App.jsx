@@ -468,7 +468,7 @@ async function inspect(){
   }
 
   setUrlResult(inspected);
-  const searchRestricted=/age-restricted|18\\+|gambling|casino|betting/i.test(inspected.linkCategory);
+  const searchRestricted=/age-restricted|18\+|gambling|casino|betting|sportsbook/i.test(inspected.linkCategory);
   addHistory({
     type:"Link Inspector",
     title:inspected.host,
