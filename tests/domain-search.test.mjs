@@ -174,7 +174,7 @@ test("domain mentions require hostname boundaries to avoid substring false posit
   const exactMentionPage = resultPage({
     title: "Security research bulletin",
     url: "https://security.example.org/advisory",
-    snippet: "This bulletin contains a report about exact-match-mention-unique.net."
+    snippet: "This security report contains an exact-match-mention-unique.net reference."
   });
   const exactMention = await domainSearchHandler(
     makeEvent({ hostname: "exact-match-mention-unique.net", rootDomain: "exact-match-mention-unique.net" }),
@@ -398,12 +398,12 @@ test("domain evidence filters generic homepage-adjacent pages and labels useful 
 
 test("a domain appearing in a generic title is not enough to publish an unrelated third-party page", async () => {
   const html = resultPage({
-    title: "Example.com in a list of popular websites",
+    title: "generic-title-only-unique.example.net in a list of popular websites",
     url: "https://random-directory.example.org/top-sites",
     snippet: "A generic list of popular websites with no further information about the submitted hostname."
   });
   const response = await domainSearchHandler(
-    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    makeEvent({ hostname: "generic-title-only-unique.example.net", rootDomain: "generic-title-only-unique.example.net" }),
     {},
     null,
     async () => new Response(html, { status: 200, headers: { "Content-Type": "text/html" } })
