@@ -92,10 +92,30 @@ function makeEvent(message, headers = {}, httpMethod = "POST") {
   };
 }
 
-test("RAG retrieves official bKash guidance for PIN and OTP messages", () => {
+test("RAG retrieves bKash guidance when the message explicitly names bKash", () => {
   const sources = retrieveKnowledge("Please share your bKash PIN and SMS OTP now.");
   assert.ok(sources.some(source => source.id === "bkash-fraud-awareness"));
   assert.ok(sources.some(source => source.id === "bkash-security-tips"));
+});
+
+test("RAG routes a generic prize-fee claim to ScamCheck, not unrelated brand or incident pages", () => {
+  const sources = retrieveKnowledge(
+    "Congratulations! You won a cash prize of 50,000 BDT. Pay a 500 BDT processing fee today to claim it."
+  );
+  assert.ok(sources.some(source => source.id === "scamcheck-common-scams"));
+  assert.ok(!sources.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));
+  assert.ok(!sources.some(source => source.id === "bgd-cirt-error524"));
+  assert.ok(!sources.some(source => source.id === "scamcheck-victim-support"));
+});
+
+test("RAG does not infer bKash from an unbranded PIN and OTP request", () => {
+  const sources = retrieveKnowledge("Please share your PIN and SMS OTP now.");
+  assert.ok(!sources.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));
+});
+
+test("RAG retrieves victim-support guidance only after a reported loss or compromised account", () => {
+  const sources = retrieveKnowledge("I lost money to a scam. My account was compromised.");
+  assert.ok(sources.some(source => source.id === "scamcheck-victim-support"));
 });
 
 test("RAG retrieves the BGD e-GOV CIRT smishing advisory for phishing links", () => {
@@ -135,7 +155,8 @@ test("Netlify API returns deterministic rule result and RAG sources without an L
     assert.equal(body.engine, "Rule-based");
     assert.equal(body.aiAnalysis.status, "not_configured");
     assert.equal(body.analysisMode, "rules+rag+official-search");
-    assert.ok(body.retrievedSources.some(source => source.id === "bkash-security-tips"));
+    assert.ok(body.retrievedSources.some(source => source.id === "scamcheck-common-scams"));
+    assert.ok(!body.retrievedSources.some(source => source.id === "bkash-security-tips" || source.id === "bkash-fraud-awareness"));
     assert.equal(body.privacy.rawMessageStored, false);
   } finally {
     if (previousToken === undefined) delete process.env.CLOUDFLARE_API_TOKEN;
