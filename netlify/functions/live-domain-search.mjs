@@ -53,16 +53,20 @@ function htmlToText(value) {
 
 function isPrivateIpv4(host) {
   const parts = host.split(".");
-  if (parts.length !== 4 || !parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
-  const [a, b] = parts.map(Number);
+  if (parts.length !== 4 || !parts.every(part => /^\\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
+  const [a, b, c] = parts.map(Number);
   return a === 0 || a === 10 || a === 127 || a >= 224
     || (a === 169 && b === 254)
     || (a === 172 && b >= 16 && b <= 31)
     || (a === 192 && b === 168)
     || (a === 100 && b >= 64 && b <= 127)
-    || (a === 192 && b === 0)
-    || (a === 198 && (b === 18 || b === 19 || b === 51))
-    || (a === 203 && b === 0);
+    // IANA special-use, documentation, benchmarking and deprecated relay ranges.
+    || (a === 192 && b === 0 && c === 0)
+    || (a === 192 && b === 0 && c === 2)
+    || (a === 192 && b === 88 && c === 99)
+    || (a === 198 && (b === 18 || b === 19))
+    || (a === 198 && b === 51 && c === 100)
+    || (a === 203 && b === 0 && c === 113);
 }
 
 function isRestrictedCategoryDomain(domain, categoryHint = "") {
@@ -91,11 +95,12 @@ function validateDomain(value) {
     throw new Error("Send only a hostname, not a full URL or port.");
   }
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")
-    || host.endsWith(".test") || host.endsWith(".invalid") || host.endsWith(".example")) {
+    || host.endsWith(".test") || host.endsWith(".invalid") || host.endsWith(".example")
+    || host.endsWith(".onion") || host.endsWith(".home.arpa")) {
     throw new Error("Local and reserved hostnames cannot be searched.");
   }
   if (host.startsWith("[") || host.includes(":") || isPrivateIpv4(host)) {
-    throw new Error("Private or local IP addresses cannot be searched.");
+    throw new Error("Private, local or reserved IP addresses cannot be searched.");
   }
 
   const labels = host.split(".");
@@ -129,6 +134,11 @@ function safeResultUrl(value) {
       parsed = new URL(new TextDecoder().decode(bytes));
     }
     if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return null;
+    const resultHost = parsed.hostname.toLowerCase().replace(/\\.$/, "");
+    if (resultHost === "localhost" || resultHost.endsWith(".localhost") || resultHost.endsWith(".local")
+      || resultHost.endsWith(".internal") || resultHost.endsWith(".test") || resultHost.endsWith(".invalid")
+      || resultHost.endsWith(".example") || resultHost.endsWith(".onion") || resultHost.endsWith(".home.arpa")
+      || resultHost.startsWith("[") || isPrivateIpv4(resultHost)) return null;
     parsed.hash = "";
     return parsed.href;
   } catch {
@@ -237,7 +247,8 @@ function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
   const domainMention = mentionsExactDomain(title + " " + snippet, targetDomain)
     || mentionsExactDomain(title + " " + snippet, "www." + targetDomain);
   const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
-  const hostInPath = decodedPath.includes(targetDomain);
+  const hostInPath = mentionsExactDomain(decodedPath, targetDomain)
+    || mentionsExactDomain(decodedPath, "www." + targetDomain);
   const securityHost = hostMatchesAny(resultHost, SECURITY_REFERENCE_HOSTS);
   const reviewHost = hostMatchesAny(resultHost, REVIEW_REFERENCE_HOSTS);
   const securityMatch = SECURITY_REFERENCE_TERMS.test(searchableText) || securityHost;
@@ -491,8 +502,28 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
     throw new Error("URLhaus returned query status " + (queryStatus || "unknown") + ".");
   }
 
-  const urlCount = Math.max(0, Number.parseInt(payload.url_count, 10) || 0);
-  const observedUrls = Array.isArray(payload.urls) ? payload.urls : [];
+  const rawUrlCount = payload.url_count;
+  const validUrlCount = (typeof rawUrlCount === "number" && Number.isInteger(rawUrlCount) && rawUrlCount >= 0)
+    || (typeof rawUrlCount === "string" && /^\\d+$/.test(rawUrlCount));
+  if (!validUrlCount || !Array.isArray(payload.urls)) {
+    throw new Error("URLhaus returned an incomplete host response.");
+  }
+  const urlCount = Number(rawUrlCount);
+  const observedUrls = payload.urls;
+  if (urlCount === 0 && observedUrls.length > 0) {
+    throw new Error("URLhaus returned inconsistent host counts.");
+  }
+  const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
+  const offlineCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "offline").length;
+  const allReturnedRecordsOffline = observedUrls.length > 0 &&
+    observedUrls.length >= urlCount &&
+    offlineCount === observedUrls.length;
+  const recordStatus = activeCount > 0
+    ? "active_malware_urls"
+    : allReturnedRecordsOffline
+      ? "historical_records"
+      : "records_found";
+
   const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
   const offlineCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "offline").length;
   const allReturnedRecordsOffline = observedUrls.length > 0 &&
