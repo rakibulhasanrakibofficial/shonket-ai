@@ -120,13 +120,6 @@ const SOURCE_GROUPS = {
       listingUrl: "https://scamcheck.gov.bd/common-scams-in-bangladesh/",
       kind: "official_guidance"
     },
-    {
-      id: "scamcheck-online-safety",
-      agency: "Government of Bangladesh — ScamCheck",
-      title: "Online Safety Tips — Protect OTPs and Passwords",
-      listingUrl: "https://scamcheck.gov.bd/online-safety/",
-      kind: "official_guidance"
-    }
   ],
   courier: [
     {
@@ -431,11 +424,7 @@ function sourceMatchesQueryContext(source, query) {
     return explicitCyberIncident;
   }
   if (source.id === "scamcheck-common-scams") {
-    return commonScamContext;
-  }
-  if (source.id === "scamcheck-online-safety") {
-    // Show OTP/password safety guidance only for a direct request to disclose a credential.
-    return directCredentialRequest;
+    return commonScamContext || directCredentialRequest;
   }
   return true;
 }
