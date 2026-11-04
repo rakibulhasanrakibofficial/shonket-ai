@@ -903,12 +903,39 @@ test('mobile layout has no horizontal page overflow, including screenshot previe
   await checkOverflow();
 });
 
-test('URL-only inspection does not show generic official sources or RAG as domain evidence', async ({ page }) => {
-  let searchCalls = 0;
+test('URL-only inspection runs domain search but does not use generic official-source search or message RAG', async ({ page }) => {
+  let domainSearchCalls = 0;
+  let genericOfficialSearchCalls = 0;
   let analysisPayload = null;
+  let domainSearchPayload = null;
+
   await page.route('**/api/official-search', async route => {
-    searchCalls += 1;
+    genericOfficialSearchCalls += 1;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+  });
+  await page.route('**/api/domain-search', async route => {
+    domainSearchCalls += 1;
+    domainSearchPayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        webEvidence: {
+          searched: true,
+          searchExecuted: true,
+          provider: 'Bing + DuckDuckGo Lite',
+          status: 'no_results',
+          domain: 'bkash-bonus.xyz',
+          queryCount: 2,
+          successfulQueryCount: 2,
+          failedQueryCount: 0,
+          sourceCount: 0,
+          sources: [],
+          summary_en: 'The search completed, but no domain-specific references passed the relevance filter. No results do not prove that the website is safe.',
+          summary_bn: 'সার্চ সম্পন্ন হয়েছে, কিন্তু প্রাসঙ্গিক ডোমেইন-নির্দিষ্ট reference পাওয়া যায়নি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।'
+        }
+      })
+    });
   });
   await page.route('**/api/analyze', async route => {
     const body = route.request().postDataJSON();
@@ -926,19 +953,19 @@ test('URL-only inspection does not show generic official sources or RAG as domai
         evidence: [],
         tactics: [],
         safe_actions: [],
-        uncertainty: 'No site reputation lookup was performed.',
+        uncertainty: 'No site reputation lookup was performed by the local URL score.',
         confidence: 'low',
         engine: 'URL Inspector',
-        aiAnalysis: { status: 'not_configured', note_en: 'Local structure checks only.', note_bn: 'স্থানীয় structure checks.' },
+        aiAnalysis: { status: 'ready', explanation_en: 'Local URL structure checks are separate from public web search.', explanation_bn: 'স্থানীয় URL check ও public web search আলাদা।' },
         retrievedSources: [],
         officialSearch: {
           status: 'not_applicable',
-          summary_en: 'URL-only reviews do not search general message-safety sources.',
-          summary_bn: 'URL-only review-তে সাধারণ message-safety source search হয় না.',
+          summary_en: 'URL-only reviews do not search generic message-safety portals.',
+          summary_bn: 'URL-only review-তে generic message-safety portal search হয় না.',
           sources: [],
           searchedPortals: []
         },
-        webEvidence: { searched: false, searchExecuted: false, status: 'not_applicable', officialSourcesFound: 0, sources: [], searchedPortals: [] },
+        webEvidence: { searched: false, searchExecuted: false, status: 'not_applicable', sources: [], searchedPortals: [] },
         claimVerification: { status: 'not_applicable', summary_en: 'Not applicable.' }
       })
     });
@@ -951,11 +978,19 @@ test('URL-only inspection does not show generic official sources or RAG as domai
 
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
   await expect(page.getByText(/URL pattern score only/i)).toBeVisible();
-  await expect(page.getByTestId('link-analysis-evidence')).toBeVisible();
-  await expect(page.getByText(/WEB EVIDENCE · LIVE SEARCH/i)).toHaveCount(0);
-  await expect(page.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
-  await expect(page.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toHaveCount(0);
-  expect(searchCalls).toBe(0);
+  const evidence = page.getByTestId('link-analysis-evidence');
+  await expect(evidence).toBeVisible();
+  await expect(evidence.getByText(/LIVE WEB SEARCH · DOMAIN EVIDENCE/i)).toBeVisible();
+  await expect(evidence.getByText(/NO RELEVANT MATCHES/i)).toBeVisible();
+  await expect(evidence.locator('.web-evidence-source')).toHaveCount(0);
+  await expect(evidence.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
+  await expect(evidence.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toHaveCount(0);
+  expect(domainSearchCalls).toBe(1);
+  expect(genericOfficialSearchCalls).toBe(0);
+  expect(domainSearchPayload.hostname).toBe('bkash-bonus.xyz');
+  expect(domainSearchPayload.rootDomain).toBe('bkash-bonus.xyz');
+  expect(JSON.stringify(domainSearchPayload)).not.toContain('/login');
+  expect(JSON.stringify(domainSearchPayload)).not.toContain('private-token-value');
   expect(analysisPayload.contextType).toBe('url');
   expect(analysisPayload.message).toContain('bkash-bonus.xyz');
   expect(analysisPayload.message).not.toContain('private-token-value');
