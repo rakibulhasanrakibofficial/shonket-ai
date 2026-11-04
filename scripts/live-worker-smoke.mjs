@@ -113,7 +113,7 @@ const domainSearchResponse = await fetch(baseUrl + "/api/domain-search", {
 });
 const domainSearch = await readJson(domainSearchResponse, "Domain web-search API");
 const domainEvidence = domainSearch.webEvidence;
-const validDomainStatuses = ["results_found", "partial_results", "no_results", "unavailable"];
+const validDomainStatuses = ["results_found", "partial_results", "partial_unavailable", "no_results", "unavailable"];
 if (
   !domainSearchResponse.ok ||
   !domainEvidence ||
@@ -132,5 +132,5 @@ console.log("Rule engine: " + analysis.verdict + " · risk " + analysis.riskScor
 console.log("Live Workers AI: ACTIVE");
 console.log("Official-source search: " + officialSearch.officialSearch.status + " · " + officialSearch.officialSearch.category.join(", "));
 console.log("Official sources checked: " + (officialSearch.officialSearch.searchedPortals || []).length);
-console.log("Domain web search: " + domainEvidence.status + " · " + domainEvidence.sourceCount + " relevant sources");
+console.log("Domain web search: " + domainEvidence.status + " · " + (domainEvidence.provider || "unknown provider") + " · " + domainEvidence.sourceCount + " relevant sources");
 console.log("Explanation received: " + analysis.aiAnalysis.explanation_en.slice(0, 220));
