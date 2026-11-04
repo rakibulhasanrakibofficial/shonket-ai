@@ -79,7 +79,34 @@ Then run **Actions → Deploy GitHub Pages → Run workflow**. The frontend buil
 
 Until this variable is configured, the frontend can still use its local deterministic rule engine and browser-side screenshot OCR; hosted LLM and live portal search will not be available through the frontend.
 
-### 4. Cloudflare free-plan limits
+### 4. Optional URL threat-intelligence providers
+
+The Link Inspector can query two additional providers. These checks are separate from the local URL-pattern score and from general web search.
+
+Add these as **Cloudflare Worker secrets** in the Cloudflare dashboard (**Workers & Pages → shonket-ai → Settings → Variables and Secrets → Add secret**):
+
+| Secret name | Purpose |
+|---|---|
+| `PHISHTANK_APP_KEY` | PhishTank application key for phishing-report lookups. |
+| `URLHAUS_AUTH_KEY` | URLhaus Auth-Key for malware-hosting hostname lookups. |
+
+Do not put these values in `wrangler.toml`, GitHub variables, frontend environment variables, source files, screenshots, or chat. They must remain server-side Worker secrets. The application will show **NOT CONFIGURED** until each provider's secret is present.
+
+Privacy and result interpretation:
+- PhishTank checks only `https://hostname/` for each hostname being checked. It does not receive the submitted path, query string, fragment, username, password, or tokens.
+- URLhaus checks hostnames only. The UI exposes only the provider's host report reference and summary, never the malware URLs or payload links returned in its data.
+- A PhishTank result is labelled verified, unverified, or inactive according to the provider's response. URLhaus records indicate malware-hosting observations, not necessarily phishing.
+- A database miss is not evidence that a site is safe. These feeds are not live page visits, malware scans, or ownership verification.
+
+PhishTank provides a free API with rate limits and documents commercial use of its data. URLhaus Community API requires an Auth-Key and is free under fair-use principles; paid enhanced access may be required for commercial or for-profit use. Re-check provider terms before monetising the project.
+
+Official documentation:
+- [PhishTank API information](https://phishtank.org/api_info.php)
+- [PhishTank terms of use](https://phishtank.org/terms.php)
+- [URLhaus Community API](https://urlhaus.abuse.ch/api)
+- [URLhaus query API](https://urlhaus-api.abuse.ch/)
+
+### 5. Cloudflare free-plan limits
 
 Cloudflare Workers Free currently includes 100,000 Worker requests per day. Workers AI has a separate free allocation of 10,000 Neurons per day, resetting at 00:00 UTC. These are independent limits: the API can remain reachable after the AI allocation is exhausted, but LLM inference will fail until the allocation resets. This is a finite free tier, not unlimited usage.
 
