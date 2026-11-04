@@ -56,6 +56,28 @@ test("domain search returns relevant exact-domain references and deduplicates re
   assert.ok(calls.every(url => !url.includes("www.example.com/path")));
 });
 
+test("domain search falls back to another provider when the primary provider is unavailable", async () => {
+  const bingHtml = '<html><body><li class="b_algo"><h2><a href="https://example-fallback.org/about">Example fallback domain information</a></h2><div class="b_caption"><p>Official information for example-fallback.org.</p></div></li></body></html>';
+  const calls = [];
+  const response = await domainSearchHandler(
+    makeEvent({ hostname: "example-fallback.org", rootDomain: "example-fallback.org" }),
+    {},
+    null,
+    async url => {
+      calls.push(String(url));
+      if (String(url).startsWith("https://www.bing.com/search?q=")) {
+        return new Response(bingHtml, { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+      return new Response("blocked", { status: 503 });
+    }
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(evidence.status, "results_found");
+  assert.ok(evidence.provider.includes("Bing"));
+  assert.equal(evidence.sources.length, 1);
+  assert.equal(evidence.sources[0].url, "https://example-fallback.org/about");
+  assert.equal(calls.length, 6);
+});
 test("domain search rejects full URLs, reserved domains and private IP addresses before fetching", async () => {
   let fetchCount = 0;
   const invalidHosts = [
