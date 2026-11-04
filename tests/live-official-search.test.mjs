@@ -254,10 +254,10 @@ test("a direct Banglish Nagad OTP request retrieves only relevant ScamCheck safe
   );
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0], "https://scamcheck.gov.bd/online-safety/");
+  assert.equal(calls[0], "https://scamcheck.gov.bd/common-scams-in-bangladesh/");
   assert.equal(result.status, "guidance_only");
   assert.equal(result.sources.length, 1);
-  assert.equal(result.sources[0].id, "scamcheck-online-safety");
+  assert.equal(result.sources[0].id, "scamcheck-common-scams");
   assert.ok(result.sources[0].matchedTerms.includes("otp"));
   assert.ok(!result.sources.some(source => source.id.startsWith("bkash-")));
 });
