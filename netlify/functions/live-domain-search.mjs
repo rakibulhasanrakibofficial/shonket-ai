@@ -657,12 +657,13 @@ async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
     runProvider("URLhaus", urlhausKey, lookupUrlhausHost)
   ]);
   const configured = providers.filter(item => item.status !== "not_configured");
+  const allProvidersConfigured = configured.length === providers.length;
   const hasMatch = providers.some(item => item.status === "match_found");
   const status = configured.length === 0
     ? "not_configured"
     : hasMatch
       ? "matches_found"
-      : configured.every(item => item.status === "no_match")
+      : allProvidersConfigured && configured.every(item => item.status === "no_match")
         ? "no_matches"
         : "partial_or_unavailable";
 
