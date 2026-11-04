@@ -137,6 +137,26 @@ test("provider failure is reported as unavailable and never as safe", async () =
   assert.match(evidence.summary_en, /reputation remains unchecked/i);
 });
 
+test("age-restricted and gambling-category domains are not sent to the search provider", async () => {
+  let fetchCount = 0;
+  for (const hostname of ["adult-content-check.com", "casino-sample-service.net"]) {
+    const response = await domainSearchHandler(
+      makeEvent({ hostname }),
+      {},
+      null,
+      async () => {
+        fetchCount += 1;
+        return new Response("must not search", { status: 200 });
+      }
+    );
+    const evidence = JSON.parse(response.body).webEvidence;
+    assert.equal(response.statusCode, 200);
+    assert.equal(evidence.status, "restricted_category");
+    assert.equal(evidence.searched, false);
+    assert.deepEqual(evidence.sources, []);
+  }
+  assert.equal(fetchCount, 0);
+});
 test("domain search rate limiting returns 429 without contacting the search provider", async () => {
   let fetchCount = 0;
   const response = await domainSearchHandler(
