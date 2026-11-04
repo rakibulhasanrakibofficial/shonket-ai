@@ -68,11 +68,12 @@ function isPrivateIpv4(host) {
 function isRestrictedCategoryDomain(domain, categoryHint = "") {
   const labels = String(domain || "").toLowerCase().split(".");
   const restrictedLabel = labels.some(label =>
-    /^(?:adult|18plus|xxx|porn|casino|gambling|betting|sportsbook)(?:[-_]|$)/i.test(label)
+    /^(?:adult|adultsite|adultvideo|18plus|xxx|porn|pornhub|pornography|xvideos|xnxx|onlyfans|nsfw|erotic|sexchat|casino|gambling|betting|sportsbook|slots|wager|jackpot|poker|bet365|betway|1xbet|parimatch|mostbet)(?:[-_].*)?$/i.test(label)
   );
-  const restrictedHint = /age[- ]restricted|18\\+|gambling|casino|betting|sportsbook/i.test(String(categoryHint || ""));
+  const restrictedHint = /age[- ]restricted|18\+|gambling|casino|betting|sportsbook/i.test(String(categoryHint || ""));
   return restrictedLabel || restrictedHint;
 }
+
 function validateDomain(value) {
   const host = String(value || "").trim().toLowerCase().replace(/\.$/, "");
   if (!host || host.length > MAX_DOMAIN_LENGTH || /[\s\/?#@\\]/.test(host)) {
