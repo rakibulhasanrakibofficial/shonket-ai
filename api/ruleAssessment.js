@@ -80,6 +80,16 @@ const RULES = [
     reasonEn: "A sender's identity cannot be authenticated from message wording alone; verify through an official channel."
   },
   {
+    id: "sensitive_identity_request",
+    weight: 24,
+    regex: /\b(?:send|share|provide|submit|upload|enter|give)\s+(?:your\s+)?(?:nid|national id(?:entification)?(?: number)?|passport(?: number)?|birth certificate(?: number)?|date of birth|dob|bank account details|account number|credit card details|debit card details)\b|\b(?:nid|national id|passport|birth certificate|dob|date of birth|bank account details|card details)\b.{0,35}\b(?:diben|din|den|pathan|share koren|submit korun|upload korun)\b|(?:এনআইডি|জাতীয় পরিচয়পত্র|জাতীয় পরিচয়পত্র|পাসপোর্ট|জন্মনিবন্ধন|জন্ম নিবন্ধন|জন্মতারিখ|ব্যাংক অ্যাকাউন্টের তথ্য|কার্ডের তথ্য|কার্ড নম্বর)\s*(?:নম্বর)?\s*(?:দিন|দেন|পাঠান|শেয়ার করুন|শেয়ার করুন|জমা দিন|আপলোড করুন)/i,
+    tactic: "sensitive_identity_request",
+    quoteBn: "জাতীয় পরিচয় বা আর্থিক তথ্য চাওয়া হয়েছে",
+    quoteEn: "Sensitive identity or financial details are requested",
+    reasonBn: "NID, পাসপোর্ট, জন্মতারিখ বা ব্যাংক/কার্ডের তথ্য শুধু পরিচিত ও স্বাধীনভাবে যাচাই করা অফিসিয়াল ফর্মে দিন।",
+    reasonEn: "Only provide identity or financial details through a known, independently verified official form. A legitimate application may request them, so verify the destination first."
+  },
+  {
     id: "remote_access",
     weight: 24,
     regex: /\b(?:install anydesk|install teamviewer|remote access|screen sharing app|download apk|install this apk)\b|অ্যানিডেস্ক ইনস্টল|টিমভিউয়ার ইনস্টল|রিমোট অ্যাক্সেস|স্ক্রিন শেয়ারিং অ্যাপ|এপিকে ইনস্টল/i,
@@ -91,9 +101,9 @@ const RULES = [
   }
 ];
 
-const WARNING_CONTEXT = /\b(?:this is (?:a )?(?:scam|fraud)|scam warning|fraud warning|never pay|do not pay|don't pay|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|avoid clicking|do not click|don't click|scam theke sabdhan|eta (?:a )?(?:scam|fraud)|kokhono (?:otp|pin|password|taka|fee)|otp (?:share korben na|diben na|bolben na)|pin (?:share korben na|diben na)|taka pathaben na|fee diben na|link e click korben na)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|পিন শেয়ার করবেন না|প্রতারণা থেকে সাবধান|স্ক্যাম থেকে সাবধান/i;
+const WARNING_CONTEXT = /\b(?:this is (?:a )?(?:scam|fraud)|scam warning|fraud warning|never pay|do not pay|don't pay|never share|do not share|don't share|never disclose|do not disclose|don't disclose|will never ask|never ask|avoid clicking|do not click|don't click|scam theke sabdhan|eta (?:a )?(?:scam|fraud)|kokhono (?:otp|pin|password|taka|fee)|otp (?:share korben na|diben na|bolben na)|pin (?:share korben na|diben na)|taka pathaben na|fee diben na|link e click korben na)\b|কখনো টাকা পাঠাবেন না|টাকা পাঠাবেন না|ফি দেবেন না|ওটিপি শেয়ার করবেন না|ওটিপি শেয়ার করবেন না|পিন শেয়ার করবেন না|পিন শেয়ার করবেন না|এনআইডি শেয়ার করবেন না|এনআইডি শেয়ার করবেন না|জাতীয় পরিচয়পত্র শেয়ার করবেন না|জাতীয় পরিচয়পত্র শেয়ার করবেন না|পাসপোর্ট শেয়ার করবেন না|পাসপোর্ট শেয়ার করবেন না|জন্মতারিখ দেবেন না|ব্যাংক অ্যাকাউন্টের তথ্য দেবেন না|প্রতারণা থেকে সাবধান|স্ক্যাম থেকে সাবধান/i;
 
-const MESSAGE_CONTEXT = /\b(?:sms|text message|whatsapp|messenger|e-?mail|inbox|account|bank|mobile banking|wallet|otp|one[- ]time code|pin|password|verification|login|sign in|click here|link|url|payment|pay|fee|money|transfer|refund|bill|invoice|salary|job|recruitment|hiring|scholarship|stipend|grant|financial assistance|benefit|prize|lottery|winner|claim|courier|parcel|delivery|tracking|appointment|clinic|reschedule|library book|return.{0,30}library|electricity bill|customer portal|class.{0,40}(?:moved|room)|room\s*\d+|notice board|purchase|order confirmation|shopping app|statement|tuition|accounts office|bkash|nagad|rocket|chakri|taka|puraskar|britti|upobritti|cash[- ]in|cash[- ]out|cv|tk)\b|ওটিপি|পিন|পাসওয়ার্ড|অ্যাকাউন্ট|ব্যাংক|বিকাশ|নগদ|রকেট|ওয়ালেট|পেমেন্ট|টাকা|ফি|চাকরি|বৃত্তি|উপবৃত্তি|পুরস্কার|লটারি|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|বিল|রিফান্ড|প্রসেসিং|যাচাই|লিংক/i;
+const MESSAGE_CONTEXT = /\b(?:sms|text message|whatsapp|messenger|e-?mail|inbox|account|bank|mobile banking|wallet|otp|one[- ]time code|pin|password|nid|national id|passport|identity card|birth certificate|date of birth|dob|verification|login|sign in|click here|link|url|payment|pay|fee|money|transfer|refund|bill|invoice|salary|job|recruitment|hiring|scholarship|stipend|grant|financial assistance|benefit|prize|lottery|winner|claim|courier|parcel|delivery|tracking|appointment|clinic|reschedule|library book|return.{0,30}library|electricity bill|customer portal|class.{0,40}(?:moved|room)|room\s*\d+|notice board|purchase|order confirmation|shopping app|statement|tuition|accounts office|bkash|nagad|rocket|chakri|taka|puraskar|britti|upobritti|cash[- ]in|cash[- ]out|cv|tk)\b|ওটিপি|পিন|পাসওয়ার্ড|এনআইডি|জাতীয় পরিচয়পত্র|জাতীয় পরিচয়পত্র|পাসপোর্ট|জন্মনিবন্ধন|জন্ম নিবন্ধন|জন্মতারিখ|অ্যাকাউন্ট|ব্যাংক|বিকাশ|নগদ|রকেট|ওয়ালেট|পেমেন্ট|টাকা|ফি|চাকরি|বৃত্তি|উপবৃত্তি|পুরস্কার|লটারি|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|বিল|রিফান্ড|প্রসেসিং|যাচাই|লিংক/i;
 
 const CLAIM_CONTEXT = /\b(?:scholarship|stipend|grant|allowance|financial assistance|government scheme|recruitment|job circular|vacancy|employment|internship|hiring|fellowship|subsidy|benefit|prize|lottery|winner|guaranteed job|job offer|cash prize|chakri|britti|upobritti|puraskar|sorkari sahajjo)\b|বৃত্তি|উপবৃত্তি|অনুদান|সরকারি সহায়তা|সরকারি সহায়তা|নিয়োগ বিজ্ঞপ্তি|নিয়োগ বিজ্ঞপ্তি|চাকরির বিজ্ঞপ্তি|ভাতা|ফেলোশিপ|পুরস্কার|লটারি/i;
 
@@ -103,6 +113,7 @@ function hasBangla(text) {
 
 const DIRECT_CREDENTIAL_REQUEST = /\b(?:reply with|send|share|provide|tell me|give me|enter|submit)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i;
 const DIRECT_PAYMENT_REQUEST = /\b(?:send|transfer|deposit)\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment|funds)\b|\bpay\s+(?:(?:the|a)\s+)?(?:(?:processing|registration|release|advance|claim|security|application)\s+)?(?:fee|money|payment)\s+(?:now|today|first|to claim|to release)\b|\b(?:age|aage|prothome)\s+\d{2,7}\s*(?:tk|taka|bdt)\s+(?:pathan|diben|den|din)\b|টাকা\s*(?:পাঠান|দিতে হবে)|ফি\s*(?:পাঠান|দিতে হবে)/i;
+const DIRECT_SENSITIVE_ID_REQUEST = /\b(?:send|share|provide|submit|upload|enter|give)\s+(?:your\s+)?(?:nid|national id(?:entification)?(?: number)?|passport(?: number)?|birth certificate(?: number)?|date of birth|dob|bank account details|account number|credit card details|debit card details)\b|\b(?:nid|national id|passport|birth certificate|dob|date of birth|bank account details|card details)\b.{0,35}\b(?:diben|din|den|pathan|share koren|submit korun|upload korun)\b|(?:এনআইডি|জাতীয় পরিচয়পত্র|জাতীয় পরিচয়পত্র|পাসপোর্ট|জন্মনিবন্ধন|জন্ম নিবন্ধন|জন্মতারিখ|ব্যাংক অ্যাকাউন্টের তথ্য|কার্ডের তথ্য|কার্ড নম্বর)\s*(?:নম্বর)?\s*(?:দিন|দেন|পাঠান|শেয়ার করুন|শেয়ার করুন|জমা দিন|আপলোড করুন)/i;
 
 function stripNegatedInstructions(text) {
   return String(text || "")
@@ -124,7 +135,7 @@ export function buildRuleAssessment(inputText, responseLanguage = "bn") {
   const isBangla = responseLanguage === "bn";
   const banglaInput = hasBangla(text);
   const actionableText = stripNegatedInstructions(text);
-  const hasConflictingRequest = DIRECT_CREDENTIAL_REQUEST.test(actionableText) || DIRECT_PAYMENT_REQUEST.test(actionableText);
+  const hasConflictingRequest = DIRECT_CREDENTIAL_REQUEST.test(actionableText) || DIRECT_PAYMENT_REQUEST.test(actionableText) || DIRECT_SENSITIVE_ID_REQUEST.test(actionableText);
   const warningContext = WARNING_CONTEXT.test(text) && !hasConflictingRequest;
   const credentialWarning = isCredentialWarning(text, actionableText);
 
