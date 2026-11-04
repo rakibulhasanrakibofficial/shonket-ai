@@ -186,9 +186,10 @@ function parseBingResults(html, targetDomain, queryType) {
 
 function mentionsExactDomain(text, domain) {
   const value = String(text || "").toLowerCase();
-  const escaped = String(domain || "").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {");
-  if (!escaped) return false;
-  const pattern = new RegExp("(?:^|[^a-z0-9.-])" + escaped + "(?=$|[^a-z0-9-.]|\\.(?=\\s|$))", "i");
+  // Domains are validated hostnames containing only letters, digits, dots and hyphens.
+  const token = String(domain || "").toLowerCase();
+  if (!token) return false;
+  const pattern = new RegExp("(?:^|[^a-z0-9.-])" + token + "(?=$|[^a-z0-9-.]|\\\\.(?=\\\\s|$))", "i");
   return pattern.test(value);
 }
 
