@@ -182,6 +182,8 @@ test("message categories route only supported contexts to official source groups
   assert.ok(detectSearchCategories("Your bKash cash-in was successful.").includes("mobile_money"));
   assert.equal(detectSearchCategories("Your parcel delivery is scheduled for tomorrow. No payment is requested.").length, 0);
   assert.ok(detectSearchCategories("Your parcel is held. Pay a redelivery fee using this suspicious link now.").includes("cybersecurity"));
+  assert.equal(isOfficialSourceSearchApplicable("Your parcel delivery is scheduled for tomorrow. No payment is requested."), false);
+  assert.equal(isOfficialSourceSearchApplicable("Your parcel is held. Pay a redelivery fee using this suspicious link now."), true);
   assert.ok(detectSearchCategories("Your SIM card will be blocked. Verify now.").includes("telecom"));
   assert.ok(detectSearchCategories("Your online order refund is pending.").includes("commerce"));
   assert.ok(detectSearchCategories("Your bank account requires verification.").includes("banking"));
