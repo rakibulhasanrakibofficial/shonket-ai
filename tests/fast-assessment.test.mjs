@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRuleAssessment } from "../api/ruleAssessment.js";
-import analyzeHandler from "../api/analyze.js";
+import analyzeHandler from "../api/analyze.js";\nimport { retrieveKnowledge } from "../netlify/functions/knowledge-base.mjs";
 
 const sampleCases = JSON.parse(readFileSync(new URL("./scam-evaluation-cases.json", import.meta.url), "utf8"));
 
@@ -619,4 +619,26 @@ test("identity-protection warnings are not misclassified as identity-data reques
   assert.equal(bangla.verdict, "likely_safe");
   assert.equal(bangla.riskScore, 0);
   assert.deepEqual(bangla.tactics, []);
+});
+
+
+test("live prize-fee sample produces the expected explainable 70-point heuristic score", () => {
+  const result = buildRuleAssessment(
+    "Congratulations! You have won a cash prize of 50,000 BDT. Pay a processing fee of 500 BDT today to claim your prize. Offer expires today!",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.riskScore, 70);
+  assert.equal(result.riskLevel, "high");
+  assert.deepEqual(result.matchedSignals, ["upfront_payment", "unverified_prize_claim", "urgency"]);
+});
+
+test("curated guidance retrieval avoids substring-only false matches", () => {
+  const results = retrieveKnowledge(
+    "Congratulations! You won a cash prize. Pay a processing fee today to claim it.",
+    5
+  );
+  assert.ok(results.some(source => source.id === "bkash-security-tips"));
+  assert.ok(!results.some(source => source.id === "bgd-cirt-error524"));
+  assert.ok(!results.some(source => source.id === "scamcheck-victim-support"));
 });
