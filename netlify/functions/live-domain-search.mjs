@@ -503,7 +503,7 @@ async function searchDomain(domain, hostname, fetchImpl) {
         ? "নির্দিষ্ট hostname ও estimated base domain—দুটোতেই সার্চ হয়েছে, কিন্তু প্রাসঙ্গিক security report, review বা পরিচয়-সংক্রান্ত রেফারেন্স মেলেনি। ফলাফল না পাওয়া সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
         : "লাইভ সার্চ সেবাগুলো ব্যবহারযোগ্য ফলাফল দিতে পারেনি। ওয়েবসাইটের reputation এখনো যাচাই করা যায়নি।"
   };
-  if (status !== "unavailable") cacheSearchResult(domain, value);
+  if (status !== "unavailable") cacheSearchResult(cacheKey, value);
   return value;
 }
 
