@@ -454,7 +454,14 @@ export async function officialSearchHandler(event, runtimeEnv, rateLimiter = nul
   const language = languageFor(message, body.language);
 
   const contextType = body.contextType === "url" ? "url" : "message";
-  const rules = buildRuleAssessment(message, language);
+  const rules = contextType === "url" ? {
+    claimVerification: {
+      status: "not_applicable",
+      officialSearchAttempted: false,
+      summary_bn: "URL-only পর্যালোচনায় দাবি যাচাই করা হয় না।",
+      summary_en: "Claim verification does not apply to a URL-only review."
+    }
+  } : buildRuleAssessment(message, language);
   const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
   const searchApplies = contextType !== "url" && !searchDisabled && isOfficialSourceSearchApplicable(message);
   let officialSearch;
