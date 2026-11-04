@@ -354,8 +354,14 @@ export function detectSearchCategories(query) {
   const banking = has(/\b(bank|banking|bank account|debit card|credit card|loan|remittance|wire transfer|financial institution|account statement)\b|ব্যাংক|ব্যাংকিং|ঋণ|রেমিট্যান্স|কার্ড|হিসাব বিবরণী/i);
   if (banking && !mobileMoney) categories.push("banking");
 
-  const courier = has(/\b(courier|parcel|delivery|tracking number|shipment|customs fee|customs charge)\b|কুরিয়ার|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|চালান/i);
-  if (courier) categories.push("courier");
+  const courier = has(/\b(courier|parcel|delivery|tracking number|shipment|customs fee|customs charge|redelivery fee|delivery fee|parcel release fee)\b|কুরিয়ার|কুরিয়ার|পার্সেল|ডেলিভারি|ট্র্যাকিং|চালান/i);
+  // A routine parcel update is not an incident. Route it only when it also
+  // contains a concrete delivery-fee demand or a suspicious link/code request.
+  const courierFeeRequest = courier
+    && has(/\b(?:pay|send|transfer|deposit)\b.{0,45}\b(?:customs|delivery|redelivery|parcel release|handling)\s+(?:fee|charge)\b|\b(?:customs|delivery|redelivery|parcel release|handling)\s+(?:fee|charge)\b.{0,45}\b(?:pay|send|transfer|deposit)\b|\b(?:customs|delivery|redelivery|parcel release)\s+(?:fee|charge)\s+(?:is )?required\b|\bfee\s+(?:to release|for delivery|to redeliver)\b|কাস্টমস ফি.{0,35}(?:দিন|দেন|পাঠান)|ডেলিভারি ফি.{0,35}(?:দিন|দেন|পাঠান)/i);
+  const courierCredentialOrLink = courier
+    && has(/\b(?:otp|one[- ]time password|verification code|pin|password|phishing|smishing|malicious link|fake link|suspicious link|click this link|verify your account)\b|ওটিপি|পিন|পাসওয়ার্ড|ফিশিং|স্মিশিং|জাল লিংক/i);
+  if (courier && (courierFeeRequest || courierCredentialOrLink)) categories.push("courier");
 
   const telecom = has(/\b(sim card|sim registration|mobile operator|telecom|recharge|mobile number|phone number|network provider)\b|সিম|মোবাইল অপারেটর|রিচার্জ|টেলিকম|নম্বর বন্ধ/i);
   if (telecom) categories.push("telecom");
@@ -369,14 +375,48 @@ export function detectSearchCategories(query) {
   const prizeFeeClaim = has(/\b(prize|winner|lottery|reward|claim)\b|পুরস্কার|লটারি|বিজয়ী/i) && has(/\b(fee|charge|pay|payment|send money|process(?:ing)?)\b|ফি|টাকা পাঠান|পেমেন্ট/i);
   const advanceFeeClaim = has(/\b(processing fee|registration fee|release fee|advance fee|claim fee|joining fee|training fee|verification fee|pay upfront|upfront payment|fee to claim|fee to release)\b|প্রসেসিং ফি|রেজিস্ট্রেশন ফি|আগাম ফি|আগে টাকা/i)
     && (jobClaim || mobileMoney || banking || courier || commerce || investment || prizeFeeClaim);
-  const cyberRisk = prizeFeeClaim || advanceFeeClaim || has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion)|facebook|whatsapp|instagram|social media account)\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
+  const cyberRisk = prizeFeeClaim || advanceFeeClaim || courierFeeRequest || has(/\b(otp|one[- ]time password|verification code|pin|password|phishing|smishing|scam|fraud|fake link|suspicious link|verify your account|account blocked|account suspended|remote access|screen sharing|impersonat(?:e|ing|ion)|facebook|whatsapp|instagram|social media account)\b|ওটিপি|পিন|পাসওয়ার্ড|পাসওয়ার্ড|ফিশিং|স্মিশিং|প্রতারণা|জাল লিংক|অ্যাকাউন্ট বন্ধ|স্ক্রিন শেয়ার|স্ক্রিন শেয়ার/i);
   if (cyberRisk || (jobClaim && !governmentJob)) categories.push("cybersecurity");
 
   return [...new Set(categories)].slice(0, 3);
 }
 
 export function isOfficialSourceSearchApplicable(query) {
-  return detectSearchCategories(query).length > 0;
+  // A category match alone is insufficient: at least one context-approved
+  // source must be eligible before the UI shows an official-search state.
+  return searchPlan(query).sources.length > 0;
+}
+
+function sourceMatchesQueryContext(source, query) {
+  const value = String(query || "");
+  const has = pattern => pattern.test(value);
+  const mentionsBkash = has(/\b(?:b[\s-]?kash)\b|বিকাশ/i);
+  const explicitPhishing = has(/\b(?:phishing|smishing|malicious link|fake link|suspicious link|phishing website|credential theft)\b|ফিশিং|স্মিশিং|জাল লিংক|ক্ষতিকর লিংক/i);
+  // Prefer the specific smishing advisory for phishing-link messages.
+  // The general CIRT alerts index is reserved for other explicit incidents.
+  const explicitCyberIncident = has(/\b(?:malware|ransomware|data breach|cyber attack|account hacked|hacked account)\b|ম্যালওয়্যার|র‍্যানসমওয়্যার|হ্যাকড অ্যাকাউন্ট/i);
+
+  const prizeFee = has(/\b(?:prize|cash prize|winner|lottery|reward)\b|পুরস্কার|লটারি|বিজয়ী|বিজয়ী/i)
+    && has(/\b(?:fee|charge|pay|payment|send money|processing)\b|ফি|পেমেন্ট|টাকা পাঠান/i);
+  const jobFee = has(/\b(?:job|recruitment|vacancy|hiring|employment|remote job)\b|চাকরি|নিয়োগ|নিয়োগ/i)
+    && has(/\b(?:fee|charge|pay|payment|registration|processing|training)\b|ফি|পেমেন্ট/i);
+  const investmentFraud = has(/\b(?:investment|crypto|ponzi|guaranteed return|double your money|risk[- ]free profit)\b|বিনিয়োগ|বিনিয়োগ|মুনাফা|টাকা দ্বিগুণ/i)
+    && has(/\b(?:deposit|send money|pay|guaranteed|double|risk[- ]free)\b|জমা দিন|টাকা পাঠান|নিশ্চিত লাভ/i);
+  const commonScamContext = prizeFee || jobFee || investmentFraud;
+
+  if (source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips") {
+    return mentionsBkash;
+  }
+  if (source.id === "cirt-smishing") {
+    return explicitPhishing;
+  }
+  if (source.id === "cirt-alerts") {
+    return explicitCyberIncident;
+  }
+  if (source.id === "scamcheck-common-scams") {
+    return commonScamContext;
+  }
+  return true;
 }
 
 function searchPlan(query) {
@@ -392,7 +432,7 @@ function searchPlan(query) {
   const unique = [];
   const seen = new Set();
   for (const source of selected) {
-    if (seen.has(source.id)) continue;
+    if (seen.has(source.id) || !sourceMatchesQueryContext(source, query)) continue;
     seen.add(source.id);
     unique.push(source);
   }
@@ -494,17 +534,24 @@ export async function searchOfficialSources(query, options = {}) {
   const terms = searchTerms(rawQuery);
   const plan = searchPlan(rawQuery);
 
-  if (!rawQuery || !plan.categories.length || !terms.length) {
+  if (!rawQuery || !plan.categories.length || !terms.length || !plan.sources.length) {
+    const hasCategory = plan.categories.length > 0;
     return {
       status: "not_applicable",
-      category: [],
-      scope: "No supported official-source category matched this message.",
+      category: plan.categories,
+      scope: hasCategory
+        ? "No directly relevant source is configured for this exact message context."
+        : "No supported official-source category matched this message.",
       searchedAt: new Date().toISOString(),
       searchedPortals: [],
       sources: [],
       evidenceAssessment: compareEvidence(rawQuery, [], "not_applicable"),
-      summary_bn: "এই বার্তার সঙ্গে মেলে এমন কোনো official-source category পাওয়া যায়নি।",
-      summary_en: "No supported official-source category matched this message."
+      summary_bn: hasCategory
+        ? "এই বার্তার নির্দিষ্ট প্রেক্ষাপটের জন্য সরাসরি প্রাসঙ্গিক কোনো অনুমোদিত উৎস নেই; তাই সম্পর্কহীন রেফারেন্স দেখানো হয়নি।"
+        : "এই বার্তার সঙ্গে মেলে এমন কোনো official-source category পাওয়া যায়নি।",
+      summary_en: hasCategory
+        ? "No directly relevant allowlisted source is configured for this exact context, so unrelated references were not shown."
+        : "No supported official-source category matched this message."
     };
   }
 

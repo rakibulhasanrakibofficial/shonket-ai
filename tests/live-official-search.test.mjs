@@ -178,12 +178,64 @@ test("government job claims include the official Teletalk recruitment listing", 
   assert.ok(result.sources.some(source => source.evidenceType === "government_listing_match"));
 });
 
-test("message categories route to relevant official source groups", () => {
+test("message categories route only supported contexts to official source groups", () => {
   assert.ok(detectSearchCategories("Your bKash cash-in was successful.").includes("mobile_money"));
-  assert.ok(detectSearchCategories("Your parcel tracking number is ready.").includes("courier"));
+  assert.equal(detectSearchCategories("Your parcel delivery is scheduled for tomorrow. No payment is requested.").length, 0);
+  assert.ok(detectSearchCategories("Your parcel is held. Pay a redelivery fee using this suspicious link now.").includes("cybersecurity"));
+  assert.equal(isOfficialSourceSearchApplicable("Your parcel delivery is scheduled for tomorrow. No payment is requested."), false);
+  assert.equal(isOfficialSourceSearchApplicable("Your parcel is held. Pay a redelivery fee using this suspicious link now."), true);
   assert.ok(detectSearchCategories("Your SIM card will be blocked. Verify now.").includes("telecom"));
   assert.ok(detectSearchCategories("Your online order refund is pending.").includes("commerce"));
   assert.ok(detectSearchCategories("Your bank account requires verification.").includes("banking"));
+});
+
+test("a normal courier notification does not trigger irrelevant official-source fetches", async () => {
+  let calls = 0;
+  const result = await searchOfficialSources(
+    "Your parcel delivery is scheduled for tomorrow. Please check the tracking status in the courier app you already use. No payment is requested in this message.",
+    {
+      fetchImpl: async () => {
+        calls += 1;
+        throw new Error("A routine delivery update must not fetch unrelated cyber advisories.");
+      }
+    }
+  );
+  assert.equal(calls, 0);
+  assert.equal(result.status, "not_applicable");
+  assert.deepEqual(result.sources, []);
+  assert.deepEqual(result.searchedPortals, []);
+});
+
+test("a courier redelivery-fee message with an explicit suspicious link retrieves only smishing guidance", async () => {
+  const calls = [];
+  const html = "<html><body><h1>SMS phishing advisory</h1><p>Smishing messages use suspicious links and malicious links to steal credentials.</p></body></html>";
+  const result = await searchOfficialSources(
+    "Your parcel is held. Pay a redelivery fee using this suspicious link now.",
+    {
+      fetchImpl: async url => {
+        calls.push(String(url));
+        return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+    }
+  );
+  assert.equal(result.status, "guidance_only");
+  assert.equal(calls.length, 1);
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].id, "cirt-smishing");
+  assert.ok(!result.sources.some(source => source.id === "bkash-security-tips" || source.id === "scamcheck-common-scams"));
+});
+
+test("Nagad messages do not retrieve bKash-specific references", async () => {
+  let calls = 0;
+  const result = await searchOfficialSources("Your Nagad cash-in was successful.", {
+    fetchImpl: async () => {
+      calls += 1;
+      throw new Error("No bKash reference should be fetched for a Nagad message.");
+    }
+  });
+  assert.equal(calls, 0);
+  assert.equal(result.status, "not_applicable");
+  assert.deepEqual(result.sources, []);
 });
 
 test("official source links allow only HTTPS on the exact configured hostname", () => {

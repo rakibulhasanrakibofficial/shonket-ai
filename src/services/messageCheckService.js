@@ -1,6 +1,6 @@
 import { buildRuleAssessment } from "../../api/ruleAssessment.js";
 import { retrieveKnowledge } from "../../netlify/functions/knowledge-base.mjs";
-import { extractScreenshotText } from "./screenshotOcrService.js";
+import { cleanScreenshotOcrText, extractScreenshotText } from "./screenshotOcrService.js";
 
 const API_BASE_URL = String(import.meta.env?.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
@@ -257,9 +257,10 @@ export async function analyzeMessage({
   let requestMessage = cleanMessage;
   let extractedText = "";
   if (imageFile) {
-    extractedText = await ocrExtractor(imageFile);
+    const rawOcrText = await ocrExtractor(imageFile);
+    extractedText = cleanScreenshotOcrText(rawOcrText);
     requestMessage = [cleanMessage, extractedText].filter(Boolean).join("\n").slice(0, 4000);
-    if (!requestMessage) throw new Error("No readable message text was found in the screenshot.");
+    if (!requestMessage) throw new Error("No readable message text was found in the screenshot after excluding non-message fixture text.");
   }
 
   if (imageFile && typeof onLocalPreview === "function") {

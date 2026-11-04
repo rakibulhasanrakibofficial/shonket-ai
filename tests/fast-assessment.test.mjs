@@ -467,7 +467,7 @@ test("public API auto-detects Bangla text without a provider call", async () => 
 });
 
 
-import { extractScreenshotText } from "../src/services/screenshotOcrService.js";
+import { cleanScreenshotOcrText, extractScreenshotText } from "../src/services/screenshotOcrService.js";
 import { analyzeMessage } from "../src/services/messageCheckService.js";
 import { handleAnalyzeRequest } from "../src/worker.js";
 
@@ -527,6 +527,43 @@ test("static GitHub Pages analysis uses local rules and RAG without calling a mi
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("OCR cleanup preserves genuine anti-scam message content without a fixture marker", () => {
+  const warning = "Courier Update: Do not pay unexpected fees or share your OTP.";
+  assert.equal(cleanScreenshotOcrText(warning), warning);
+});
+
+test("OCR fixture footer is excluded from the courier message assessment", async () => {
+  const file = { type: "image/png", size: 128 };
+  const fixture = [
+    "Courier Update",
+    "Message preview for SHONKET AI OCR testing",
+    "Yesterday - 5:18 PM",
+    "Your parcel delivery is scheduled for tomorrow.",
+    "Please check the tracking status in the courier app you already use.",
+    "No payment is requested in this message.",
+    "OCR TEST FIXTURE • NOT A REAL MESSAGE • DO NOT PAY OR SHARE CODES"
+  ].join("\n");
+
+  assert.doesNotMatch(cleanScreenshotOcrText(fixture), /OCR TEST FIXTURE|DO NOT PAY|NOT A REAL MESSAGE/i);
+  const result = await analyzeMessage({
+    message: "",
+    imageFile: file,
+    language: "en",
+    ocrExtractor: async receivedFile => {
+      assert.equal(receivedFile, file);
+      return fixture;
+    }
+  });
+
+  assert.equal(result.screenshotRead, true);
+  assert.match(result.extractedText, /No payment is requested/i);
+  assert.doesNotMatch(result.combinedText, /OCR TEST FIXTURE|DO NOT PAY|NOT A REAL MESSAGE/i);
+  assert.equal(result.verdict, "uncertain");
+  assert.equal(result.riskScore, 0);
+  assert.notEqual(result.summary_en, "This message appears to warn people about avoiding scams.");
+  assert.deepEqual(result.retrievedSources, []);
 });
 
 test("screenshot analysis reads locally and sends no request when a backend is not configured", async () => {

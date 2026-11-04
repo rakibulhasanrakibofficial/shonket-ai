@@ -108,6 +108,16 @@ test("RAG routes a generic prize-fee claim to ScamCheck, not unrelated brand or 
   assert.ok(!sources.some(source => source.id === "scamcheck-victim-support"));
 });
 
+test("RAG does not leak bKash or campaign references into benign courier or Nagad messages", () => {
+  const courier = retrieveKnowledge(
+    "Your parcel delivery is scheduled for tomorrow. Please check the tracking status in your courier app. No payment is requested."
+  );
+  assert.deepEqual(courier, []);
+
+  const nagad = retrieveKnowledge("Your Nagad cash-in was successful.");
+  assert.ok(!nagad.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));
+});
+
 test("RAG does not infer bKash from an unbranded PIN and OTP request", () => {
   const sources = retrieveKnowledge("Please share your PIN and SMS OTP now.");
   assert.ok(!sources.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));

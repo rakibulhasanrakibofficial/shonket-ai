@@ -5,6 +5,27 @@ const MAX_TEXT_LENGTH = 4000;
 const SUPPORTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 /**
+ * Remove an explicitly labelled test-fixture footer from OCR output.
+ * Ordinary message text (including genuine warnings such as "do not pay")
+ * is preserved. Only the known fixture marker and everything after it are
+ * excluded from scam assessment.
+ */
+export function cleanScreenshotOcrText(value) {
+  const text = String(value || "").replace(/\r\n?/g, "\n");
+  const markers = [
+    /\bOCR\s+TEST\s+FIXTURE\b/i,
+    /\bNOT\s+A\s+REAL\s+MESSAGE\b(?=[\s\S]{0,120}\bDO\s+NOT\s+PAY\b)/i
+  ];
+  const positions = markers
+    .map(pattern => pattern.exec(text)?.index)
+    .filter(index => Number.isInteger(index));
+  const cutoff = positions.length ? Math.min(...positions) : text.length;
+  return text.slice(0, cutoff).trim();
+}
+
+
+
+/**
  * Extract visible text locally in the browser. The screenshot is not uploaded.
  * English and Bangla language data are downloaded by Tesseract.js on first use.
  */
