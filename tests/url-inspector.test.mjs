@@ -203,3 +203,17 @@ test("URL review context explains that separate public web evidence may be shown
   assert.match(context, /do not verify reputation, ownership, malware status/i);
   assert.doesNotMatch(context, /secret-token-value|reset_token|\/login/i);
 });
+
+test("restricted path categories are preserved even when a known domain label wins display identity", () => {
+  const adultPath = inspectUrl("https://google.com/xxx");
+  assert.match(adultPath.linkCategory, /Google/i);
+  assert.equal(adultPath.publicSearchRestricted, true);
+  assert.match(adultPath.restrictedSearchCategory, /Age-restricted/i);
+  assert.equal(adultPath.riskScore, 0);
+
+  const gamblingPath = inspectUrl("https://google.com/casino");
+  assert.match(gamblingPath.linkCategory, /Google/i);
+  assert.equal(gamblingPath.publicSearchRestricted, true);
+  assert.match(gamblingPath.restrictedSearchCategory, /Gambling/i);
+  assert.equal(gamblingPath.riskScore, 0);
+});
