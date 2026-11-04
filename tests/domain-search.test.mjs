@@ -508,7 +508,7 @@ test("URLhaus historical offline records do not label the entire host as current
   const hostname = "www.google.com";
   const authKey = "test-urlhaus-key";
   const response = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: "google.com" }),
+    makeEvent({ hostname, rootDomain: hostname }),
     { URLHAUS_AUTH_KEY: authKey },
     { async limit() { return { success: true }; } },
     async (url, options = {}) => {
