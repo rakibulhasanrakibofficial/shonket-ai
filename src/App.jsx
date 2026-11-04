@@ -739,7 +739,7 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
         <p className="mt-1 text-[10px] leading-4 text-slate-400">{analysisLanguage==='bn'?target.summary_bn:target.summary_en}</p>
         {target.sourceUrl&&<a href={target.sourceUrl} target="_blank" rel="noopener noreferrer" className="official-source-open-button retrieved-guidance-open-button mt-2"><ExternalLink size={13}/>{t('OPEN PROVIDER REPORT','প্রোভাইডার রিপোর্ট খুলুন')}<ArrowUpRight size={13}/></a>}
       </div>)}
-    {/div>)}
+    </div>)}
   </div>
   <p className="mt-3 border-t border-white/[.07] pt-2 text-[10px] leading-5 text-slate-500">{t('Privacy: provider checks use hostnames and HTTPS homepage URLs only. Submitted paths, query strings and credentials are not sent. A database miss is not proof of safety.','গোপনীয়তা: provider check-এ শুধু hostname ও HTTPS homepage URL ব্যবহার করা হয়। submitted path, query string ও credentials পাঠানো হয় না। database-এ record না থাকা নিরাপদ হওয়ার প্রমাণ নয়।')}</p>
 </section>}
