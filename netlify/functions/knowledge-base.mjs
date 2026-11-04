@@ -55,8 +55,10 @@ export function retrieveKnowledge(message, limit = 3) {
 
   return KNOWLEDGE_BASE
     .map(source => {
-      const searchable = tokens([source.title, source.summary, ...(source.keywords || [])].join(" "));
-      const matched = queryTokens.filter(token => searchable.includes(token));
+      const searchable = new Set(tokens([source.title, source.summary, ...(source.keywords || [])].join(" ")));
+      // Exact token matches avoid treating unrelated substrings (for example,
+      // "pay" inside "payment") as evidence that a source is relevant.
+      const matched = queryTokens.filter(token => searchable.has(token));
       return { source, score: matched.length, matched };
     })
     .filter(item => item.score > 0)
