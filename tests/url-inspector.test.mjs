@@ -258,3 +258,32 @@ test("Google-looking hostname is explained as a brand mismatch, not as a keyword
   assert.equal(result.riskScore, 40);
   assert.equal(result.riskLevel, "medium");
 });
+
+
+test("brand matching uses token boundaries and avoids common-word false positives", () => {
+  for (const url of [
+    "https://notgoogle.example",
+    "https://applepie.example",
+    "https://facebooker.example",
+    "https://myamazonian.example"
+  ]) {
+    const result = inspectUrl(url);
+    assert.ok(!result.signals.some(signal => signal.id === "brand"), url + " must not be flagged from a substring alone");
+  }
+  for (const url of [
+    "https://google2026-login.example",
+    "https://secure-google-pay.example",
+    "https://apple-verify.example",
+    "https://paypal2-account.example"
+  ]) {
+    const result = inspectUrl(url);
+    assert.ok(result.signals.some(signal => signal.id === "brand"), url + " contains a standalone brand token");
+  }
+});
+
+test("URL review context keeps encoded query and fragment secrets local", () => {
+  const result = inspectUrl("https://example.com/reset?token=abc%2F123&email=user%40example.com#private-fragment");
+  const context = buildUrlReviewContext(result);
+  assert.match(context, /Hostname: example\.com/);
+  assert.doesNotMatch(context, /abc|123|user|private-fragment|reset|token|email/i);
+});
