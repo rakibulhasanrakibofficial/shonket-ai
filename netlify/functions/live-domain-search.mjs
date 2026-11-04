@@ -524,16 +524,6 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
       ? "historical_records"
       : "records_found";
 
-  const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
-  const offlineCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "offline").length;
-  const allReturnedRecordsOffline = observedUrls.length > 0 &&
-    observedUrls.length >= urlCount &&
-    offlineCount === observedUrls.length;
-  const recordStatus = activeCount > 0
-    ? "active_malware_urls"
-    : allReturnedRecordsOffline
-      ? "historical_records"
-      : "records_found";
   const sourceUrl = safeHttpsReference(payload.urlhaus_reference, "urlhaus.abuse.ch");
   if (urlCount === 0) {
     return {
