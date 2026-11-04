@@ -1,4 +1,5 @@
 import { handler as analyzeHandler, officialSearchHandler } from "../netlify/functions/analyze.mjs";
+import { domainSearchHandler } from "../netlify/functions/live-domain-search.mjs";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
@@ -91,6 +92,50 @@ export async function handleOfficialSearchRequest(request, env) {
   });
 }
 
+
+export async function handleDomainSearchRequest(request, env) {
+  const headers = Object.fromEntries(request.headers.entries());
+  if (request.method === "OPTIONS") {
+    const preflight = await domainSearchHandler({
+      httpMethod: "OPTIONS",
+      headers,
+      body: null
+    }, env, null);
+    return new Response(preflight.body || null, {
+      status: preflight.statusCode,
+      headers: preflight.headers
+    });
+  }
+
+  if (request.method !== "POST") return json(405, { error: "Method not allowed." });
+
+  const clientIp = String(request.headers.get("CF-Connecting-IP") || "").trim();
+  if (!clientIp || clientIp.length > 64) {
+    return json(503, { error: "Could not establish a trusted client address." });
+  }
+
+  const limiter = env?.OFFICIAL_SEARCH_RATE_LIMITER;
+  if (!limiter || typeof limiter.limit !== "function") {
+    return json(503, { error: "The domain-search rate limiter is not configured." });
+  }
+
+  const declaredLength = Number(headers["content-length"] || 0);
+  if (declaredLength > 4096) return json(413, { error: "Request is too large." });
+
+  const body = await request.text();
+  headers["content-length"] = String(new TextEncoder().encode(body).byteLength);
+  const result = await domainSearchHandler({
+    httpMethod: request.method,
+    headers,
+    body
+  }, env, limiter);
+
+  return new Response(result.body || null, {
+    status: result.statusCode,
+    headers: result.headers
+  });
+}
+
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
@@ -113,6 +158,10 @@ export default {
 
     if (pathname === "/api/official-search") {
       return handleOfficialSearchRequest(request, env);
+    }
+
+    if (pathname === "/api/domain-search") {
+      return handleDomainSearchRequest(request, env);
     }
 
     return json(404, { error: "API route not found." });
