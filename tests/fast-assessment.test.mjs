@@ -522,7 +522,8 @@ test("static GitHub Pages analysis uses local rules and RAG without calling a mi
     assert.equal(result.aiAnalysis.status, "not_configured");
     assert.equal(result.verdict, "suspicious");
     assert.equal(result.engine, "Rule-based");
-    assert.ok(result.retrievedSources.some(source => source.id === "bkash-security-tips"));
+    assert.ok(result.retrievedSources.some(source => source.id === "scamcheck-common-scams"));
+    assert.ok(!result.retrievedSources.some(source => source.id === "bkash-security-tips" || source.id === "bkash-fraud-awareness"));
   } finally {
     globalThis.fetch = originalFetch;
   }
