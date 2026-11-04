@@ -113,6 +113,11 @@ test("RAG does not infer bKash from an unbranded PIN and OTP request", () => {
   assert.ok(!sources.some(source => source.id === "bkash-fraud-awareness" || source.id === "bkash-security-tips"));
 });
 
+test("RAG does not surface prize-scam guidance for an unrelated generic fee request", () => {
+  const sources = retrieveKnowledge("Pay the processing fee to continue your account review.");
+  assert.ok(!sources.some(source => source.id === "scamcheck-common-scams"));
+});
+
 test("RAG retrieves victim-support guidance only after a reported loss or compromised account", () => {
   const sources = retrieveKnowledge("I lost money to a scam. My account was compromised.");
   assert.ok(sources.some(source => source.id === "scamcheck-victim-support"));
