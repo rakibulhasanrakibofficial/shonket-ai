@@ -529,6 +529,11 @@ test("static GitHub Pages analysis uses local rules and RAG without calling a mi
   }
 });
 
+test("OCR cleanup preserves genuine anti-scam message content without a fixture marker", () => {
+  const warning = "Courier Update: Do not pay unexpected fees or share your OTP.";
+  assert.equal(cleanScreenshotOcrText(warning), warning);
+});
+
 test("OCR fixture footer is excluded from the courier message assessment", async () => {
   const file = { type: "image/png", size: 128 };
   const fixture = [
