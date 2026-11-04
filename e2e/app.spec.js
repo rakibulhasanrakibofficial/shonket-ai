@@ -367,7 +367,10 @@ test('official source results appear before the AI analysis request finishes', a
     const element = document.getElementById('analysis-evidence-stack');
     if (!element) return false;
     const rect = element.getBoundingClientRect();
-    return window.scrollY > 0 && rect.top >= -1 && rect.top < 90;
+    // Assert the evidence stack is actually at the top of the visible
+    // viewport. Mobile browsers may scroll an overflow ancestor instead of
+    // changing window.scrollY, so the rendered position is the reliable check.
+    return rect.top >= -1 && rect.top < 90 && rect.bottom > 0;
   })).toBe(true);
 
   const visibility = await stack.evaluate(element => {
