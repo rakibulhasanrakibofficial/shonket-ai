@@ -379,3 +379,47 @@ test("official search endpoint returns live scholarship listings and conservativ
   assert.match(body.officialSearch.evidenceAssessment.summary_en, /does not authenticate/i);
 });
 
+
+test("URL-only official-search requests never search generic message-safety portals", async () => {
+  let fetchCalls = 0;
+  const response = await officialSearchHandler(
+    makeEvent({
+      message: "URL-only structure review. Hostname: xnxx.com. Local URL-pattern indicators: none detected.",
+      contextType: "url"
+    }),
+    { OFFICIAL_SOURCE_SEARCH_ENABLED: "true" },
+    null,
+    async () => {
+      fetchCalls += 1;
+      throw new Error("URL-only reviews must not fetch message-category sources.");
+    }
+  );
+  const body = JSON.parse(response.body);
+  assert.equal(response.statusCode, 200);
+  assert.equal(fetchCalls, 0);
+  assert.equal(body.officialSearch.status, "not_applicable");
+  assert.equal(body.webEvidence.searched, false);
+  assert.equal(body.webEvidence.searchExecuted, false);
+  assert.equal(body.webEvidence.sources.length, 0);
+});
+
+test("URL-only analyze requests do not receive generic message RAG or a message risk score", async () => {
+  const response = await handler(
+    makeEvent({
+      message: "URL-only structure review. Hostname: xnxx.com. Local URL-pattern indicators: none detected.",
+      contextType: "url"
+    }),
+    { OFFICIAL_SOURCE_SEARCH_ENABLED: "true" },
+    null,
+    null
+  );
+  const body = JSON.parse(response.body);
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.riskScore, null);
+  assert.equal(body.riskLevel, "unknown");
+  assert.equal(body.verdict, "uncertain");
+  assert.deepEqual(body.retrievedSources, []);
+  assert.equal(body.officialSearch.status, "not_applicable");
+  assert.equal(body.webEvidence.searched, false);
+  assert.equal(body.claimVerification.status, "not_applicable");
+});
