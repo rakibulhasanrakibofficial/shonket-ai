@@ -457,200 +457,101 @@ test("domain search checks both the exact submitted hostname and estimated base 
 });
 
 
-test("threat-intelligence lookups stay disabled until server-side API keys are configured", async () => {
-  const providerCalls = [];
-  const response = await domainSearchHandler(
-    makeEvent({ hostname: "no-threat-feed-keys.example.net", rootDomain: "no-threat-feed-keys.example.net" }),
-    {},
-    { async limit() { return { success: true }; } },
-    async url => {
-      const value = String(url);
-      if (value.includes("urlhaus-api.abuse.ch") || value.includes("checkurl.phishtank.com")) {
-        providerCalls.push(value);
-      }
-      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
-    }
+test("URLhaus lookup stays disabled until its server-side API key is configured", async () => {
+  const calls=[];
+  const response=await domainSearchHandler(makeEvent({hostname:"no-threat-feed-keys.example.net",rootDomain:"no-threat-feed-keys.example.net"}),{},
+    {async limit(){return {success:true};}},
+    async url=>{if(String(url).includes("urlhaus-api.abuse.ch"))calls.push(String(url));return new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}});}
   );
-  const evidence = JSON.parse(response.body).webEvidence;
-  assert.equal(response.statusCode, 200);
-  assert.equal(evidence.threatIntelligence.status, "not_configured");
-  assert.deepEqual(providerCalls, []);
-  assert.deepEqual(
-    evidence.threatIntelligence.providers.map(provider => provider.status),
-    ["not_configured", "not_configured"]
-  );
+  const evidence=JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode,200);
+  assert.equal(evidence.threatIntelligence.status,"not_configured");
+  assert.deepEqual(calls,[]);
+  assert.deepEqual(evidence.threatIntelligence.providers.map(p=>p.name),["URLhaus"]);
+  assert.deepEqual(evidence.threatIntelligence.providers.map(p=>p.status),["not_configured"]);
 });
 
-test("PhishTank and URLhaus host lookups return safe references without leaking submitted paths or malware URLs", async () => {
-  const hostname = "security-feed-fixture.example.net";
-  const appKey = "test-phishtank-key";
-  const authKey = "test-urlhaus-key";
-  const providerRequests = [];
 
-  const response = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: hostname }),
-    { PHISHTANK_APP_KEY: appKey, URLHAUS_AUTH_KEY: authKey },
-    { async limit() { return { success: true }; } },
-    async (url, options = {}) => {
-      const target = String(url);
-      if (target === "https://checkurl.phishtank.com/checkurl/") {
-        const form = new URLSearchParams(options.body || "");
-        providerRequests.push({ provider: "PhishTank", form: form.toString() });
-        assert.equal(form.get("url"), "https://" + hostname + "/");
-        assert.equal(form.get("app_key"), appKey);
-        assert.equal(form.get("format"), "json");
-        assert.equal(options.headers["User-Agent"], "SHONKET-AI/1.0 (domain threat-intelligence lookup)");
+test("URLhaus host lookups return safe references without exposing malware URLs", async () => {
+  const hostname="security-feed-fixture.example.net", authKey="test-urlhaus-key", requests=[];
+  const response=await domainSearchHandler(makeEvent({hostname,rootDomain:hostname}),{URLHAUS_AUTH_KEY:authKey},
+    {async limit(){return {success:true};}},
+    async (url,options={})=>{
+      if(String(url)==="https://urlhaus-api.abuse.ch/v1/host/"){
+        const form=new URLSearchParams(options.body||"");requests.push(form.toString());
+        assert.equal(form.get("host"),hostname);assert.equal(options.headers["Auth-Key"],authKey);
         return new Response(JSON.stringify({
-          results: {
-            url: "https://" + hostname + "/",
-            in_database: true,
-            phish_id: 123456,
-            phish_detail_page: "https://www.phishtank.com/phish_detail.php?phish_id=123456",
-            verified: "y",
-            verified_at: "2026-11-04T10:00:00+00:00",
-            valid: "y"
-          }
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+          query_status:"ok",urlhaus_reference:"https://urlhaus.abuse.ch/host/"+hostname+"/",host:hostname,
+          firstseen:"2026-11-03 12:00:00 UTC",url_count:"1",
+          blacklists:{spamhaus_dbl:"abused_legit_malware",surbl:"listed"},
+          urls:[{url:"https://"+hostname+"/private-payload-fixture.bin?private=not-for-ui",url_status:"online",date_added:"2026-11-03 12:00:00 UTC"}]
+        }),{status:200,headers:{"Content-Type":"application/json"}});
       }
-      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
-        const form = new URLSearchParams(options.body || "");
-        providerRequests.push({ provider: "URLhaus", form: form.toString() });
-        assert.equal(form.get("host"), hostname);
-        assert.equal(options.headers["Auth-Key"], authKey);
-        return new Response(JSON.stringify({
-          query_status: "ok",
-          urlhaus_reference: "https://urlhaus.abuse.ch/host/" + hostname + "/",
-          host: hostname,
-          firstseen: "2026-11-03 12:00:00 UTC",
-          url_count: "1",
-          blacklists: { spamhaus_dbl: "abused_legit_malware", surbl: "listed" },
-          urls: [{
-            url: "https://" + hostname + "/private-payload-fixture.bin?private=not-for-ui",
-            url_status: "online",
-            date_added: "2026-11-03 12:00:00 UTC"
-          }]
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+      return new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}});
     }
   );
-
-  const evidence = JSON.parse(response.body).webEvidence;
-  assert.equal(response.statusCode, 200);
-  assert.equal(providerRequests.length, 2);
-  assert.equal(evidence.threatIntelligence.status, "matches_found");
-
-  const phishTank = evidence.threatIntelligence.providers.find(provider => provider.name === "PhishTank");
-  assert.equal(phishTank.status, "match_found");
-  assert.equal(phishTank.targets[0].status, "verified_phishing");
-  assert.equal(phishTank.targets[0].phishId, 123456);
-  assert.equal(phishTank.targets[0].sourceUrl, "https://www.phishtank.com/phish_detail.php?phish_id=123456");
-
-  const urlhaus = evidence.threatIntelligence.providers.find(provider => provider.name === "URLhaus");
-  assert.equal(urlhaus.status, "match_found");
-  assert.equal(urlhaus.targets[0].status, "malware_host");
-  assert.equal(urlhaus.targets[0].urlCount, 1);
-  assert.equal(urlhaus.targets[0].activeCount, 1);
-  assert.equal(urlhaus.targets[0].sourceUrl, "https://urlhaus.abuse.ch/host/" + hostname + "/");
-
-  const serialised = JSON.stringify(evidence.threatIntelligence);
-  assert.doesNotMatch(serialised, /private-payload-fixture\.bin|not-for-ui/i);
-  assert.doesNotMatch(JSON.stringify(providerRequests), /private|token|reset/i);
-});
-
-test("a failed threat-intelligence provider does not erase a no-match response from another provider", async () => {
-  const hostname = "partial-threat-feed.example.net";
-  const response = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: hostname }),
-    { PHISHTANK_APP_KEY: "test-phishtank-key", URLHAUS_AUTH_KEY: "test-urlhaus-key" },
-    { async limit() { return { success: true }; } },
-    async url => {
-      const target = String(url);
-      if (target === "https://checkurl.phishtank.com/checkurl/") {
-        return new Response("temporarily unavailable", { status: 503 });
-      }
-      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
-        return new Response(JSON.stringify({ query_status: "no_results" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
-    }
-  );
-
-  const providers = JSON.parse(response.body).webEvidence.threatIntelligence.providers;
-  assert.equal(providers.find(provider => provider.name === "PhishTank").status, "unavailable");
-  assert.equal(providers.find(provider => provider.name === "URLhaus").status, "no_match");
+  const evidence=JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode,200);assert.equal(requests.length,1);
+  assert.equal(evidence.threatIntelligence.status,"matches_found");
+  assert.deepEqual(evidence.threatIntelligence.providers.map(p=>p.name),["URLhaus"]);
+  const provider=evidence.threatIntelligence.providers[0];
+  assert.equal(provider.status,"match_found");assert.equal(provider.targets[0].status,"malware_host");
+  assert.equal(provider.targets[0].urlCount,1);assert.equal(provider.targets[0].activeCount,1);
+  assert.equal(provider.targets[0].sourceUrl,"https://urlhaus.abuse.ch/host/"+hostname+"/");
+  assert.doesNotMatch(JSON.stringify(evidence.threatIntelligence),/private-payload-fixture\.bin|not-for-ui/i);
+  assert.doesNotMatch(JSON.stringify(requests),/private|token|reset/i);
 });
 
 
-test("overall intelligence status stays incomplete when URLhaus has no match but PhishTank is not configured", async () => {
-  const hostname = "urlhaus-only-no-match.example.net";
-  const response = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: hostname }),
-    { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
-    { async limit() { return { success: true }; } },
-    async url => {
-      const target = String(url);
-      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
-        return new Response(JSON.stringify({ query_status: "no_results" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-      return new Response("<html><body></body></html>", {
-        status: 200,
-        headers: { "Content-Type": "text/html" }
-      });
-    }
+test("a failed URLhaus lookup is unavailable, not a clean result", async () => {
+  const hostname="partial-threat-feed.example.net";
+  const response=await domainSearchHandler(makeEvent({hostname,rootDomain:hostname}),{URLHAUS_AUTH_KEY:"test-urlhaus-key"},
+    {async limit(){return {success:true};}},
+    async url=>String(url)==="https://urlhaus-api.abuse.ch/v1/host/"
+      ?new Response("temporarily unavailable",{status:503})
+      :new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}})
   );
-
-  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
-  assert.equal(response.statusCode, 200);
-  assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
-  assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
-  assert.equal(intelligence.status, "partial_coverage");
-  assert.equal(intelligence.configuredProviderCount, 1);
-  assert.equal(intelligence.unconfiguredProviderCount, 1);
-  assert.deepEqual(intelligence.configuredProviders, ["URLhaus"]);
-  assert.deepEqual(intelligence.unconfiguredProviders, ["PhishTank"]);
-  assert.match(intelligence.summary_en, /URLhaus was checked/i);
-  assert.match(intelligence.summary_en, /PhishTank is not configured/i);
-  assert.match(intelligence.summary_en, /not a safety confirmation/i);
+  const intelligence=JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(intelligence.status,"partial_or_unavailable");
+  assert.equal(intelligence.providers.length,1);
+  assert.equal(intelligence.providers[0].name,"URLhaus");
+  assert.equal(intelligence.providers[0].status,"unavailable");
 });
 
 
-test("domain search does not reuse a cached not-configured threat result after a URLhaus key is added", async () => {
-  const hostname = "cache-config-transition.example.net";
-  const limiter = { async limit() { return { success: true }; } };
-  const noKey = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: hostname }),
-    {},
-    limiter,
-    async url => new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } })
+test("configured URLhaus no-match is a complete single-provider lookup", async () => {
+  const hostname="urlhaus-only-no-match.example.net";
+  const response=await domainSearchHandler(makeEvent({hostname,rootDomain:hostname}),{URLHAUS_AUTH_KEY:"test-urlhaus-key"},
+    {async limit(){return {success:true};}},
+    async url=>String(url)==="https://urlhaus-api.abuse.ch/v1/host/"
+      ?new Response(JSON.stringify({query_status:"no_results"}),{status:200,headers:{"Content-Type":"application/json"}})
+      :new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}})
   );
-  assert.equal(JSON.parse(noKey.body).webEvidence.threatIntelligence.status, "not_configured");
-
-  let urlhausCalls = 0;
-  const withKey = await domainSearchHandler(
-    makeEvent({ hostname, rootDomain: hostname }),
-    { URLHAUS_AUTH_KEY: "cache-transition-test-key" },
-    limiter,
-    async url => {
-      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
-        urlhausCalls += 1;
-        return new Response(JSON.stringify({ query_status: "no_results" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-      return new Response("<html><body></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
-    }
-  );
-  const intelligence = JSON.parse(withKey.body).webEvidence.threatIntelligence;
-  assert.equal(urlhausCalls, 1);
-  assert.equal(intelligence.status, "partial_coverage");
-  assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
-  assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
+  const intelligence=JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(response.statusCode,200);assert.equal(intelligence.providers.length,1);
+  assert.equal(intelligence.providers[0].name,"URLhaus");assert.equal(intelligence.providers[0].status,"no_match");
+  assert.equal(intelligence.status,"no_matches");assert.equal(intelligence.configuredProviderCount,1);
+  assert.equal(intelligence.unconfiguredProviderCount,0);
+  assert.deepEqual(intelligence.configuredProviders,["URLhaus"]);assert.deepEqual(intelligence.unconfiguredProviders,[]);
+  assert.match(intelligence.summary_en,/URLhaus returned no malware-hosting records/i);
+  assert.match(intelligence.summary_en,/does not establish that the website is safe/i);
 });
+
+
+test("domain search refreshes its threat result after the URLhaus API key is added", async () => {
+  const hostname="cache-config-transition.example.net",limiter={async limit(){return {success:true};}};
+  const noKey=await domainSearchHandler(makeEvent({hostname,rootDomain:hostname}),{},limiter,
+    async url=>new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}}));
+  assert.equal(JSON.parse(noKey.body).webEvidence.threatIntelligence.status,"not_configured");
+  let calls=0;
+  const withKey=await domainSearchHandler(makeEvent({hostname,rootDomain:hostname}),{URLHAUS_AUTH_KEY:"cache-transition-test-key"},limiter,
+    async url=>{
+      if(String(url)==="https://urlhaus-api.abuse.ch/v1/host/"){calls++;return new Response(JSON.stringify({query_status:"no_results"}),{status:200,headers:{"Content-Type":"application/json"}});}
+      return new Response("<html></html>",{status:200,headers:{"Content-Type":"text/html"}});
+    });
+  const intelligence=JSON.parse(withKey.body).webEvidence.threatIntelligence;
+  assert.equal(calls,1);assert.equal(intelligence.status,"no_matches");
+  assert.equal(intelligence.providers.length,1);assert.equal(intelligence.providers[0].name,"URLhaus");
+  assert.equal(intelligence.providers[0].status,"no_match");
+});
+
