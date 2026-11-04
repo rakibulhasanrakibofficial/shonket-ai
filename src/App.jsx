@@ -205,6 +205,7 @@ function Brand() {
 function AppContent(){
 const[active,setActive]=useState('checker'),[mobile,setMobile]=useState(false),[message,setMessage]=useState(''),[analysis,setAnalysis]=useState(null),[busy,setBusy]=useState(false),[analysisError,setAiError]=useState(''),[language,setLanguage]=useState('en'),[analysisLanguage,setAnalysisLanguage]=useState('en'),[url,setUrl]=useState(''),[urlResult,setUrlResult]=useState(null),[linkAnalysis,setLinkAnalysis]=useState(null),[linkBusy,setLinkBusy]=useState(false),[scenario,setScenario]=useState(0),[choice,setChoice]=useState(null),[simScore,setSimScore]=useState(0),[simDone,setSimDone]=useState([]),[simFinished,setSimFinished]=useState(false),[speaking,setSpeaking]=useState(false),[speechPaused,setSpeechPaused]=useState(false),[voiceOptions,setVoiceOptions]=useState([]),[selectedVoice,setSelectedVoice]=useState(''),[voiceInputLanguage,setVoiceInputLanguage]=useState('en'),[voiceListening,setVoiceListening]=useState(false),[voiceError,setVoiceError]=useState(''),[imageFile,setImageFile]=useState(null),[imagePreview,setImagePreview]=useState(''),[historyRecords,setHistoryRecords]=useState(()=>{try{return JSON.parse(localStorage.getItem('shonket-history-v1')||'[]')}catch{return []}});
 const recognitionRef=useRef(null);
+const analysisRequestRef=useRef(0);
 const voiceSessionRef=useRef(0);
 const voiceStopRequestedRef=useRef(false);
 const officialSearchRef=useRef(null);
@@ -261,6 +262,7 @@ const go=id=>{setActive(id);setMobile(false);document.getElementById('tools')?.s
 async function analyze(){
   const cleanMessage=message.trim();
   if((!cleanMessage&&!imageFile)||busy)return;
+  const requestId=++analysisRequestRef.current;
   const preview=!imageFile?createLocalPreview({message:cleanMessage,language:analysisLanguage}):null;
   officialSearchRef.current=null;
   analysisScrollRequestRef.current+=1;
@@ -268,6 +270,7 @@ async function analyze(){
   setAnalysis(preview);
   setAiError('');
   const onOfficialSearch=payload=>{
+    if(analysisRequestRef.current!==requestId)return;
     officialSearchRef.current=payload;
     setAnalysis(current=>current?{...current,...payload}:current);
   };
@@ -277,15 +280,22 @@ async function analyze(){
       imageFile,
       language:analysisLanguage,
       onOfficialSearch,
-      onLocalPreview:pendingPreview=>setAnalysis(current=>({...pendingPreview,...(officialSearchRef.current||{})}))
+      onLocalPreview:pendingPreview=>{
+        if(analysisRequestRef.current!==requestId)return;
+        setAnalysis(current=>({...pendingPreview,...(officialSearchRef.current||{})}));
+      }
     });
+    if(analysisRequestRef.current!==requestId)return;
     setAnalysis({...result,...(officialSearchRef.current||{})});
     if(result.extractedText){setMessage(result.combinedText||result.extractedText);removeImage()}
     addHistory({type:'Scam Checker',title:result.screenshotRead?'Screenshot analysis':'Message analysis',verdict:result.verdict||'unknown',riskLevel:result.riskLevel||'unknown',riskScore:result.riskScore==null?null:(Number.isFinite(Number(result.riskScore))?Number(result.riskScore):null)});
   }catch(error){
+    if(analysisRequestRef.current!==requestId)return;
     if(preview)setAnalysis({...createLocalPreview({message:cleanMessage,language:analysisLanguage,status:'unavailable'}),...(officialSearchRef.current||{})});
     setAiError(String(error?.message||'Could not check this message. Please try again.'));
-  }finally{setBusy(false)}
+  }finally{
+    if(analysisRequestRef.current===requestId)setBusy(false);
+  }
 }
 function handleImage(file){
   if(!file)return;
