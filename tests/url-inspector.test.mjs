@@ -64,7 +64,11 @@ test("does not flag known official auxiliary brand domains as impersonation", ()
     "https://www.paypalobjects.com",
     "https://images-na.ssl-images-amazon.com",
     "https://login.microsoftonline.com",
-    "https://www.icloud.com"
+    "https://www.icloud.com",
+    "https://www.google.co.uk",
+    "https://www.google.com.bd",
+    "https://www.amazon.co.uk",
+    "https://www.amazon.in"
   ];
   for (const url of officialDomains) {
     const result = inspectUrl(url);
