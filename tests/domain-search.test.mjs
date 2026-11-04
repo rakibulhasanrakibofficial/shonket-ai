@@ -583,3 +583,33 @@ test("a failed threat-intelligence provider does not erase a no-match response f
   assert.equal(providers.find(provider => provider.name === "PhishTank").status, "unavailable");
   assert.equal(providers.find(provider => provider.name === "URLhaus").status, "no_match");
 });
+
+
+test("overall intelligence status stays incomplete when URLhaus has no match but PhishTank is not configured", async () => {
+  const hostname = "urlhaus-only-no-match.example.net";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: hostname }),
+    { URLHAUS_AUTH_KEY: "test-urlhaus-key" },
+    { async limit() { return { success: true }; } },
+    async url => {
+      const target = String(url);
+      if (target === "https://urlhaus-api.abuse.ch/v1/host/") {
+        return new Response(JSON.stringify({ query_status: "no_results" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response("<html><body></body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" }
+      });
+    }
+  );
+
+  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(intelligence.providers.find(provider => provider.name === "PhishTank").status, "not_configured");
+  assert.equal(intelligence.providers.find(provider => provider.name === "URLhaus").status, "no_match");
+  assert.equal(intelligence.status, "partial_or_unavailable");
+  assert.match(intelligence.summary_en, /incomplete/i);
+});
