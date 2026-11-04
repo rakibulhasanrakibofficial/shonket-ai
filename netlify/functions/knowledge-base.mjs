@@ -34,8 +34,11 @@ export const KNOWLEDGE_BASE = [
 ];
 
 const STOP_WORDS = new Set([
-  "this", "that", "with", "from", "have", "your", "you", "are", "the", "and", "for", "was", "were",
-  "but", "not", "what", "when", "where", "will", "would", "can", "could", "should", "please",
+  "a", "an", "the", "is", "are", "was", "were", "to", "of", "for", "from", "on", "in", "at",
+  "and", "or", "this", "that", "you", "your", "we", "our", "they", "their", "it", "as",
+  "have", "has", "had", "will", "would", "can", "could", "should", "please", "but", "not",
+  "what", "when", "where", "who", "which", "how", "do", "does", "did", "be", "been", "being",
+  "with", "by", "about", "after", "before", "into", "its", "these", "those",
   "একটি", "এটা", "সেটা", "আপনি", "তুমি", "আমি", "এবং", "কিন্তু", "জন্য", "করে", "হবে", "হয়"
 ]);
 
