@@ -25,6 +25,17 @@ const listingHtml = [
   "</table>"
 ].join("");
 
+test("URL Inspector security context triggers the selected cybersecurity source group", () => {
+  const categories = detectSearchCategories(
+    "Link Inspector security review. Domain only: bkash-bonus.xyz. " +
+    "URL structure indicators: brand impersonation, phishing, smishing, fake login, suspicious payment and malicious download."
+  );
+  assert.ok(categories.includes("cybersecurity"));
+  assert.ok(isOfficialSourceSearchApplicable(
+    "URL domain check for a possible phishing and smishing website."
+  ));
+});
+
 test("Bengali digits are normalised before date parsing", () => {
   assert.equal(normaliseDigits("০৬-০৮-২০২৬"), "06-08-2026");
 });
