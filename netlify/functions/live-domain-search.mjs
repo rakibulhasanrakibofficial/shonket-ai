@@ -215,11 +215,11 @@ const REVIEW_REFERENCE_HOSTS = [
   "trustpilot.com", "sitejabber.com", "reddit.com", "g2.com",
   "trustindex.io", "productreview.com.au"
 ];
-const SECURITY_REFERENCE_TERMS = /\\b(scam|scams|phishing|phish|malware|abuse|blacklist(?:ed)?|blocklist|compromised|malicious|security report|security alert|fraud|threat|unsafe|suspicious|reputation|reported)\\b/i;
-const REVIEW_REFERENCE_TERMS = /\\b(reviews?|ratings?|complaints?|experiences?|trustpilot|sitejabber|community discussion)\\b/i;
-const IDENTITY_REFERENCE_TERMS = /\\b(official website|official site|company profile|about us|contact|support|help centre|help center|security page|trust center|status page|terms of service|privacy policy|product|platform|developer|documentation|domain information|whois)\\b/i;
-const EXCLUDED_FIRST_PARTY_PATH = /(?:^|\\/)(?:login|log-in|signin|sign-in|search|download|desktop|register|signup|account|auth)(?:\\/|$)/i;
-const USEFUL_FIRST_PARTY_PATH = /(?:^|\\/)(?:about|company|contact|support|help|security|trust|status|terms|privacy|docs|developers?|report|abuse)(?:\\/|$)/i;
+const SECURITY_REFERENCE_TERMS = /\b(scam|scams|phishing|phish|malware|abuse|blacklist(?:ed)?|blocklist|compromised|malicious|security report|security alert|fraud|threat|unsafe|suspicious|reputation|reported)\b/i;
+const REVIEW_REFERENCE_TERMS = /\b(reviews?|ratings?|complaints?|experiences?|trustpilot|sitejabber|community discussion)\b/i;
+const IDENTITY_REFERENCE_TERMS = /\b(official website|official site|company profile|about us|contact|support|help centre|help center|security page|trust center|status page|terms of service|privacy policy|product|platform|developer|documentation|domain information|whois)\b/i;
+const EXCLUDED_FIRST_PARTY_PATH = /(?:^|\/)(?:login|log-in|signin|sign-in|search|download|desktop|register|signup|account|auth)(?:\/|$)/i;
+const USEFUL_FIRST_PARTY_PATH = /(?:^|\/)(?:about|company|contact|support|help|security|trust|status|terms|privacy|docs|developers?|report|abuse)(?:\/|$)/i;
 
 function hostMatchesAny(host, domains) {
   return domains.some(domain => host === domain || host.endsWith("." + domain));
@@ -254,7 +254,6 @@ function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
   let relevanceScore = 0;
 
   if (queryType === "security_mentions") {
-    // A domain appearing in an ordinary homepage/search result is not a security report.
     if (!securityMatch) return null;
     evidenceCategory = "security_reference";
     evidenceLabel_en = securityHost ? "Security database / report" : "Security-related mention";
@@ -268,7 +267,7 @@ function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
       + (securityHost ? 2 : 0);
   } else {
     if (resultIsTarget) {
-      const genericTitle = /\\b(sign in|log in|login|search results|download|desktop app|create account|register)\\b/i.test(title);
+      const genericTitle = /\b(sign in|log in|login|search results|download|desktop app|create account|register)\b/i.test(title);
       const usefulPage = decodedPath === "/" || USEFUL_FIRST_PARTY_PATH.test(decodedPath);
       if (genericTitle || EXCLUDED_FIRST_PARTY_PATH.test(decodedPath) || !usefulPage) return null;
       evidenceCategory = "official_site_page";
