@@ -673,8 +673,12 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
       explanation_en: "",
       next_steps_bn: [],
       next_steps_en: [],
-      note_bn: "LLM সেবা সাময়িকভাবে পাওয়া যাচ্ছে না (" + diagnosticCode + ")। নিচের নিয়মভিত্তিক ফলাফল ও সরকারি অনুসন্ধানের ফল দেখুন।",
-      note_en: "The LLM service is temporarily unavailable (" + diagnosticCode + "). Use the rule-based result below."
+      note_bn: isUrlContext
+        ? "URL ব্যাখ্যা সেবা সাময়িকভাবে পাওয়া যাচ্ছে না। স্থানীয় URL structure checks এখনো পাওয়া যাচ্ছে।"
+        : "LLM সেবা সাময়িকভাবে পাওয়া যাচ্ছে না (" + diagnosticCode + ")। নিচের নিয়মভিত্তিক ফলাফল ও সরকারি অনুসন্ধানের ফল দেখুন।",
+      note_en: isUrlContext
+        ? "The URL explanation service is unavailable. Local URL-structure checks remain available."
+        : "The LLM service is temporarily unavailable (" + diagnosticCode + "). Use the rule-based result below."
     };
   });
 
@@ -699,7 +703,9 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
 
   return makeResponse(200, {
     ...rules,
-    analysisMode: aiAnalysis.status === "ready" ? "rules+llm+rag+official-search" : "rules+rag+official-search",
+    analysisMode: isUrlContext
+      ? (aiAnalysis.status === "ready" ? "url-structure+llm" : "url-structure")
+      : (aiAnalysis.status === "ready" ? "rules+llm+rag+official-search" : "rules+rag+official-search"),
     aiAnalysis,
     retrievedSources,
     officialSearch,
