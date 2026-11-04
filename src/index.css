@@ -2386,3 +2386,174 @@
     animation:none !important;
   }
 }
+
+
+
+/* Link Inspector — clear, readable detail cards */
+#workspace-panel .link-detail-card {
+  padding: 18px !important;
+  border-radius: 18px !important;
+  background-image: linear-gradient(145deg, rgba(255,255,255,.025), rgba(255,255,255,.008));
+  box-shadow: 0 8px 24px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.045);
+}
+#workspace-panel .link-detail-card-header {
+  gap: 12px;
+  margin-bottom: 14px !important;
+}
+#workspace-panel .link-detail-card-header > span {
+  width: 36px !important;
+  min-width: 36px;
+  height: 36px !important;
+  border-radius: 11px !important;
+}
+#workspace-panel .link-detail-card-header > span svg {
+  width: 18px;
+  height: 18px;
+}
+#workspace-panel .link-detail-card-title {
+  font-size: 16px !important;
+  line-height: 1.35 !important;
+  font-weight: 800 !important;
+  letter-spacing: -.01em;
+  color: #f4f7ff !important;
+}
+#workspace-panel .link-detail-card-caption {
+  margin-top: 3px;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+  color: #a7b2ca !important;
+}
+#workspace-panel .link-detail-signal {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 15px !important;
+  border-radius: 13px !important;
+  background: rgba(251,191,36,.055) !important;
+  border-color: rgba(251,191,36,.2) !important;
+}
+#workspace-panel .link-detail-signal-number {
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  font-size: 12px !important;
+  line-height: 1;
+}
+#workspace-panel .link-detail-signal-content {
+  flex: 1;
+  min-width: 0;
+}
+#workspace-panel .link-detail-signal-title {
+  font-size: 14.5px !important;
+  line-height: 1.4 !important;
+  font-weight: 800 !important;
+  color: #ffedbd !important;
+}
+#workspace-panel .link-detail-signal-copy {
+  margin-top: 5px !important;
+  font-size: 13.25px !important;
+  line-height: 1.65 !important;
+  color: #d0d8e8 !important;
+  overflow-wrap: anywhere;
+}
+#workspace-panel .link-detail-guidance-list {
+  display: grid;
+  gap: 11px !important;
+  margin-top: 2px;
+}
+#workspace-panel .link-detail-guidance-list > li {
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px !important;
+  line-height: 1.6 !important;
+  color: #d5deed !important;
+  overflow-wrap: anywhere;
+}
+#workspace-panel .link-detail-guidance-list > li svg {
+  width: 17px;
+  min-width: 17px;
+  height: 17px;
+  margin-top: 2px !important;
+}
+#workspace-panel .link-detail-card-technical > .link-detail-card-title {
+  margin-bottom: 11px !important;
+}
+#workspace-panel .link-detail-check-row {
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 1px !important;
+  border-color: rgba(148,163,184,.13) !important;
+}
+#workspace-panel .link-detail-check-row > span:first-child {
+  width: 19px;
+  min-width: 19px;
+  padding-top: 1px;
+}
+#workspace-panel .link-detail-check-row > span:first-child svg {
+  width: 17px;
+  height: 17px;
+}
+#workspace-panel .link-detail-check-content {
+  flex: 1;
+  min-width: 0;
+}
+#workspace-panel .link-detail-check-title {
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+  font-weight: 750 !important;
+  color: #e5ebf7 !important;
+}
+#workspace-panel .link-detail-check-note {
+  margin-top: 4px !important;
+  font-size: 12.25px !important;
+  line-height: 1.6 !important;
+  color: #aab6ce !important;
+  overflow-wrap: anywhere;
+}
+#workspace-panel .link-detail-card-warning > .link-detail-card-header {
+  margin-bottom: 13px !important;
+}
+#workspace-panel .link-detail-card-guidance {
+  border-color: rgba(52,211,153,.24) !important;
+  background-color: rgba(16,185,129,.045) !important;
+}
+#workspace-panel .link-detail-card-technical {
+  border-color: rgba(148,163,184,.2) !important;
+  background-color: rgba(148,163,184,.035) !important;
+}
+@media (max-width: 640px) {
+  #workspace-panel .link-detail-card {
+    padding: 15px !important;
+    border-radius: 16px !important;
+  }
+  #workspace-panel .link-detail-card-title {
+    font-size: 15.5px !important;
+  }
+  #workspace-panel .link-detail-card-caption {
+    font-size: 12px !important;
+  }
+  #workspace-panel .link-detail-signal {
+    gap: 9px;
+    padding: 13px 12px !important;
+  }
+  #workspace-panel .link-detail-signal-title {
+    font-size: 14px !important;
+  }
+  #workspace-panel .link-detail-signal-copy {
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+  }
+  #workspace-panel .link-detail-guidance-list > li {
+    font-size: 13px !important;
+  }
+  #workspace-panel .link-detail-check-row {
+    gap: 10px;
+    padding: 12px 0 !important;
+  }
+  #workspace-panel .link-detail-check-title {
+    font-size: 13px !important;
+  }
+  #workspace-panel .link-detail-check-note {
+    font-size: 12px !important;
+  }
+}
