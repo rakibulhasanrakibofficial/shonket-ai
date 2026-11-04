@@ -230,3 +230,51 @@ test("Cloudflare Worker blocks untrusted browser origins", async () => {
   assert.equal(response.status, 403);
   assert.equal(calls.ai, 0);
 });
+
+test("domain web search is exposed through the Worker with the official-search rate limiter", async () => {
+  const { env, calls } = makeEnv({ OFFICIAL_SOURCE_SEARCH_ENABLED: "true" });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(
+    '<html><body><a class="result__a" href="https://example.com/about">Example.com official website</a><div class="result__snippet">Information for Example.com.</div></body></html>',
+    { status: 200, headers: { "Content-Type": "text/html" } }
+  );
+
+  try {
+    const response = await worker.fetch(new Request("https://example.workers.dev/api/domain-search", {
+      method: "POST",
+      headers: {
+        Origin: allowedOrigin,
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": "203.0.113.44"
+      },
+      body: JSON.stringify({ hostname: "www.example.com", rootDomain: "example.com" })
+    }), env);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), allowedOrigin);
+    assert.equal(body.webEvidence.status, "results_found");
+    assert.equal(body.webEvidence.domain, "example.com");
+    assert.equal(body.webEvidence.sources.length, 1);
+    assert.equal(calls.officialRate, 1);
+    assert.equal(calls.officialKey, "203.0.113.44");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("domain web search rejects requests from untrusted browser origins", async () => {
+  const { env, calls } = makeEnv();
+  const response = await worker.fetch(new Request("https://example.workers.dev/api/domain-search", {
+    method: "POST",
+    headers: {
+      Origin: "https://untrusted.example",
+      "Content-Type": "application/json",
+      "CF-Connecting-IP": "203.0.113.45"
+    },
+    body: JSON.stringify({ hostname: "example.com" })
+  }), env);
+
+  assert.equal(response.status, 403);
+  assert.equal(calls.officialRate, 0);
+});
