@@ -278,7 +278,17 @@ async function analyze(){
   const onOfficialSearch=payload=>{
     if(analysisRequestRef.current!==requestId)return;
     officialSearchRef.current=payload;
-    setAnalysis(current=>current?{...current,...payload}:current);
+    setAnalysis(current=>{
+      if(!current)return current;
+      const next={...current,...payload};
+      // A generic official-search response can be not_applicable even when
+      // the primary analysis has already identified a claim needing verification.
+      // Do not let that secondary response erase the primary claim assessment.
+      if(payload.claimVerification?.status==='not_applicable'&&current.claimVerification?.status&&current.claimVerification.status!=='not_applicable'){
+        next.claimVerification=current.claimVerification;
+      }
+      return next;
+    });
   };
   try{
     const result=await analyzeMessage({
