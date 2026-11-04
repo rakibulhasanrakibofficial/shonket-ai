@@ -112,6 +112,17 @@ test("a prize claim plus a fee mention is not high risk without a payment reques
   assert.ok(!result.matchedSignals.includes("upfront_payment") || result.riskScore < 50);
 });
 
+test("a small processing fee requested by send is treated as a direct payment request", () => {
+  const result = buildRuleAssessment(
+    "Congratulations! You have won a cash prize. Send a small processing fee now to claim your reward.",
+    "en"
+  );
+  assert.equal(result.verdict, "suspicious");
+  assert.ok(result.riskScore >= 55);
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+  assert.ok(result.matchedSignals.includes("unverified_prize_claim"));
+});
+
 test("a direct numeric processing-fee request still receives the full payment signal", () => {
   const result = buildRuleAssessment(
     "You have won a prize. Pay a 500 BDT processing fee today to claim it.",
