@@ -997,7 +997,43 @@ test('URL-only inspection runs domain search but does not use generic official-s
   expect(analysisPayload.message).not.toContain('/login');
 });
 
-test('adult-content category hint does not become a scam-risk score', async ({ page }) => {
+test('age-restricted category is not sent to public web search and does not become a scam score', async ({ page }) => {
+  let domainSearchCalls = 0;
+  let officialSearchCalls = 0;
+  await page.route('**/api/domain-search', async route => {
+    domainSearchCalls += 1;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ webEvidence: {} }) });
+  });
+  await page.route('**/api/official-search', async route => {
+    officialSearchCalls += 1;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+  });
+  await page.route('**/api/analyze', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isRelevant: true,
+        verdict: 'uncertain',
+        riskLevel: 'unknown',
+        riskScore: null,
+        summary_en: 'URL-only structure review.',
+        summary_bn: 'URL structure review.',
+        evidence: [],
+        tactics: [],
+        safe_actions: [],
+        uncertainty: 'A category hint is not a scam verdict.',
+        confidence: 'low',
+        engine: 'URL Inspector',
+        aiAnalysis: { status: 'ready', explanation_en: 'This label is a category hint, not a safety or fraud verdict.', explanation_bn: 'এটি category hint, scam verdict নয়।' },
+        retrievedSources: [],
+        officialSearch: { status: 'not_applicable', sources: [], searchedPortals: [] },
+        webEvidence: { searched: false, searchExecuted: false, status: 'not_applicable', sources: [] },
+        claimVerification: { status: 'not_applicable' }
+      })
+    });
+  });
+
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
   await page.locator('#url').fill('https://18plus.example');
@@ -1005,4 +1041,11 @@ test('adult-content category hint does not become a scam-risk score', async ({ p
   await expect(page.getByText(/Age-restricted \/ 18\+ category/i)).toBeVisible();
   await expect(page.locator('#workspace-panel').getByText('0', { exact: true })).toBeVisible();
   await expect(page.getByText(/not a website safety rating or reputation check/i)).toBeVisible();
+
+  const evidence = page.getByTestId('link-analysis-evidence');
+  await expect(evidence).toBeVisible();
+  await expect(evidence.getByText(/NOT SEARCHED/i)).toBeVisible();
+  await expect(evidence.getByText(/Search results are not surfaced for this age-restricted category/i)).toBeVisible();
+  expect(domainSearchCalls).toBe(0);
+  expect(officialSearchCalls).toBe(0);
 });
