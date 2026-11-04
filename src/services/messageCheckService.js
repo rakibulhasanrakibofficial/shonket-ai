@@ -4,12 +4,13 @@ import { extractScreenshotText } from "./screenshotOcrService.js";
 
 const API_BASE_URL = String(import.meta.env?.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-function localAssessment(message, language, status = "not_configured") {
+function localAssessment(message, language, status = "not_configured", contextType = "message") {
   const detectedLanguage = language === "bn" || language === "en"
     ? language
     : (/[ঀ-৿]/.test(message) ? "bn" : "en");
   const result = buildRuleAssessment(message, detectedLanguage);
-  const retrievedSources = retrieveKnowledge(message, 3);
+  const isUrlContext = contextType === "url";
+  const retrievedSources = isUrlContext ? [] : retrieveKnowledge(message, 3);
   const noteBn = status === "pending"
     ? "নিয়মভিত্তিক ফলাফল প্রস্তুত। AI ব্যাখ্যা তৈরি হচ্ছে..."
     : status === "not_configured"
@@ -20,7 +21,16 @@ function localAssessment(message, language, status = "not_configured") {
     : status === "not_configured"
       ? "The AI backend is not connected yet. Your message was checked locally in this browser, with relevant safety guidance retrieved below."
       : "The AI backend is temporarily unavailable. Your message was checked locally in this browser.";
-  const officialSearch = status === "pending" ? {
+  const officialSearch = isUrlContext ? {
+    status: "not_applicable",
+    scope: "URL-only checks do not search general Bangladesh message-safety sources.",
+    searchedAt: null,
+    searchedPortals: [],
+    sources: [],
+    evidenceAssessment: { status: "not_applicable", summary_bn: "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।", summary_en: "URL-only reviews do not search general message-safety sources." },
+    summary_bn: "URL-only পর্যালোচনায় সাধারণ মেসেজ-নিরাপত্তা উৎস অনুসন্ধান করা হয় না।",
+    summary_en: "URL-only reviews do not search general message-safety sources."
+  } : status === "pending" ? {
     status: "pending",
     scope: "Selected Bangladesh official and institutional sources based on message category",
     searchedAt: null,
@@ -76,7 +86,15 @@ function localAssessment(message, language, status = "not_configured") {
       summary_en: "Checking selected official and institutional sources. This result is not yet verified.",
       summary_bn: "নির্বাচিত সরকারি ও প্রাতিষ্ঠানিক উৎস অনুসন্ধান চলছে। এখনো কোনো চূড়ান্ত যাচাই হয়নি।"
     } : result.claimVerification,
-    webEvidence: status === "pending" ? {
+    webEvidence: isUrlContext ? {
+      searched: false,
+      searchExecuted: false,
+      status: "not_applicable",
+      officialSourcesFound: 0,
+      sources: [],
+      searchedPortals: [],
+      failedPortalCount: 0
+    } : status === "pending" ? {
       searched: true,
       searchExecuted: false,
       status: "pending",
@@ -97,10 +115,10 @@ function localAssessment(message, language, status = "not_configured") {
   };
 }
 
-export function createLocalPreview({ message, language = "auto", status = "pending" }) {
+export function createLocalPreview({ message, language = "auto", status = "pending", contextType = "message" }) {
   const cleanMessage = String(message || "").trim().slice(0, 4000);
   if (!cleanMessage) return null;
-  return localAssessment(cleanMessage, language, status);
+  return localAssessment(cleanMessage, language, status, contextType);
 }
 
 async function parseResponse(response) {
@@ -136,12 +154,12 @@ export async function analyzeMessage({
   }
 
   if (imageFile && typeof onLocalPreview === "function") {
-    onLocalPreview(localAssessment(requestMessage, language, "pending"));
+    onLocalPreview(localAssessment(requestMessage, language, "pending", contextType));
   }
 
   // Start official-source retrieval independently so the UI can show its
   // pending panel immediately and populate it as soon as the portals respond.
-  if (API_BASE_URL && typeof onOfficialSearch === "function") {
+  if (contextType !== "url" && API_BASE_URL && typeof onOfficialSearch === "function") {
     const searchEndpoint = API_BASE_URL + "/api/official-search";
     fetch(searchEndpoint, {
       method: "POST",
@@ -197,7 +215,7 @@ export async function analyzeMessage({
     // GitHub Pages is static hosting. Without a configured backend, use the
     // same deterministic rule engine and the curated RAG corpus in-browser.
     // This avoids posting to a non-existent /api/analyze route on Pages.
-    assessment = localAssessment(requestMessage, language, "not_configured");
+    assessment = localAssessment(requestMessage, language, "not_configured", contextType);
   } else {
     const endpoint = API_BASE_URL + "/api/analyze";
     try {
@@ -225,7 +243,7 @@ export async function analyzeMessage({
         }
         throw error;
       }
-      assessment = localAssessment(requestMessage, language, "unavailable");
+      assessment = localAssessment(requestMessage, language, "unavailable", contextType);
     }
   }
 
