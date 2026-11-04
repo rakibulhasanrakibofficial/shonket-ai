@@ -985,7 +985,7 @@ test('a slower official search from an earlier message cannot overwrite a newer 
   await expect.poll(() => firstSearchFinished).toBe(true, { timeout: 10_000 });
   await page.waitForTimeout(200);
   await expect(page.getByText('STALE FIRST SEARCH RESULT', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true })).toBeVisible();
+  await expect(page.getByText('CURRENT SECOND SEARCH RESULT', { exact: true }).first()).toBeVisible();
 });
 
 test('simulator can complete all scenarios and restart', async ({ page }) => {
