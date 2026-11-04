@@ -392,8 +392,9 @@ function sourceMatchesQueryContext(source, query) {
   const has = pattern => pattern.test(value);
   const mentionsBkash = has(/\b(?:b[\s-]?kash)\b|বিকাশ/i);
   const explicitPhishing = has(/\b(?:phishing|smishing|malicious link|fake link|suspicious link|phishing website|credential theft)\b|ফিশিং|স্মিশিং|জাল লিংক|ক্ষতিকর লিংক/i);
-  const explicitCyberIncident = explicitPhishing
-    || has(/\b(?:malware|ransomware|data breach|cyber attack|account hacked|hacked account)\b|ম্যালওয়্যার|র‍্যানসমওয়্যার|হ্যাকড অ্যাকাউন্ট/i);
+  // Prefer the specific smishing advisory for phishing-link messages.
+  // The general CIRT alerts index is reserved for other explicit incidents.
+  const explicitCyberIncident = has(/\b(?:malware|ransomware|data breach|cyber attack|account hacked|hacked account)\b|ম্যালওয়্যার|র‍্যানসমওয়্যার|হ্যাকড অ্যাকাউন্ট/i);
 
   const prizeFee = has(/\b(?:prize|cash prize|winner|lottery|reward)\b|পুরস্কার|লটারি|বিজয়ী|বিজয়ী/i)
     && has(/\b(?:fee|charge|pay|payment|send money|processing)\b|ফি|পেমেন্ট|টাকা পাঠান/i);
