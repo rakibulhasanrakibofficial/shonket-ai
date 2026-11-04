@@ -298,11 +298,23 @@ async function analyze(){
       onOfficialSearch,
       onLocalPreview:pendingPreview=>{
         if(analysisRequestRef.current!==requestId)return;
-        setAnalysis(current=>({...pendingPreview,...(officialSearchRef.current||{})}));
+        setAnalysis(current=>{
+           const next={...pendingPreview,...(officialSearchRef.current||{})};
+           if(officialSearchRef.current?.claimVerification?.status==='not_applicable'&&pendingPreview.claimVerification?.status&&pendingPreview.claimVerification.status!=='not_applicable'){
+             next.claimVerification=pendingPreview.claimVerification;
+           }
+           return next;
+         });
       }
     });
     if(analysisRequestRef.current!==requestId)return;
-    setAnalysis({...result,...(officialSearchRef.current||{})});
+    setAnalysis(()=>{
+       const next={...result,...(officialSearchRef.current||{})};
+       if(officialSearchRef.current?.claimVerification?.status==='not_applicable'&&result.claimVerification?.status&&result.claimVerification.status!=='not_applicable'){
+         next.claimVerification=result.claimVerification;
+       }
+       return next;
+     });
     if(result.extractedText){setMessage(result.combinedText||result.extractedText);removeImage()}
     addHistory({type:'Scam Checker',title:result.screenshotRead?'Screenshot analysis':'Message analysis',verdict:result.verdict||'unknown',riskLevel:result.riskLevel||'unknown',riskScore:result.riskScore==null?null:(Number.isFinite(Number(result.riskScore))?Number(result.riskScore):null)});
   }catch(error){
