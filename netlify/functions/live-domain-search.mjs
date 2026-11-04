@@ -96,8 +96,17 @@ function validateDomain(value) {
   if (host.startsWith("[") || host.includes(":") || isPrivateIpv4(host)) {
     throw new Error("Private or local IP addresses cannot be searched.");
   }
-  if (!/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/i.test(host)) {
-    throw new Error("The hostname format is not supported for web search.");
+
+  const labels = host.split(".");
+  if (labels.some(label => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label))) {
+    throw new Error("The hostname contains an invalid domain label.");
+  }
+  const topLevelLabel = labels[labels.length - 1] || "";
+  if (labels.length < 2 || topLevelLabel.length < 2 || !/[a-z]/i.test(topLevelLabel)) {
+    throw new Error("Enter a complete public hostname with a valid ending, such as example.com.");
+  }
+  if (PUBLIC_SUFFIX_ONLY.has(host)) {
+    throw new Error("Add the website name before this public suffix.");
   }
   return host;
 }
