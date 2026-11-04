@@ -2557,3 +2557,28 @@
     font-size: 12px !important;
   }
 }
+
+/* Keep long URL warning text inside narrow card columns. */
+#workspace-panel .link-detail-card,
+#workspace-panel .link-detail-signal,
+#workspace-panel .link-detail-guidance-list,
+#workspace-panel .link-detail-guidance-list > li,
+#workspace-panel .link-detail-check-row,
+#workspace-panel .link-detail-signal-content,
+#workspace-panel .link-detail-check-content {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#workspace-panel .link-detail-signal > div,
+#workspace-panel .link-detail-guidance-list > li,
+#workspace-panel .link-detail-check-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  #workspace-panel .link-detail-card,
+  #workspace-panel .link-detail-signal {
+    width: 100%;
+  }
+}
