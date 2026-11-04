@@ -111,10 +111,14 @@ function validateHostname(host, isIp) {
     throw new Error("Enter a public website domain, such as example.com.");
   }
   const labels = host.split(".");
+  const topLevelLabel = labels[labels.length - 1] || "";
   if (labels.length < 2 || labels.some(label =>
     !label || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)
   )) {
     throw new Error("This website address does not contain a valid domain name.");
+  }
+  if (topLevelLabel.length < 2 || !/[a-z]/i.test(topLevelLabel)) {
+    throw new Error("Enter a complete public website domain with a valid ending, such as example.com.");
   }
 }
 
@@ -397,6 +401,7 @@ export function buildUrlReviewContext(result) {
       : "none detected"),
     "Explain only the supplied domain and local URL-pattern indicators. If there are no indicators, say so; do not invent risks.",
     "The submitted page was not visited. Do not claim that its content, malware status, reputation, ownership, certificate, or final redirect was verified.",
-    "The full URL path, query string, fragment, username, password, and tokens were deliberately kept in the browser. No general domain-reputation lookup was performed."
+    "The full URL path, query string, fragment, username, password, and tokens were deliberately kept in the browser.",
+    "A separate public web search may retrieve references about the hostname. Those references are shown in the Web Evidence panel and do not verify reputation, ownership, malware status, page content, or safety."
   ].join("\n");
 }
