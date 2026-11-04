@@ -657,33 +657,50 @@ async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
     runProvider("URLhaus", urlhausKey, lookupUrlhausHost)
   ]);
   const configured = providers.filter(item => item.status !== "not_configured");
+  const unconfigured = providers.filter(item => item.status === "not_configured");
   const allProvidersConfigured = configured.length === providers.length;
   const hasMatch = providers.some(item => item.status === "match_found");
+  const hasConfiguredNoMatch = configured.some(item => item.status === "no_match");
+  const onlyMissingCoverage = unconfigured.length > 0 &&
+    configured.length > 0 &&
+    configured.every(item => item.status === "no_match");
   const status = configured.length === 0
     ? "not_configured"
     : hasMatch
       ? "matches_found"
       : allProvidersConfigured && configured.every(item => item.status === "no_match")
         ? "no_matches"
-        : "partial_or_unavailable";
+        : onlyMissingCoverage
+          ? "partial_coverage"
+          : "partial_or_unavailable";
+  const configuredNames = configured.map(item => item.name);
+  const unconfiguredNames = unconfigured.map(item => item.name);
 
   return {
     status,
     checkedAt: new Date().toISOString(),
+    configuredProviderCount: configured.length,
+    unconfiguredProviderCount: unconfigured.length,
+    configuredProviders: configuredNames,
+    unconfiguredProviders: unconfiguredNames,
     summary_en: status === "not_configured"
       ? "Threat-intelligence API keys are not configured. No provider lookups were made."
       : status === "matches_found"
-        ? "At least one threat-intelligence provider returned a record. Review the provider, verification state and date; a database record is not a live malware scan."
+        ? "At least one configured threat-intelligence provider returned a record. " + (unconfiguredNames.length ? unconfiguredNames.join(" and ") + " was not configured, so coverage is partial. " : "") + "Review the provider, verification state and date; a database record is not a live malware scan."
         : status === "no_matches"
           ? "No records were found in the configured threat-intelligence feeds. This does not establish that the website is safe."
-          : "Some threat-intelligence providers were not configured or could not complete a lookup. The reputation check is incomplete.",
+          : status === "partial_coverage"
+            ? configuredNames.join(" and ") + " was checked and returned no matching record; " + unconfiguredNames.join(" and ") + " is not configured. This is partial feed coverage, not a safety confirmation."
+            : "Some threat-intelligence providers were not configured or could not complete a lookup. The reputation check is incomplete.",
     summary_bn: status === "not_configured"
       ? "Threat-intelligence API key সংযুক্ত নেই। কোনো provider lookup করা হয়নি।"
       : status === "matches_found"
-        ? "অন্তত একটি threat-intelligence provider record দিয়েছে। Provider, verification state ও তারিখ দেখুন; database record live malware scan নয়।"
+        ? "সংযুক্ত threat-intelligence provider-এর অন্তত একটি record দিয়েছে। " + (unconfiguredNames.length ? unconfiguredNames.join(" ও ") + " সংযুক্ত নয়, তাই coverage আংশিক। " : "") + "Provider, verification state ও তারিখ দেখুন; database record live malware scan নয়।"
         : status === "no_matches"
           ? "সংযুক্ত threat-intelligence feed-এ কোনো record পাওয়া যায়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
-          : "কিছু threat-intelligence provider সংযুক্ত ছিল না বা lookup সম্পন্ন করতে পারেনি। Reputation check অসম্পূর্ণ।",
+          : status === "partial_coverage"
+            ? configuredNames.join(" ও ") + " পরীক্ষা করে কোনো matching record পাওয়া যায়নি; " + unconfiguredNames.join(" ও ") + " সংযুক্ত নয়। এটি আংশিক feed coverage, নিরাপদ হওয়ার নিশ্চয়তা নয়।"
+            : "কিছু threat-intelligence provider সংযুক্ত ছিল না বা lookup সম্পন্ন করতে পারেনি। Reputation check অসম্পূর্ণ।",
     providers
   };
 }
