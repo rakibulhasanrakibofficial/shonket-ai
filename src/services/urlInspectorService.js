@@ -137,7 +137,7 @@ export function inspectUrl(input) {
     throw new Error("Remove spaces or control characters from the website address.");
   }
 
-  const explicitScheme = raw.match(/^([a-z][a-z0-9+.-]*):/i);
+  const explicitScheme = raw.match(/^([a-z][a-z0-9+.-]*):\/\//i);
   if (explicitScheme && !/^https?$/i.test(explicitScheme[1])) {
     throw new Error("Only HTTP and HTTPS website addresses are supported.");
   }
@@ -157,6 +157,12 @@ export function inspectUrl(input) {
   const ipv6 = isIpv6(host);
   const ipv4 = isIpv4(host);
   const isIp = ipv4 || ipv6;
+  if (!isIp && /^\d+(?:\.\d+){3}$/.test(host)) {
+    throw new Error("This IP address is invalid. Check all four numbers are between 0 and 255.");
+  }
+  if (!isIp && MULTI_LABEL_SUFFIXES.has(host)) {
+    throw new Error("Add the website name before this public suffix.");
+  }
   validateHostname(host, isIp);
 
   const labels = isIp ? [host] : host.split(".");
