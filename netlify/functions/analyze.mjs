@@ -453,9 +453,10 @@ export async function officialSearchHandler(event, runtimeEnv, rateLimiter = nul
 
   const language = languageFor(message, body.language);
 
+  const contextType = body.contextType === "url" ? "url" : "message";
   const rules = buildRuleAssessment(message, language);
   const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
-  const searchApplies = !searchDisabled && isOfficialSourceSearchApplicable(message);
+  const searchApplies = contextType !== "url" && !searchDisabled && isOfficialSourceSearchApplicable(message);
   let officialSearch;
 
   if (searchDisabled) {
@@ -576,10 +577,21 @@ export async function handler(event, runtimeEnv, aiBinding = null, rateLimiter =
 
   const language = languageFor(message, body.language);
   const contextType = body.contextType === "url" ? "url" : "message";
-  const rules = buildRuleAssessment(message, language);
-  const retrievedSources = retrieveKnowledge(message, 3);
+  const isUrlContext = contextType === "url";
+  const rules = isUrlContext ? {
+    isRelevant: true,
+    verdict: "uncertain",
+    riskLevel: "unknown",
+    riskScore: null,
+    matchedSignals: [],
+    summary_bn: "এটি URL structure review; message scam score এখানে প্রযোজ্য নয়।",
+    summary_en: "This is a URL-structure review; message scam scoring does not apply here.",
+    confidence: "low",
+    claimVerification: { status: "not_applicable", officialSearchAttempted: false, summary_bn: "URL-only পর্যালোচনায় দাবি যাচাই করা হয় না।", summary_en: "Claim verification does not apply to a URL-only review." }
+  } : buildRuleAssessment(message, language);
+  const retrievedSources = isUrlContext ? [] : retrieveKnowledge(message, 3);
   const searchDisabled = runtimeEnv.OFFICIAL_SOURCE_SEARCH_ENABLED === "false";
-  const searchApplies = !searchDisabled && isOfficialSourceSearchApplicable(message);
+  const searchApplies = !isUrlContext && !searchDisabled && isOfficialSourceSearchApplicable(message);
   const searchScope = "Selected Bangladesh official and institutional sources based on message category";
   const notApplicableSearch = {
     status: searchDisabled ? "disabled" : "not_applicable",
