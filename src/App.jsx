@@ -468,7 +468,7 @@ async function inspect(){
   }
 
   setUrlResult(inspected);
-  const searchRestricted=/age-restricted|18\+|gambling|casino|betting|sportsbook/i.test(inspected.linkCategory);
+  const searchRestricted=Boolean(inspected.publicSearchRestricted);
   addHistory({
     type:"Link Inspector",
     title:inspected.host,
@@ -509,7 +509,7 @@ async function inspect(){
   } else searchDomainEvidence({
     hostname:inspected.host,
     rootDomain:inspected.rootDomain,
-    categoryHint:inspected.linkCategory
+    categoryHint:inspected.restrictedSearchCategory||inspected.linkCategory
   }).then(payload=>{
     if(linkInspectionRequestRef.current!==requestId)return;
     const evidence=payload?.webEvidence||{
