@@ -2582,3 +2582,29 @@
     width: 100%;
   }
 }
+
+
+/* Let the two workspace glass panels shrink inside the mobile grid track. */
+#workspace-panel {
+  min-width: 0;
+}
+#workspace-panel > .glass {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  #workspace-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #workspace-panel > .glass {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+@media (min-width: 1024px) {
+  #workspace-panel {
+    grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+  }
+}
