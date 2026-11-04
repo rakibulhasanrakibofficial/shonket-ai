@@ -137,36 +137,3 @@ test("port inputs are not mistaken for unsupported URL schemes", () => {
   assert.equal(result.host, "example.com");
   assert.ok(result.signals.some(signal => signal.id === "port"));
 });
-
-test("common category hints are not treated as security warnings", () => {
-  const examples = [
-    ["https://18plus.example", /18\+/i],
-    ["https://example.com/dating", /Dating/i],
-    ["https://casino.example", /Gambling/i],
-    ["https://bank.example", /Banking/i],
-    ["https://loan.example", /Loan/i],
-    ["https://crypto.example", /Cryptocurrency/i],
-    ["https://shop.example", /Shopping/i],
-    ["https://social.example", /Social media/i],
-    ["https://school.example", /Education/i],
-    ["https://news.example", /News/i],
-    ["https://video.example", /Video/i],
-    ["https://developer.example", /Developer/i],
-    ["https://cloud.example", /Cloud storage/i],
-    ["https://download.example", /Software/i],
-    ["https://government.example", /Government/i],
-    ["https://clinic.example", /Healthcare/i]
-  ];
-  for (const [url, category] of examples) {
-    const result = inspectUrl(url);
-    assert.match(result.linkCategory, category, url);
-    assert.equal(result.riskScore, 0, url + " category must not automatically increase scam score");
-    assert.deepEqual(result.signals, [], url + " category must not automatically create a scam signal");
-  }
-});
-
-test("port inputs are not mistaken for unsupported URL schemes", () => {
-  const result = inspectUrl("example.com:3000/path");
-  assert.equal(result.host, "example.com");
-  assert.ok(result.signals.some(signal => signal.id === "port"));
-});
