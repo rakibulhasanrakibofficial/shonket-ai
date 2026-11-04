@@ -401,6 +401,7 @@ test("URL-only official-search requests never search generic message-safety port
   assert.equal(body.webEvidence.searched, false);
   assert.equal(body.webEvidence.searchExecuted, false);
   assert.equal(body.webEvidence.sources.length, 0);
+  assert.equal(body.claimVerification.status, "not_applicable");
 });
 
 test("URL-only analyze requests do not receive generic message RAG or a message risk score", async () => {
