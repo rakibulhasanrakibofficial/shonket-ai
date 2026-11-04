@@ -142,7 +142,7 @@ test("OCR prize-fee wording with amount after fee and deadline scores 70", () =>
       "Congratulations! You have won a cash prize of 50,000 BDT.",
       "Pay a processing fee of 500 BDT today to claim your prize.",
       "Offer expires today!"
-    ].join("\\n"),
+    ].join("\n"),
     "en"
   );
   assert.equal(result.isRelevant, true);
