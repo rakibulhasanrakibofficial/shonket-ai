@@ -137,3 +137,39 @@ test("port inputs are not mistaken for unsupported URL schemes", () => {
   assert.equal(result.host, "example.com");
   assert.ok(result.signals.some(signal => signal.id === "port"));
 });
+
+
+test("rejects malformed public TLDs, empty labels and deceptive backslashes", () => {
+  for (const input of [
+    "https://example.c",
+    "https://example.123",
+    "https://example.-com",
+    "https://example.com-",
+    "https://example..com",
+    "https:\\\\example.com\\\\login"
+  ]) {
+    assert.throws(() => inspectUrl(input), undefined, "should reject: " + input);
+  }
+});
+
+test("estimates hosted-app tenant domains instead of the hosting provider domain", () => {
+  const cases = [
+    ["https://rakibulhasan.github.io", "rakibulhasan.github.io"],
+    ["https://my-campus.pages.dev", "my-campus.pages.dev"],
+    ["https://shonket-ai.vercel.app", "shonket-ai.vercel.app"],
+    ["https://shonket-ai.netlify.app", "shonket-ai.netlify.app"],
+    ["https://my-project.workers.dev", "my-project.workers.dev"],
+    ["https://service.onrender.com", "service.onrender.com"]
+  ];
+  for (const [url, expectedDomain] of cases) {
+    assert.equal(inspectUrl(url).rootDomain, expectedDomain, url);
+  }
+});
+
+test("URL review context explains that separate public web evidence may be shown without leaking paths", () => {
+  const result = inspectUrl("https://bkash-bonus.xyz/login?reset_token=secret-token-value");
+  const context = buildUrlReviewContext(result);
+  assert.match(context, /separate public web search may retrieve references/i);
+  assert.match(context, /do not verify reputation, ownership, malware status/i);
+  assert.doesNotMatch(context, /secret-token-value|reset_token|\\/login/i);
+});
