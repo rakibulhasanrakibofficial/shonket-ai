@@ -502,6 +502,11 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
     throw new Error("URLhaus returned query status " + (queryStatus || "unknown") + ".");
   }
 
+  const returnedHost = cleanText(payload.host, 253).toLowerCase().replace(/\\.$/, "");
+  if (!returnedHost || returnedHost !== host) {
+    throw new Error("URLhaus returned a record for a different or missing hostname.");
+  }
+
   const rawUrlCount = payload.url_count;
   const validUrlCount = (typeof rawUrlCount === "number" && Number.isInteger(rawUrlCount) && rawUrlCount >= 0)
     || (typeof rawUrlCount === "string" && /^\d+$/.test(rawUrlCount));
