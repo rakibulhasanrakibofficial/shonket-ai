@@ -151,10 +151,10 @@ test("domain mentions require hostname boundaries to avoid substring false posit
   const falsePositivePage = resultPage({
     title: "Security advice for notexample-domain.test",
     url: "https://security.example.org/advisory",
-    snippet: "The separate host is notexample-domain.test and example.com.evil."
+    snippet: "The separate host is notexample-domain.test and exact-match-relevance-unique.net.evil."
   });
   const falsePositive = await domainSearchHandler(
-    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    makeEvent({ hostname: "exact-match-relevance-unique.net", rootDomain: "exact-match-relevance-unique.net" }),
     {},
     null,
     async () => new Response(falsePositivePage, { status: 200 })
@@ -166,10 +166,10 @@ test("domain mentions require hostname boundaries to avoid substring false posit
   const exactMentionPage = resultPage({
     title: "Security research bulletin",
     url: "https://security.example.org/advisory",
-    snippet: "This bulletin contains a report about example.com."
+    snippet: "This bulletin contains a report about exact-match-relevance-unique.net."
   });
   const exactMention = await domainSearchHandler(
-    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    makeEvent({ hostname: "exact-match-relevance-unique.net", rootDomain: "exact-match-relevance-unique.net" }),
     {},
     null,
     async () => new Response(exactMentionPage, { status: 200 })
