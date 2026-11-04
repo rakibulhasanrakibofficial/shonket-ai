@@ -855,6 +855,46 @@ test('Link Inspector shows live web evidence, official references, RAG and AI wi
   expect(submittedPayload.message).not.toContain('private-reset-secret-4821');
 });
  
+test('link inspector detail cards use readable typography without horizontal overflow', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
+  await page.locator('#url').fill('https://bkash-bonus.xyz/login');
+  await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+
+  const workspace = page.locator('#workspace-panel');
+  const warningCard = workspace.locator('.link-detail-card-warning');
+  const guidanceCard = workspace.locator('.link-detail-card-guidance');
+  const technicalCard = workspace.locator('.link-detail-card-technical');
+  await expect(warningCard).toBeVisible();
+  await expect(guidanceCard).toBeVisible();
+  await expect(technicalCard).toBeVisible();
+
+  const typography = await workspace.evaluate(element => {
+    const size = selector => {
+      const node = element.querySelector(selector);
+      return node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+    };
+    return {
+      heading: size('.link-detail-card-warning .link-detail-card-title'),
+      warningTitle: size('.link-detail-signal-title'),
+      warningDetail: size('.link-detail-signal-copy'),
+      guidanceText: size('.link-detail-guidance-list > li'),
+      technicalTitle: size('.link-detail-check-title'),
+      technicalNote: size('.link-detail-check-note'),
+      workspaceWidth: element.clientWidth,
+      contentWidth: element.scrollWidth
+    };
+  });
+
+  expect(typography.heading).toBeGreaterThanOrEqual(15);
+  expect(typography.warningTitle).toBeGreaterThanOrEqual(13.5);
+  expect(typography.warningDetail).toBeGreaterThanOrEqual(12.5);
+  expect(typography.guidanceText).toBeGreaterThanOrEqual(12.5);
+  expect(typography.technicalTitle).toBeGreaterThanOrEqual(12.5);
+  expect(typography.technicalNote).toBeGreaterThanOrEqual(11.5);
+  expect(typography.contentWidth).toBeLessThanOrEqual(typography.workspaceWidth + 1);
+});
+
 test('simulator can complete all scenarios and restart', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Scam Simulator/i }).click();
