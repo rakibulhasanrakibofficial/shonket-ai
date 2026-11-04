@@ -27,17 +27,17 @@ const MULTI_LABEL_SUFFIXES = new Set([
 ]);
 
 const OFFICIAL_BRAND_DOMAINS = {
-  bkash: "bkash.com",
-  nagad: "nagad.com.bd",
-  rocket: "dutchbanglabank.com",
-  upay: "upaybd.com",
-  paypal: "paypal.com",
-  google: "google.com",
-  facebook: "facebook.com",
-  meta: "meta.com",
-  microsoft: "microsoft.com",
-  apple: "apple.com",
-  amazon: "amazon.com"
+  bkash: ["bkash.com"],
+  nagad: ["nagad.com.bd"],
+  rocket: ["dutchbanglabank.com"],
+  upay: ["upaybd.com"],
+  paypal: ["paypal.com", "paypalobjects.com"],
+  google: ["google.com", "googleusercontent.com", "googleapis.com", "gstatic.com"],
+  facebook: ["facebook.com", "facebook.net", "fbcdn.net", "fbsbx.com"],
+  meta: ["meta.com", "meta.ai"],
+  microsoft: ["microsoft.com", "microsoftonline.com"],
+  apple: ["apple.com", "icloud.com", "mzstatic.com"],
+  amazon: ["amazon.com", "amazonaws.com", "media-amazon.com"]
 };
 
 const KNOWN_SITES = {
@@ -190,8 +190,10 @@ export function inspectUrl(input) {
   const signals = [];
   const impersonatedBrand = !isIp && Object.keys(OFFICIAL_BRAND_DOMAINS).find(brand => {
     const appearsInHost = labels.some(label => label.includes(brand));
-    const officialDomain = OFFICIAL_BRAND_DOMAINS[brand];
-    return appearsInHost && rootDomain !== officialDomain;
+    const belongsToOfficialDomainFamily = OFFICIAL_BRAND_DOMAINS[brand].some(officialDomain =>
+      rootDomain === officialDomain || rootDomain.endsWith("." + officialDomain)
+    );
+    return appearsInHost && !belongsToOfficialDomainFamily;
   });
 
   if (impersonatedBrand) {
