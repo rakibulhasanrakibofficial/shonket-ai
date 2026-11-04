@@ -134,7 +134,8 @@ function safeResultUrl(value) {
       parsed = new URL(new TextDecoder().decode(bytes));
     }
     if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return null;
-    const resultHost = parsed.hostname.toLowerCase().replace(/\\.$/, "");
+    const rawResultHost = parsed.hostname.toLowerCase();
+    const resultHost = rawResultHost.endsWith(".") ? rawResultHost.slice(0, -1) : rawResultHost;
     if (resultHost === "localhost" || resultHost.endsWith(".localhost") || resultHost.endsWith(".local")
       || resultHost.endsWith(".internal") || resultHost.endsWith(".test") || resultHost.endsWith(".invalid")
       || resultHost.endsWith(".example") || resultHost.endsWith(".onion") || resultHost.endsWith(".home.arpa")
@@ -502,7 +503,8 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
     throw new Error("URLhaus returned query status " + (queryStatus || "unknown") + ".");
   }
 
-  const returnedHost = cleanText(payload.host, 253).toLowerCase().replace(/\\.$/, "");
+  const rawReturnedHost = cleanText(payload.host, 253).toLowerCase();
+  const returnedHost = rawReturnedHost.endsWith(".") ? rawReturnedHost.slice(0, -1) : rawReturnedHost;
   if (!returnedHost || returnedHost !== host) {
     throw new Error("URLhaus returned a record for a different or missing hostname.");
   }
