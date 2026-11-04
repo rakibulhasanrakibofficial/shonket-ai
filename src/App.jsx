@@ -206,8 +206,11 @@ useEffect(()=>{
       const target=evidenceStack?.children.length?evidenceStack:document.getElementById('analysis-results');
       if(!target)return;
       const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const targetTop=window.scrollY+target.getBoundingClientRect().top-12;
-      window.scrollTo({top:Math.max(0,targetTop),behavior:reduceMotion?'auto':'smooth'});
+      const coarsePointer=window.matchMedia('(pointer: coarse)').matches;
+      // Touch devices should reveal the evidence immediately; long smooth
+      // scrolling can leave the result panel below the fold while sources load.
+      const behavior=reduceMotion||coarsePointer?'auto':'smooth';
+      target.scrollIntoView({behavior,block:'start'});
       lastAutoScrolledRequestRef.current=requestId;
     });
   });
