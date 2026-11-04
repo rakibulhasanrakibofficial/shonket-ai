@@ -53,7 +53,7 @@ function htmlToText(value) {
 
 function isPrivateIpv4(host) {
   const parts = host.split(".");
-  if (parts.length !== 4 || !parts.every(part => /^\\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
+  if (parts.length !== 4 || !parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)) return false;
   const [a, b, c] = parts.map(Number);
   return a === 0 || a === 10 || a === 127 || a >= 224
     || (a === 169 && b === 254)
@@ -504,7 +504,7 @@ async function lookupUrlhausHost(host, authKey, fetchImpl) {
 
   const rawUrlCount = payload.url_count;
   const validUrlCount = (typeof rawUrlCount === "number" && Number.isInteger(rawUrlCount) && rawUrlCount >= 0)
-    || (typeof rawUrlCount === "string" && /^\\d+$/.test(rawUrlCount));
+    || (typeof rawUrlCount === "string" && /^\d+$/.test(rawUrlCount));
   if (!validUrlCount || !Array.isArray(payload.urls)) {
     throw new Error("URLhaus returned an incomplete host response.");
   }
