@@ -495,13 +495,64 @@ test("URLhaus host lookups return safe references without exposing malware URLs"
   assert.equal(evidence.threatIntelligence.status,"matches_found");
   assert.deepEqual(evidence.threatIntelligence.providers.map(p=>p.name),["URLhaus"]);
   const provider=evidence.threatIntelligence.providers[0];
-  assert.equal(provider.status,"match_found");assert.equal(provider.targets[0].status,"malware_host");
+  assert.equal(provider.status,"active_records_found");assert.equal(provider.targets[0].status,"active_malware_urls");
   assert.equal(provider.targets[0].urlCount,1);assert.equal(provider.targets[0].activeCount,1);
   assert.equal(provider.targets[0].sourceUrl,"https://urlhaus.abuse.ch/host/"+hostname+"/");
   assert.doesNotMatch(JSON.stringify(evidence.threatIntelligence),/private-payload-fixture\.bin|not-for-ui/i);
   assert.doesNotMatch(JSON.stringify(requests),/private|token|reset/i);
 });
 
+
+
+test("URLhaus historical offline records do not label the entire host as currently malware-hosting", async () => {
+  const hostname = "www.google.com";
+  const authKey = "test-urlhaus-key";
+  const response = await domainSearchHandler(
+    makeEvent({ hostname, rootDomain: "google.com" }),
+    { URLHAUS_AUTH_KEY: authKey },
+    { async limit() { return { success: true }; } },
+    async (url, options = {}) => {
+      if (String(url) === "https://urlhaus-api.abuse.ch/v1/host/") {
+        const form = new URLSearchParams(options.body || "");
+        assert.equal(form.get("host"), hostname);
+        assert.equal(options.headers["Auth-Key"], authKey);
+        return new Response(JSON.stringify({
+          query_status: "ok",
+          urlhaus_reference: "https://urlhaus.abuse.ch/host/www.google.com/",
+          host: hostname,
+          firstseen: "2026-06-29 12:52:10 UTC",
+          url_count: "4",
+          blacklists: { spamhaus_dbl: "not listed", surbl: "not listed" },
+          urls: [
+            { url: "https://www.google.com/share.google?q=fixture-one", url_status: "offline", date_added: "2026-06-29 12:52:10 UTC" },
+            { url: "https://www.google.com/share.google?q=fixture-two", url_status: "offline", date_added: "2026-06-29 12:52:10 UTC" },
+            { url: "https://www.google.com/share.google?q=fixture-three", url_status: "offline", date_added: "2026-06-29 12:52:10 UTC" },
+            { url: "https://www.google.com/share.google?q=fixture-four", url_status: "offline", date_added: "2026-06-29 12:52:10 UTC" }
+          ]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+  );
+
+  const intelligence = JSON.parse(response.body).webEvidence.threatIntelligence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(intelligence.status, "historical_records");
+  const provider = intelligence.providers[0];
+  assert.equal(provider.name, "URLhaus");
+  assert.equal(provider.status, "historical_records");
+  const target = provider.targets[0];
+  assert.equal(target.host, hostname);
+  assert.equal(target.status, "historical_records");
+  assert.equal(target.urlCount, 4);
+  assert.equal(target.activeCount, 0);
+  assert.equal(target.offlineCount, 4);
+  assert.equal(target.returnedRecordCount, 4);
+  assert.match(target.summary_en, /historical\/offline URL record/);
+  assert.match(target.summary_en, /does not mean the entire domain is malicious/i);
+  assert.match(intelligence.summary_en, /historical\/offline URL records/i);
+  assert.doesNotMatch(JSON.stringify(intelligence), /fixture-one|fixture-two|fixture-three|fixture-four/);
+});
 
 test("a failed URLhaus lookup is unavailable, not a clean result", async () => {
   const hostname="partial-threat-feed.example.net";
