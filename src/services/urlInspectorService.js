@@ -17,7 +17,13 @@ const MULTI_LABEL_SUFFIXES = new Set([
   "co.id", "or.id", "ac.id", "com.jp", "co.jp", "ne.jp", "or.jp",
   "co.kr", "com.tw", "com.vn", "com.th", "co.nz", "org.nz",
   "govt.nz", "ac.nz", "co.ke", "or.ke", "com.gh", "com.mm",
-  "com.kh", "com.la", "co.il", "org.il", "com.ru", "com.ua"
+  "com.kh", "com.la", "co.il", "org.il", "com.ru", "com.ua",
+  // Common hosted-app suffixes: the tenant name is part of the base domain.
+  "github.io", "pages.dev", "vercel.app", "netlify.app", "workers.dev",
+  "web.app", "firebaseapp.com", "appspot.com", "cloudfront.net",
+  "herokuapp.com", "onrender.com", "railway.app", "fly.dev",
+  "surge.sh", "glitch.me", "repl.co", "azurewebsites.net",
+  "cloudflarepages.com", "trycloudflare.com"
 ]);
 
 const OFFICIAL_BRAND_DOMAINS = {
