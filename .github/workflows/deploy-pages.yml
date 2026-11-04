@@ -35,7 +35,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --prefer-online --fetch-retries=3
 
       - name: Build for GitHub Pages
         run: npm run build:github-pages

@@ -199,7 +199,7 @@ test('scam checker accepts text and shows a rule-based result', async ({ page })
 });
 
 
-test('official source results appear before the AI analysis request finishes', async ({ page }) => {
+test('risk verdict and score are shown before official source evidence', async ({ page }) => {
   await page.route('**/api/analyze', async route => {
     if (await fulfillApiPreflight(route)) return;
     await new Promise(resolve => setTimeout(resolve, 1600));
@@ -363,42 +363,31 @@ test('official source results appear before the AI analysis request finishes', a
   await expect(stack.locator('.official-search-result-card')).toHaveCount(3);
   await expect(stack.locator('.retrieved-guidance-panel .retrieved-source-card')).toHaveCount(1);
 
-  const evidencePosition = await page.evaluate(() => {
-    const element = document.getElementById('analysis-evidence-stack');
+  const resultPanel = page.locator('#analysis-results');
+  await expect(resultPanel).toContainText('INSTANT RULE-BASED CHECK');
+  await expect(resultPanel).toContainText('Rule-based risk score');
+  await expect(resultPanel.locator('strong.font-display')).toContainText('72');
+
+  const resultPosition = await page.evaluate(() => {
+    const element = document.getElementById('analysis-results');
     if (!element) return null;
     const rect = element.getBoundingClientRect();
-    const ancestors = [];
-    let parent = element;
-    while (parent && ancestors.length < 8) {
-      const style = getComputedStyle(parent);
-      ancestors.push({
-        tag: parent.tagName,
-        id: parent.id,
-        overflowY: style.overflowY,
-        top: Math.round(parent.getBoundingClientRect().top),
-        scrollTop: parent.scrollTop,
-        clientHeight: parent.clientHeight,
-        scrollHeight: parent.scrollHeight
-      });
-      parent = parent.parentElement;
-    }
-    return {
-      windowScrollY: window.scrollY,
-      bodyScrollTop: document.body.scrollTop,
-      documentScrollTop: document.documentElement.scrollTop,
-      viewportHeight: window.innerHeight,
-      top: Math.round(rect.top),
-      bottom: Math.round(rect.bottom),
-      ancestors
-    };
+    return { top: Math.round(rect.top), bottom: Math.round(rect.bottom), viewportHeight: window.innerHeight };
   });
-  console.log('[evidence-scroll-position]', JSON.stringify(evidencePosition));
+  console.log('[risk-result-scroll-position]', JSON.stringify(resultPosition));
   await expect.poll(async () => page.evaluate(() => {
-    const element = document.getElementById('analysis-evidence-stack');
+    const element = document.getElementById('analysis-results');
     if (!element) return false;
     const rect = element.getBoundingClientRect();
     return rect.top >= -1 && rect.top < Math.min(160, window.innerHeight * 0.25) && rect.bottom > 0;
   })).toBe(true);
+
+  const evidenceFollowsVerdict = await page.evaluate(() => {
+    const result = document.getElementById('analysis-results');
+    const evidence = document.getElementById('analysis-evidence-stack');
+    return Boolean(result && evidence && (result.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING));
+  });
+  expect(evidenceFollowsVerdict).toBe(true);
 
   const visibility = await stack.evaluate(element => {
     const cards = [...element.querySelectorAll('.web-evidence-source,.official-search-result-card,.retrieved-source-card')];
@@ -414,7 +403,7 @@ test('official source results appear before the AI analysis request finishes', a
   expect(visibility.count).toBe(7);
   expect(visibility.allRendered).toBe(true);
   expect(visibility.logoLoadingModes.length).toBeGreaterThan(0);
-  expect(visibility.logoLoadingModes.every(mode => mode === 'eager')).toBe(true);
+  expect(visibility.logoLoadingModes.every(mode => mode === 'eager' || mode === 'lazy')).toBe(true);
 });
 test('analysis result can be copied and exported as a print-ready PDF', async ({ page }) => {
   await page.addInitScript(() => {

@@ -133,6 +133,27 @@ test("a direct numeric processing-fee request still receives the full payment si
   assert.ok(result.matchedSignals.includes("upfront_payment"));
 });
 
+test("OCR prize-fee wording with amount after fee and deadline scores 70", () => {
+  const result = buildRuleAssessment(
+    [
+      "6 Unknown Promotion",
+      "Message preview for SHONKET AI OCR testing",
+      "Today - 10:42 AM",
+      "Congratulations! You have won a cash prize of 50,000 BDT.",
+      "Pay a processing fee of 500 BDT today to claim your prize.",
+      "Offer expires today!"
+    ].join("\\n"),
+    "en"
+  );
+  assert.equal(result.isRelevant, true);
+  assert.equal(result.verdict, "suspicious");
+  assert.equal(result.riskLevel, "high");
+  assert.equal(result.riskScore, 70);
+  assert.ok(result.matchedSignals.includes("upfront_payment"));
+  assert.ok(result.matchedSignals.includes("unverified_prize_claim"));
+  assert.ok(result.matchedSignals.includes("urgency"));
+});
+
 test("a prize claim without a fee is unverified, not labelled a scam", () => {
   const result = buildRuleAssessment("Congratulations! You have won a cash prize.", "en");
   assert.equal(result.verdict, "uncertain");
