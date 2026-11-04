@@ -408,6 +408,7 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
   }
 
   let domain;
+  const categoryHint = cleanText(body.categoryHint, 120);
   try {
     const hostname = validateDomain(body.hostname);
     const requestedRoot = String(body.rootDomain || "").trim().toLowerCase().replace(/\.$/, "");
