@@ -121,18 +121,18 @@ function parseSearchResults(html, targetDomain, queryType) {
     throw new Error("The search provider returned a verification page.");
   }
 
-  const anchors = [...source.matchAll(/<a\\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+  const anchors = [...source.matchAll(/<a\b([^>]*class=["'][^"']*(?:result__a|result-link)[^"']*["'][^>]*)>([\s\S]*?)<\/a>/gi)];
   const results = [];
   for (let index = 0; index < anchors.length; index += 1) {
     const match = anchors[index];
-    const hrefMatch = match[1].match(/\\bhref\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))/i);
+    const hrefMatch = match[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
     const rawHref = hrefMatch && (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]);
     const url = rawHref ? safeResultUrl(htmlToText(rawHref)) : null;
     const title = cleanText(htmlToText(match[2]), 180);
     if (!url || !title) continue;
     const nextIndex = anchors[index + 1]?.index ?? Math.min(source.length, match.index + 2200);
     const tail = source.slice(match.index + match[0].length, Math.min(nextIndex, match.index + 2200));
-    const snippetMatch = tail.match(/<(?:div|td|span|a)\\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:div|td|span|a)>/i);
+    const snippetMatch = tail.match(/<(?:div|td|span|a)\b[^>]*class=["'][^"']*(?:result__snippet|result-snippet)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|td|span|a)>/i);
     const snippet = cleanText(htmlToText(snippetMatch?.[1] || ""), 360);
     const result = buildRelevantResult({ url, title, snippet, targetDomain, queryType });
     if (result) results.push(result);
@@ -145,17 +145,17 @@ function parseBingResults(html, targetDomain, queryType) {
   if (/captcha|unusual traffic|verify you are human|temporarily blocked/i.test(source.slice(0, 16000))) {
     throw new Error("The search provider returned a verification page.");
   }
-  const blocks = [...source.matchAll(/<li\\b[^>]*class=["'][^"']*\\bb_algo\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/li>/gi)];
+  const blocks = [...source.matchAll(/<li\b[^>]*class=["'][^"']*\bb_algo\b[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi)];
   const results = [];
   for (const block of blocks) {
-    const anchor = block[1].match(/<h2\\b[^>]*>[\\s\\S]*?<a\\b([^>]*)>([\\s\\S]*?)<\\/a>[\\s\\S]*?<\\/h2>/i)
-      || block[1].match(/<a\\b([^>]*class=["'][^"']*\\bb_link\\b[^"']*["'][^>]*)>([\\s\\S]*?)<\\/a>/i);
+    const anchor = block[1].match(/<h2\b[^>]*>[\s\S]*?<a\b([^>]*)>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/i)
+      || block[1].match(/<a\b([^>]*class=["'][^"']*\bb_link\b[^"']*["'][^>]*)>([\s\S]*?)<\/a>/i);
     if (!anchor) continue;
-    const hrefMatch = anchor[1].match(/\\bhref\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))/i);
+    const hrefMatch = anchor[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
     const rawHref = hrefMatch && (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]);
     const url = rawHref ? safeResultUrl(htmlToText(rawHref)) : null;
     const title = cleanText(htmlToText(anchor[2]), 180);
-    const snippetMatch = block[1].match(/<(?:p|div)\\b[^>]*class=["'][^"']*(?:b_caption|b_algoSlug)[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:p|div)>/i);
+    const snippetMatch = block[1].match(/<(?:p|div)\b[^>]*class=["'][^"']*(?:b_caption|b_algoSlug)[^"']*["'][^>]*>([\s\S]*?)<\/(?:p|div)>/i);
     const snippet = cleanText(htmlToText(snippetMatch?.[1] || ""), 360);
     if (!url || !title) continue;
     const result = buildRelevantResult({ url, title, snippet, targetDomain, queryType });
@@ -169,7 +169,7 @@ function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
   try { resultHost = new URL(url).hostname.toLowerCase(); } catch { return null; }
   const searchableText = (title + " " + snippet).toLowerCase();
   const domainMention = searchableText.includes(targetDomain)
-    || searchableText.includes(targetDomain.replace(/^www\\./, ""));
+    || searchableText.includes(targetDomain.replace(/^www\./, ""));
   const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
   const hostInPath = (() => {
     try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
