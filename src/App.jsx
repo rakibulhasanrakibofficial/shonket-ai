@@ -498,7 +498,8 @@ async function inspect(){
     linkOfficialSearchRef.current=pendingEvidence;
   } else searchDomainEvidence({
     hostname:inspected.host,
-    rootDomain:inspected.rootDomain
+    rootDomain:inspected.rootDomain,
+    categoryHint:inspected.linkCategory
   }).then(payload=>{
     if(linkInspectionRequestRef.current!==requestId)return;
     const evidence=payload?.webEvidence||{
