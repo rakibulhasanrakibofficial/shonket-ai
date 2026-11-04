@@ -56,6 +56,12 @@ function isPrivateIpv4(host) {
     || (a === 203 && b === 0);
 }
 
+function isRestrictedCategoryDomain(domain) {
+  const labels = String(domain || "").toLowerCase().split(".");
+  return labels.some(label =>
+    /^(?:adult|18plus|xxx|porn|casino|gambling|betting|sportsbook)(?:[-_]|$)/i.test(label)
+  );
+}
 function validateDomain(value) {
   const host = String(value || "").trim().toLowerCase().replace(/\.$/, "");
   if (!host || host.length > MAX_DOMAIN_LENGTH || /[\s\/?#@\\]/.test(host)) {
@@ -348,6 +354,24 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
     }, headers);
   }
 
+  if (isRestrictedCategoryDomain(domain)) {
+    return makeResponse(200, {
+      webEvidence: {
+        searched: false,
+        searchExecuted: false,
+        provider: "DuckDuckGo",
+        status: "restricted_category",
+        domain,
+        queryCount: 0,
+        successfulQueryCount: 0,
+        failedQueryCount: 0,
+        sourceCount: 0,
+        sources: [],
+        summary_en: "Web search is not run for age-restricted or gambling-related categories. No destination links or content references are surfaced.",
+        summary_bn: "বয়স-সীমাবদ্ধ বা জুয়া-সম্পর্কিত ক্যাটাগরিতে ওয়েব সার্চ চালানো হয় না। কোনো destination link বা content reference দেখানো হবে না।"
+      }
+    }, headers);
+  }
   const clientIp = String(
     (event.headers && (event.headers["cf-connecting-ip"] || event.headers["CF-Connecting-IP"]
       || event.headers["x-nf-client-connection-ip"] || event.headers["X-NF-Client-Connection-IP"])) || "unknown"
