@@ -238,6 +238,47 @@ test("Nagad messages do not retrieve bKash-specific references", async () => {
   assert.deepEqual(result.sources, []);
 });
 
+test("a direct Banglish Nagad OTP request retrieves only relevant ScamCheck safety guidance", async () => {
+  const calls = [];
+  const result = await searchOfficialSources(
+    "Apnar Nagad account bondho hoye jabe. OTP ta ekhoni bolun.",
+    {
+      fetchImpl: async url => {
+        calls.push(String(url));
+        return new Response(
+          "<html><body><h1>Online Safety</h1><p>Never share OTP codes, PINs or passwords. Mobile banking scams may ask for verification codes.</p></body></html>",
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+    }
+  );
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0], "https://scamcheck.gov.bd/online-safety/");
+  assert.equal(result.status, "guidance_only");
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].id, "scamcheck-online-safety");
+  assert.ok(result.sources[0].matchedTerms.includes("otp"));
+  assert.ok(!result.sources.some(source => source.id.startsWith("bkash-")));
+});
+
+test("an anti-scam warning that says never to share an OTP does not trigger credential-request guidance", async () => {
+  let calls = 0;
+  const result = await searchOfficialSources(
+    "Never share your OTP or PIN with anyone.",
+    {
+      fetchImpl: async () => {
+        calls += 1;
+        throw new Error("An anti-scam warning must not trigger credential-request search.");
+      }
+    }
+  );
+
+  assert.equal(calls, 0);
+  assert.equal(result.status, "not_applicable");
+  assert.deepEqual(result.sources, []);
+});
+
 test("official source links allow only HTTPS on the exact configured hostname", () => {
   assert.equal(isAllowedSourceUrl("https://www.bkash.com/page/security-tips", "https://www.bkash.com/page/security-tips"), true);
   assert.equal(isAllowedSourceUrl("http://www.bkash.com/page/security-tips", "https://www.bkash.com/page/security-tips"), false);
