@@ -384,7 +384,7 @@ test("URL-only official-search requests never search generic message-safety port
   let fetchCalls = 0;
   const response = await officialSearchHandler(
     makeEvent({
-      message: "URL-only structure review. Hostname: xnxx.com. Local URL-pattern indicators: none detected.",
+      message: "URL-only structure review. Hostname: 18plus.example. Local URL-pattern indicators: none detected.",
       contextType: "url"
     }),
     { OFFICIAL_SOURCE_SEARCH_ENABLED: "true" },
@@ -406,7 +406,7 @@ test("URL-only official-search requests never search generic message-safety port
 test("URL-only analyze requests do not receive generic message RAG or a message risk score", async () => {
   const response = await handler(
     makeEvent({
-      message: "URL-only structure review. Hostname: xnxx.com. Local URL-pattern indicators: none detected.",
+      message: "URL-only structure review. Hostname: 18plus.example. Local URL-pattern indicators: none detected.",
       contextType: "url"
     }),
     { OFFICIAL_SOURCE_SEARCH_ENABLED: "true" },
