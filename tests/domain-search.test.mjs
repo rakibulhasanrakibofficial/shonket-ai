@@ -218,6 +218,39 @@ test("age-restricted and gambling-category domains are not sent to the search pr
   }
   assert.equal(fetchCount, 0);
 });
+test("server-side restrictions cover common adult and gambling host labels", async () => {
+  let fetchCount = 0;
+  const restrictedHosts = [
+    "onlyfans.com",
+    "xvideos.com",
+    "xnxx.com",
+    "pornhub.com",
+    "bet365.com",
+    "betway.com",
+    "1xbet.com",
+    "parimatch.com",
+    "mostbet.com"
+  ];
+  for (const hostname of restrictedHosts) {
+    const response = await domainSearchHandler(
+      makeEvent({ hostname }),
+      {},
+      null,
+      async () => {
+        fetchCount += 1;
+        return new Response("must not search", { status: 200 });
+      }
+    );
+    const evidence = JSON.parse(response.body).webEvidence;
+    assert.equal(response.statusCode, 200, hostname);
+    assert.equal(evidence.status, "restricted_category", hostname);
+    assert.equal(evidence.searched, false, hostname);
+    assert.equal(evidence.searchExecuted, false, hostname);
+    assert.deepEqual(evidence.sources, [], hostname);
+  }
+  assert.equal(fetchCount, 0);
+});
+
 test("an age-restricted category hint suppresses search even when the hostname looks ordinary", async () => {
   let fetchCount = 0;
   const response = await domainSearchHandler(
