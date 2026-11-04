@@ -139,6 +139,9 @@ test("irrelevant search results are filtered rather than shown as domain evidenc
   const evidence = JSON.parse(response.body).webEvidence;
 
   assert.equal(evidence.status, "no_results");
+  assert.equal(evidence.searched, true);
+  assert.equal(evidence.searchExecuted, true);
+  assert.equal(evidence.successfulQueryCount, 2);
   assert.equal(evidence.sourceCount, 0);
   assert.deepEqual(evidence.sources, []);
   assert.match(evidence.summary_en, /do not prove that the website is safe/i);
@@ -155,6 +158,9 @@ test("provider failure is reported as unavailable and never as safe", async () =
 
   assert.equal(response.statusCode, 200);
   assert.equal(evidence.status, "unavailable");
+  assert.equal(evidence.searched, true);
+  assert.equal(evidence.searchExecuted, false);
+  assert.equal(evidence.successfulQueryCount, 0);
   assert.equal(evidence.sourceCount, 0);
   assert.match(evidence.summary_en, /reputation remains unchecked/i);
 });
@@ -179,6 +185,63 @@ test("age-restricted and gambling-category domains are not sent to the search pr
   }
   assert.equal(fetchCount, 0);
 });
+test("an age-restricted category hint suppresses search even when the hostname looks ordinary", async () => {
+  let fetchCount = 0;
+  const response = await domainSearchHandler(
+    makeEvent({
+      hostname: "example-public-domain.net",
+      rootDomain: "example-public-domain.net",
+      categoryHint: "Age-restricted / 18+ category"
+    }),
+    {},
+    null,
+    async () => {
+      fetchCount += 1;
+      return new Response("must not search", { status: 200 });
+    }
+  );
+  const evidence = JSON.parse(response.body).webEvidence;
+  assert.equal(response.statusCode, 200);
+  assert.equal(evidence.status, "restricted_category");
+  assert.equal(evidence.searched, false);
+  assert.equal(evidence.searchExecuted, false);
+  assert.equal(fetchCount, 0);
+});
+
+test("reserved public suffixes and malformed hostname labels are rejected", async () => {
+  let fetchCount = 0;
+  for (const hostname of [
+    "com.bd",
+    "github.io",
+    "example.-com",
+    "example.com-",
+    "example..com",
+    "example.123"
+  ]) {
+    const response = await domainSearchHandler(
+      makeEvent({ hostname }),
+      {},
+      null,
+      async () => {
+        fetchCount += 1;
+        return new Response("", { status: 200 });
+      }
+    );
+    assert.equal(response.statusCode, 400, hostname);
+    assert.equal(JSON.parse(response.body).webEvidence.status, "not_searchable", hostname);
+  }
+  assert.equal(fetchCount, 0);
+});
+
+test("actual oversized bodies are rejected even when Content-Length is missing or false", async () => {
+  const response = await domainSearchHandler({
+    httpMethod: "POST",
+    headers: { origin, "cf-connecting-ip": "203.0.113.81" },
+    body: JSON.stringify({ hostname: "example.com", extra: "x".repeat(5000) })
+  });
+  assert.equal(response.statusCode, 413);
+});
+
 test("domain search rate limiting returns 429 without contacting the search provider", async () => {
   let fetchCount = 0;
   const response = await domainSearchHandler(
