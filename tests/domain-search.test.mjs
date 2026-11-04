@@ -166,10 +166,10 @@ test("domain mentions require hostname boundaries to avoid substring false posit
   const exactMentionPage = resultPage({
     title: "Security research bulletin",
     url: "https://security.example.org/advisory",
-    snippet: "This bulletin contains a report about exact-match-relevance-unique.net."
+    snippet: "This bulletin contains a report about exact-match-mention-unique.net."
   });
   const exactMention = await domainSearchHandler(
-    makeEvent({ hostname: "exact-match-relevance-unique.net", rootDomain: "exact-match-relevance-unique.net" }),
+    makeEvent({ hostname: "exact-match-mention-unique.net", rootDomain: "exact-match-mention-unique.net" }),
     {},
     null,
     async () => new Response(exactMentionPage, { status: 200 })
