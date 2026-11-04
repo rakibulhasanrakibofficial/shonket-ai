@@ -215,6 +215,11 @@ test("restricted path categories are preserved even when a known domain label wi
   assert.match(adultPath.restrictedSearchCategory, /Age-restricted/i);
   assert.equal(adultPath.riskScore, 0);
 
+  const plusPath = inspectUrl("https://example.com/18+");
+  assert.equal(plusPath.publicSearchRestricted, true);
+  assert.match(plusPath.restrictedSearchCategory, /18\+/i);
+  assert.equal(plusPath.riskScore, 0);
+
   const gamblingPath = inspectUrl("https://google.com/casino");
   assert.match(gamblingPath.linkCategory, /Google/i);
   assert.equal(gamblingPath.publicSearchRestricted, true);
