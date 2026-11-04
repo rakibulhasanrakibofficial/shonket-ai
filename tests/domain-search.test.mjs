@@ -109,7 +109,7 @@ test("irrelevant search results are filtered rather than shown as domain evidenc
     snippet: "A guide to footwear."
   });
   const response = await domainSearchHandler(
-    makeEvent({ hostname: "example.com", rootDomain: "example.com" }),
+    makeEvent({ hostname: "no-match-domain-unique.net", rootDomain: "no-match-domain-unique.net" }),
     {},
     null,
     async () => new Response(html, { status: 200 })
