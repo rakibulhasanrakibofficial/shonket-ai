@@ -1058,7 +1058,6 @@ test('URL-only inspection runs domain search but does not use generic official-s
             summary_en: 'Threat-intelligence API keys are not configured. No provider lookups were made.',
             summary_bn: 'Threat-intelligence API key সংযুক্ত নেই। কোনো provider lookup করা হয়নি.',
             providers: [
-              { name: 'PhishTank', status: 'not_configured', summary_en: 'Not configured.', summary_bn: 'সংযুক্ত নয়.', targets: [] },
               { name: 'URLhaus', status: 'not_configured', summary_en: 'Not configured.', summary_bn: 'সংযুক্ত নয়.', targets: [] }
             ]
           }
@@ -1114,9 +1113,8 @@ test('URL-only inspection runs domain search but does not use generic official-s
   const threatIntel = page.getByTestId('threat-intelligence-results');
   await expect(threatIntel).toBeVisible();
   await expect(threatIntel.getByText(/THREAT INTELLIGENCE DATABASES/i)).toBeVisible();
-  await expect(threatIntel.getByText(/PhishTank/i)).toBeVisible();
   await expect(threatIntel.getByText(/URLhaus/i)).toBeVisible();
-  await expect(threatIntel.getByText(/API KEYS NEEDED/i)).toBeVisible();
+  await expect(threatIntel.getByText(/API KEY NEEDED/i)).toBeVisible();
   await expect(evidence.locator('.web-evidence-source')).toHaveCount(0);
   await expect(evidence.getByText(/LIVE OFFICIAL-SOURCE SEARCH/i)).toHaveCount(0);
   await expect(evidence.getByText(/RETRIEVED SAFETY GUIDANCE/i)).toHaveCount(0);
