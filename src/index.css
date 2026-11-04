@@ -2608,3 +2608,166 @@
     grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
   }
 }
+
+
+/* SHONKET shield-check identity and consistent source actions. */
+.brand-lockup {
+  gap: 12px;
+}
+.brand-copy {
+  gap: 5px;
+}
+.brand-wordmark {
+  align-items: baseline;
+  gap: 5px;
+}
+.brand-wordmark > span:first-child {
+  font-size: 21px;
+  letter-spacing: -.045em;
+}
+.brand-ai {
+  color: #8be9ff;
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-shadow: 0 0 13px rgba(34,211,238,.42);
+}
+.brand-tagline {
+  color: #9eafca;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: .015em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.brand-mark {
+  box-shadow:
+    0 5px 0 #201744,
+    0 10px 26px rgba(118,86,255,.28),
+    0 0 22px rgba(103,232,249,.12),
+    inset 0 1px 0 rgba(255,255,255,.66);
+}
+.brand-mark-inner {
+  background: linear-gradient(145deg,#171a36,#091529);
+}
+.brand-lockup:focus-visible {
+  outline: 3px solid rgba(103,232,249,.78);
+  outline-offset: 5px;
+  border-radius: 16px;
+}
+
+.official-source-open-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 46px;
+  width: 100%;
+  gap: 9px;
+  border: 1px solid var(--source-cta-border,rgba(129,140,248,.72));
+  border-radius: 13px;
+  padding: 11px 16px;
+  color: #fff;
+  background: var(--source-cta-bg,linear-gradient(110deg,#6d5ce7 0%,#375fce 58%,#087f9b 100%));
+  box-shadow:
+    0 3px 0 var(--source-cta-depth,rgba(30,41,100,.92)),
+    0 9px 20px var(--source-cta-glow,rgba(79,70,229,.22)),
+    inset 0 1px 0 rgba(255,255,255,.32);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: .035em;
+  text-align: center;
+  text-decoration: none;
+  transition: transform .18s ease,filter .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.official-source-open-button::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(115deg,rgba(255,255,255,.19),transparent 42%,rgba(255,255,255,.055));
+  content: "";
+  pointer-events: none;
+}
+.official-source-open-button > svg {
+  width: 15px;
+  min-width: 15px;
+  height: 15px;
+}
+.official-source-open-button[data-source-brand="bkash"] {
+  --source-cta-border: rgba(244,114,182,.82);
+  --source-cta-bg: linear-gradient(110deg,#d91b83 0%,#b51b88 56%,#7428bd 100%);
+  --source-cta-depth: #70104f;
+  --source-cta-glow: rgba(219,39,119,.29);
+}
+.official-source-open-button[data-source-brand="scamcheck"] {
+  --source-cta-border: rgba(110,231,183,.82);
+  --source-cta-bg: linear-gradient(110deg,#059669 0%,#0a9c78 54%,#087f67 100%);
+  --source-cta-depth: #075b47;
+  --source-cta-glow: rgba(16,185,129,.25);
+}
+.official-source-open-button[data-source-brand="cirt"] {
+  --source-cta-border: rgba(125,211,252,.86);
+  --source-cta-bg: linear-gradient(110deg,#0284c7 0%,#2563eb 55%,#4f46e5 100%);
+  --source-cta-depth: #173d91;
+  --source-cta-glow: rgba(37,99,235,.28);
+}
+.official-source-open-button[data-source-brand="default"] {
+  --source-cta-border: rgba(167,139,250,.82);
+  --source-cta-bg: linear-gradient(110deg,#7654e8 0%,#5546cc 54%,#2563b7 100%);
+  --source-cta-depth: #34216f;
+  --source-cta-glow: rgba(112,72,219,.26);
+}
+.official-search-result-card:hover .official-source-open-button,
+.official-source-open-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1) saturate(1.08);
+  box-shadow:
+    0 4px 0 var(--source-cta-depth,rgba(30,41,100,.92)),
+    0 13px 25px var(--source-cta-glow,rgba(79,70,229,.27)),
+    inset 0 1px 0 rgba(255,255,255,.42);
+}
+.official-source-open-button:focus-visible {
+  outline: 3px solid rgba(191,219,254,.88);
+  outline-offset: 4px;
+}
+.retrieved-guidance-open-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 152px;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  font-size: 10px;
+}
+.link-inspector-source-cta {
+  display: flex;
+  width: 100%;
+  margin-top: 12px;
+}
+.retrieved-source-card .retrieved-guidance-open-button {
+  align-self: flex-start;
+}
+@media (max-width: 640px) {
+  .brand-wordmark > span:first-child {
+    font-size: 18px;
+  }
+  .official-source-open-button {
+    min-height: 45px;
+    padding: 11px 12px;
+    font-size: 10px;
+  }
+  .retrieved-guidance-open-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .official-source-open-button,
+  .brand-lockup,
+  .brand-mark {
+    transition: none !important;
+  }
+  .official-source-open-button:hover,
+  .official-search-result-card:hover .official-source-open-button {
+    transform: none !important;
+  }
+}
