@@ -679,13 +679,17 @@ test('link inspector detects a brand placed before a fake multi-part country dom
   await expect(page.getByText(/nagad.com.bd.fake.co.uk/i).first()).toBeVisible();
 });
 
-test('link inspector flags a brand lookalike domain', async ({ page }) => {
+test('link inspector explains brand mismatches and labels the score as heuristic points', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Smart Link Inspector/i }).click();
   await page.locator('#url').fill('https://bkash-bonus.xyz');
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
-  await expect(page.getByText(/bkash-bonus\.xyz/i).first()).toBeVisible();
+  await expect(page.getByText(/bkash-bonus\\.xyz/i).first()).toBeVisible();
+  await expect(page.getByText(/The hostname contains a known brand name/i)).toBeVisible();
+  await expect(page.getByText(/keyword-based category hint/i)).toHaveCount(0);
+  await expect(page.getByText(/MEDIUM URL WARNING SCORE/i)).toBeVisible();
+  await expect(page.getByText(/Heuristic URL points · not probability/i)).toBeVisible();
 });
 
 test('Link Inspector searches the submitted hostname and never sends the full URL to either service', async ({ page }) => {
