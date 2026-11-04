@@ -156,6 +156,68 @@ async function parseResponse(response) {
   return data;
 }
 
+export async function searchDomainEvidence({ hostname, rootDomain = hostname } = {}) {
+  const fallback = (status, summaryEn, summaryBn) => ({
+    searched: false,
+    searchExecuted: false,
+    provider: "DuckDuckGo",
+    status,
+    domain: String(rootDomain || hostname || ""),
+    queryCount: 0,
+    sourceCount: 0,
+    sources: [],
+    summary_en: summaryEn,
+    summary_bn: summaryBn
+  });
+
+  if (!API_BASE_URL) {
+    return {
+      webEvidence: fallback(
+        "not_configured",
+        "Live domain search is not configured for this deployment. Local URL checks remain available.",
+        "এই deployment-এ live domain search সংযুক্ত নেই। স্থানীয় URL পরীক্ষা চালু আছে।"
+      )
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 11_000);
+  try {
+    const response = await fetch(API_BASE_URL + "/api/domain-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        hostname: String(hostname || ""),
+        rootDomain: String(rootDomain || hostname || "")
+      })
+    });
+    const payload = await parseResponse(response);
+    return {
+      webEvidence: payload.webEvidence || fallback(
+        "unavailable",
+        "The domain-search endpoint returned no evidence payload.",
+        "Domain search endpoint থেকে কোনো evidence পাওয়া যায়নি।"
+      )
+    };
+  } catch (error) {
+    const status = error?.status === 429 ? "rate_limited" : "unavailable";
+    return {
+      webEvidence: fallback(
+        status,
+        status === "rate_limited"
+          ? "The live search limit was reached. Please retry later."
+          : "The live search service could not be reached. No domain reputation conclusion was made.",
+        status === "rate_limited"
+          ? "Live search-এর সীমা পূর্ণ হয়েছে। পরে আবার চেষ্টা করুন।"
+          : "Live search সেবায় সংযোগ করা যায়নি। ডোমেইন সম্পর্কে কোনো reputation সিদ্ধান্ত দেওয়া হয়নি।"
+      )
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function analyzeMessage({
   message,
   imageFile = null,
