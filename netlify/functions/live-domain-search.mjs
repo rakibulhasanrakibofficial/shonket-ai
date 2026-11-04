@@ -184,12 +184,20 @@ function parseBingResults(html, targetDomain, queryType) {
   return results;
 }
 
+function mentionsExactDomain(text, domain) {
+  const value = String(text || "").toLowerCase();
+  const escaped = String(domain || "").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {");
+  if (!escaped) return false;
+  const pattern = new RegExp("(?:^|[^a-z0-9.-])" + escaped + "(?=$|[^a-z0-9-.]|\\.(?=\\s|$))", "i");
+  return pattern.test(value);
+}
+
 function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
   let resultHost = "";
   try { resultHost = new URL(url).hostname.toLowerCase(); } catch { return null; }
-  const searchableText = (title + " " + snippet).toLowerCase();
-  const domainMention = searchableText.includes(targetDomain)
-    || searchableText.includes(targetDomain.replace(/^www\./, ""));
+  const searchableText = title + " " + snippet;
+  const domainMention = mentionsExactDomain(searchableText, targetDomain)
+    || mentionsExactDomain(searchableText, "www." + targetDomain);
   const resultIsTarget = resultHost === targetDomain || resultHost.endsWith("." + targetDomain);
   const hostInPath = (() => {
     try { return decodeURIComponent(new URL(url).pathname).toLowerCase().includes(targetDomain); }
