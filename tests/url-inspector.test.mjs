@@ -167,9 +167,9 @@ test("estimates hosted-app tenant domains instead of the hosting provider domain
 });
 
 test("URL review context explains that separate public web evidence may be shown without leaking paths", () => {
-  assert.doesNotMatch(context, /secret-token-value|reset_token|\/login/i);
+  const result = inspectUrl("https://bkash-bonus.xyz/login?reset_token=secret-token-value");
   const context = buildUrlReviewContext(result);
   assert.match(context, /separate public web search may retrieve references/i);
   assert.match(context, /do not verify reputation, ownership, malware status/i);
-  assert.doesNotMatch(context, /secret-token-value|reset_token|\\/login/i);
+  assert.doesNotMatch(context, /secret-token-value|reset_token|\/login/i);
 });
