@@ -155,3 +155,38 @@ Do not enter passwords, OTPs, PINs, account numbers, private documents, or other
 - URL inspection checks URL structure only. It does not resolve redirects, check domain reputation, or visit the submitted URL.
 - Screenshot OCR can misread blurry or cropped text. Always review extracted text.
 - The browser's speech-recognition provider may process audio under its own terms. SHONKET does not receive raw microphone audio.
+
+## Demo walkthrough
+
+Use this flow for a short product demonstration:
+
+1. Open the deployed app and select Bangla or English.
+2. Paste a clearly suspicious sample message containing a prize claim and an upfront processing-fee request. Run the check and explain the deterministic verdict, score, matched signals, and safe next steps.
+3. Show the claim-verification panel. Explain the difference between a matching official notice and general safety guidance; do not describe guidance-only results as proof.
+4. Open Link Inspector and inspect a harmless example URL. Explain that the tool evaluates URL structure and selected hostname intelligence without visiting the submitted page.
+5. Open the scam-awareness simulator, complete one scenario, and restart it.
+6. If time permits, upload a small PNG/JPG/WebP screenshot and show that OCR extracts text in the browser before analysis.
+
+For a fair demo, use synthetic messages and non-sensitive URLs. Never show real OTPs, passwords, account details, or private messages.
+
+## Validation coverage
+
+The repository's automated tests cover representative cases, not every possible input. Current test coverage includes:
+
+- English, Bangla, and Banglish scam patterns, including OTP requests, prize claims, advance fees, job fees, phishing links, and contradictory anti-scam wording.
+- Benign notices and safety warnings to reduce false positives.
+- Empty/low-signal and unverified claims, heuristic score boundaries, and the 4,000-character assessment limit.
+- API method/body handling, rate-limit configuration and rejection, trusted client-IP handling, and screenshot payload rejection.
+- Screenshot OCR language selection, invalid/oversized image rejection, OCR cleanup, and local-only OCR behavior.
+- URL Inspector domain parsing, brand/domain mismatch patterns, hostname-only provider requests, and rate-limit/no-result states.
+- Desktop/mobile UI flows, result copy/PDF export, screenshot preview lifecycle, speech-recognition fallback, simulator completion, and asynchronous search-result ordering.
+
+The recorded local QA run for the merged change reported 160 fast tests passed, plus 49 Playwright E2E tests passed and 1 expected desktop-only skip. The live Worker smoke check also reported successful health, AI binding, rate-limit configuration, rule assessment, official-source guidance, domain search, and URLhaus provider checks. These are point-in-time results; rerun the commands below after code or configuration changes.
+
+```bash
+npm run test:fast
+npx playwright test
+node scripts/live-worker-smoke.mjs
+```
+
+Do not claim exhaustive testing. Add regression tests whenever a new input class, parser edge case, provider response, or failure mode is discovered.
