@@ -247,3 +247,14 @@ test("restricted path categories are preserved even when a known domain label wi
   assert.match(gamblingPath.restrictedSearchCategory, /Gambling/i);
   assert.equal(gamblingPath.riskScore, 0);
 });
+
+test("Google-looking hostname is explained as a brand mismatch, not as a keyword category hint", () => {
+  const result = inspectUrl("https://google-security-update2026.com-login.xyz");
+  assert.equal(result.host, "google-security-update2026.com-login.xyz");
+  assert.equal(result.rootDomain, "com-login.xyz");
+  assert.equal(result.categorySource, "Brand-name mismatch against estimated base domain");
+  assert.match(result.linkCategory, /Possible google brand impersonation/i);
+  assert.ok(result.signals.some(signal => signal.id === "brand"));
+  assert.equal(result.riskScore, 40);
+  assert.equal(result.riskLevel, "medium");
+});
