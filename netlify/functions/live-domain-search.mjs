@@ -434,7 +434,260 @@ function cacheSearchResult(domain, value) {
   cache.set(domain, { cachedAt: Date.now(), value });
 }
 
-async function searchDomain(domain, hostname, fetchImpl) {
+
+function safeHttpsReference(value, allowedHost) {
+  try {
+    const parsed = new URL(String(value || ""));
+    if (parsed.protocol !== "https:" || parsed.hostname !== allowedHost) return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function fetchJsonWithTimeout(fetchImpl, url, init, timeoutMs = 4500) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, { ...init, signal: controller.signal });
+    if (!response.ok) throw new Error("Provider returned HTTP " + response.status + ".");
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function providerNotConfigured(name, descriptionEn, descriptionBn) {
+  return {
+    name,
+    status: "not_configured",
+    summary_en: descriptionEn,
+    summary_bn: descriptionBn,
+    targets: []
+  };
+}
+
+async function lookupPhishTankHost(host, appKey, fetchImpl) {
+  // Privacy boundary: query only the host's HTTPS origin. The submitted path,
+  // query string, fragment, and credentials are never sent to PhishTank.
+  const checkedUrl = "https://" + host + "/";
+  const form = new URLSearchParams({
+    url: checkedUrl,
+    format: "json",
+    app_key: appKey
+  });
+  const payload = await fetchJsonWithTimeout(fetchImpl, "https://checkurl.phishtank.com/checkurl/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json",
+      "User-Agent": "SHONKET-AI/1.0 (domain threat-intelligence lookup)"
+    },
+    body: form.toString()
+  });
+  const result = payload && payload.results;
+  if (!result || typeof result !== "object") {
+    throw new Error("PhishTank returned an invalid response.");
+  }
+
+  const inDatabase = result.in_database === true || String(result.in_database).toLowerCase() === "true";
+  if (!inDatabase) {
+    return {
+      host,
+      status: "no_match",
+      checkedUrl,
+      summary_en: "No PhishTank record matched this host's HTTPS homepage URL. Other paths are not checked.",
+      summary_bn: "এই host-এর HTTPS homepage URL-এর সঙ্গে PhishTank record মেলেনি। অন্য path পরীক্ষা করা হয়নি।"
+    };
+  }
+
+  const yes = value => value === true || ["y", "yes", "true", "1"].includes(String(value || "").toLowerCase());
+  const verified = yes(result.verified);
+  const valid = yes(result.valid);
+  const phishId = Number(result.phish_id);
+  const fallbackReference = Number.isSafeInteger(phishId) && phishId > 0
+    ? "https://www.phishtank.com/phish_detail.php?phish_id=" + phishId
+    : "";
+  const sourceUrl = safeHttpsReference(result.phish_detail_page, "www.phishtank.com") || fallbackReference;
+
+  const status = verified && valid
+    ? "verified_phishing"
+    : !verified
+      ? "unverified_submission"
+      : "inactive_report";
+
+  return {
+    host,
+    status,
+    checkedUrl,
+    sourceUrl,
+    phishId: Number.isSafeInteger(phishId) && phishId > 0 ? phishId : null,
+    verifiedAt: cleanText(result.verified_at, 80) || null,
+    summary_en: status === "verified_phishing"
+      ? "PhishTank has a community-verified, currently valid phishing record for this host's HTTPS homepage URL. This is a strong warning, but the submitted path was not checked."
+      : status === "unverified_submission"
+        ? "PhishTank contains an unverified submission for this host. Treat it as an unconfirmed report, not a verdict."
+        : "PhishTank has a verified report for this host, but the report is no longer marked as valid/current.",
+    summary_bn: status === "verified_phishing"
+      ? "এই host-এর HTTPS homepage URL-এর জন্য PhishTank-এ community-verified এবং বর্তমানে valid phishing record আছে। এটি শক্ত সতর্ক সংকেত, তবে submitted path পরীক্ষা করা হয়নি।"
+      : status === "unverified_submission"
+        ? "PhishTank-এ এই host-এর একটি unverified submission আছে। এটিকে নিশ্চিত verdict নয়, অযাচাইকৃত report হিসেবে দেখুন।"
+        : "PhishTank-এ এই host-এর verified report আছে, তবে সেটি বর্তমানে valid হিসেবে চিহ্নিত নয়।"
+  };
+}
+
+async function lookupUrlhausHost(host, authKey, fetchImpl) {
+  const form = new URLSearchParams({ host });
+  const payload = await fetchJsonWithTimeout(fetchImpl, "https://urlhaus-api.abuse.ch/v1/host/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Auth-Key": authKey,
+      "Accept": "application/json"
+    },
+    body: form.toString()
+  });
+  const queryStatus = String(payload?.query_status || "").toLowerCase();
+  if (queryStatus === "no_results") {
+    return {
+      host,
+      status: "no_match",
+      summary_en: "URLhaus has no host record for this hostname. This does not prove that the site is safe.",
+      summary_bn: "URLhaus-এ এই hostname-এর কোনো host record মেলেনি। এটি সাইট নিরাপদ হওয়ার প্রমাণ নয়।"
+    };
+  }
+  if (queryStatus !== "ok") {
+    throw new Error("URLhaus returned query status " + (queryStatus || "unknown") + ".");
+  }
+
+  const urlCount = Math.max(0, Number.parseInt(payload.url_count, 10) || 0);
+  const observedUrls = Array.isArray(payload.urls) ? payload.urls : [];
+  const activeCount = observedUrls.filter(item => String(item?.url_status || "").toLowerCase() === "online").length;
+  const sourceUrl = safeHttpsReference(payload.urlhaus_reference, "urlhaus.abuse.ch");
+  if (urlCount === 0) {
+    return {
+      host,
+      status: "no_match",
+      summary_en: "URLhaus returned no listed malware URLs for this hostname.",
+      summary_bn: "URLhaus এই hostname-এর জন্য কোনো listed malware URL ফেরত দেয়নি।"
+    };
+  }
+
+  const blacklists = payload.blacklists && typeof payload.blacklists === "object"
+    ? {
+        spamhaus_dbl: cleanText(payload.blacklists.spamhaus_dbl, 60),
+        surbl: cleanText(payload.blacklists.surbl, 60)
+      }
+    : {};
+  return {
+    host,
+    status: "malware_host",
+    sourceUrl,
+    firstSeen: cleanText(payload.firstseen, 80) || null,
+    urlCount,
+    activeCount,
+    blacklists,
+    summary_en: "URLhaus lists " + urlCount + " malware-related URL record(s) for this hostname; " + activeCount + " of the returned records are marked online. This is malware-hosting intelligence, not a phishing verdict or a live scan.",
+    summary_bn: "URLhaus এই hostname-এর জন্য " + urlCount + "টি malware-সম্পর্কিত URL record রেখেছে; ফেরত আসা record-এর মধ্যে " + activeCount + "টি online হিসেবে চিহ্নিত। এটি malware-hosting intelligence, phishing verdict বা live scan নয়।"
+  };
+}
+
+async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl) {
+  const targets = [...new Set([hostname, domain].filter(Boolean))];
+  const phishTankKey = String(runtimeEnv.PHISHTANK_APP_KEY || "").trim();
+  const urlhausKey = String(runtimeEnv.URLHAUS_AUTH_KEY || "").trim();
+
+  const runProvider = async (name, key, lookup) => {
+    if (!key) {
+      return providerNotConfigured(
+        name,
+        name + " is not configured. Add its API key as a server-side Worker secret to enable lookups.",
+        name + " সংযুক্ত নয়। lookup চালু করতে API key server-side Worker secret হিসেবে যোগ করুন।"
+      );
+    }
+    const results = await Promise.all(targets.map(async target => {
+      try {
+        return await lookup(target, key, fetchImpl);
+      } catch {
+        return {
+          host: target,
+          status: "unavailable",
+          summary_en: "The provider did not return a usable response for this host.",
+          summary_bn: "এই host-এর জন্য provider ব্যবহারযোগ্য response দেয়নি।"
+        };
+      }
+    }));
+    const hitStatuses = name === "PhishTank"
+      ? new Set(["verified_phishing", "unverified_submission", "inactive_report"])
+      : new Set(["malware_host"]);
+    const hasHit = results.some(item => hitStatuses.has(item.status));
+    const allNoMatch = results.every(item => item.status === "no_match");
+    const anyUnavailable = results.some(item => item.status === "unavailable");
+    const status = hasHit
+      ? "match_found"
+      : allNoMatch
+        ? "no_match"
+        : anyUnavailable
+          ? "unavailable"
+          : "partial";
+    const summaries = results.filter(item => item.status !== "no_match").map(item => item.summary_en);
+    return {
+      name,
+      status,
+      summary_en: hasHit
+        ? summaries.join(" ")
+        : allNoMatch
+          ? (name === "PhishTank"
+            ? "No PhishTank phishing record matched the checked host homepage URLs. Paths and query strings were not submitted."
+            : "No URLhaus malware-hosting record matched the checked hostnames. Absence from this database is not proof of safety.")
+          : "One or more host lookups could not be completed. No clean or malicious verdict was inferred.",
+      summary_bn: hasHit
+        ? results.filter(item => item.status !== "no_match").map(item => item.summary_bn).join(" ")
+        : allNoMatch
+          ? (name === "PhishTank"
+            ? "পরীক্ষা করা host homepage URL-এর সঙ্গে PhishTank phishing record মেলেনি। Path ও query string পাঠানো হয়নি।"
+            : "পরীক্ষা করা hostname-এর সঙ্গে URLhaus malware-hosting record মেলেনি। এই database-এ না থাকা নিরাপদ হওয়ার প্রমাণ নয়।")
+          : "এক বা একাধিক host lookup সম্পন্ন হয়নি। নিরাপদ বা ক্ষতিকর—কোনো verdict অনুমান করা হয়নি।",
+      targets: results
+    };
+  };
+
+  const providers = await Promise.all([
+    runProvider("PhishTank", phishTankKey, lookupPhishTankHost),
+    runProvider("URLhaus", urlhausKey, lookupUrlhausHost)
+  ]);
+  const configured = providers.filter(item => item.status !== "not_configured");
+  const hasMatch = providers.some(item => item.status === "match_found");
+  const status = configured.length === 0
+    ? "not_configured"
+    : hasMatch
+      ? "matches_found"
+      : configured.every(item => item.status === "no_match")
+        ? "no_matches"
+        : "partial_or_unavailable";
+
+  return {
+    status,
+    checkedAt: new Date().toISOString(),
+    summary_en: status === "not_configured"
+      ? "Threat-intelligence API keys are not configured. No provider lookups were made."
+      : status === "matches_found"
+        ? "At least one threat-intelligence provider returned a record. Review the provider, verification state and date; a database record is not a live malware scan."
+        : status === "no_matches"
+          ? "No records were found in the configured threat-intelligence feeds. This does not establish that the website is safe."
+          : "Some threat-intelligence providers were not configured or could not complete a lookup. The reputation check is incomplete.",
+    summary_bn: status === "not_configured"
+      ? "Threat-intelligence API key সংযুক্ত নেই। কোনো provider lookup করা হয়নি।"
+      : status === "matches_found"
+        ? "অন্তত একটি threat-intelligence provider record দিয়েছে। Provider, verification state ও তারিখ দেখুন; database record live malware scan নয়।"
+        : status === "no_matches"
+          ? "সংযুক্ত threat-intelligence feed-এ কোনো record পাওয়া যায়নি। এতে website নিরাপদ প্রমাণিত হয় না।"
+          : "কিছু threat-intelligence provider সংযুক্ত ছিল না বা lookup সম্পন্ন করতে পারেনি। Reputation check অসম্পূর্ণ।",
+    providers
+  };
+}
+
+async function searchDomain(domain, hostname, runtimeEnv, fetchImpl) {
   const searchTargets = [...new Set([hostname, domain].filter(Boolean))];
   const cacheKey = searchTargets.join("|");
   const cached = cache.get(cacheKey);
@@ -450,9 +703,12 @@ async function searchDomain(domain, hostname, fetchImpl) {
     { target, type: "security_mentions", query: '"' + target + '" scam phishing malware fraud abuse blacklist' },
     { target, type: "domain_identity", query: '"' + target + '" official website company service review' }
   ]);
-  const attempts = await Promise.allSettled(querySpecs.map(spec =>
-    searchQuery(spec.query, spec.target, spec.type, fetchImpl)
-  ));
+  const [attempts, threatIntelligence] = await Promise.all([
+    Promise.allSettled(querySpecs.map(spec =>
+      searchQuery(spec.query, spec.target, spec.type, fetchImpl)
+    )),
+    lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
+  ]);
   const completed = attempts.filter(item => item.status === "fulfilled");
   const failedCount = attempts.length - completed.length;
   const merged = [];
@@ -484,6 +740,7 @@ async function searchDomain(domain, hostname, fetchImpl) {
     domain,
     hostname,
     searchedTargets: searchTargets,
+    threatIntelligence,
     searchedAt: new Date().toISOString(),
     queryCount: querySpecs.length,
     successfulQueryCount: completed.length,
@@ -601,7 +858,7 @@ export async function domainSearchHandler(event, runtimeEnv = {}, rateLimiter = 
   }
 
   try {
-    const webEvidence = await searchDomain(domain, hostname, fetchImpl);
+    const webEvidence = await searchDomain(domain, hostname, runtimeEnv, fetchImpl);
     return makeResponse(200, { webEvidence }, headers);
   } catch {
     return makeResponse(200, {
