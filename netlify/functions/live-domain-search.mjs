@@ -690,7 +690,14 @@ async function lookupThreatIntelligence(hostname, domain, runtimeEnv, fetchImpl)
 
 async function searchDomain(domain, hostname, runtimeEnv, fetchImpl) {
   const searchTargets = [...new Set([hostname, domain].filter(Boolean))];
-  const cacheKey = searchTargets.join("|");
+  // Threat-feed configuration can change independently of the hostname.
+  // Partition cache entries by provider-key presence so a pre-secret
+  // "not_configured" result is never reused after a secret is added.
+  const threatFeedConfigKey = [
+    runtimeEnv.PHISHTANK_APP_KEY ? "phishtank:on" : "phishtank:off",
+    runtimeEnv.URLHAUS_AUTH_KEY ? "urlhaus:on" : "urlhaus:off"
+  ].join(",");
+  const cacheKey = searchTargets.join("|") + "|" + threatFeedConfigKey;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
     // Refresh insertion order so the cache behaves as a bounded LRU.
