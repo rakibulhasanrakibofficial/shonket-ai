@@ -267,7 +267,10 @@ function buildRelevantResult({ url, title, snippet, targetDomain, queryType }) {
       + (securityHost ? 2 : 0);
   } else {
     if (resultIsTarget) {
-      const genericTitle = /\b(sign in|log in|login|search results|download|desktop app|create account|register)\b/i.test(title);
+      // Ignore the queried hostname itself when detecting generic login/download titles.
+      // A legitimate base domain may contain a word such as "login" in its name.
+      const titleWithoutDomain = title.toLowerCase().replaceAll(targetDomain.toLowerCase(), " ");
+      const genericTitle = /\b(sign in|log in|login|search results|download|desktop app|create account|register)\b/i.test(titleWithoutDomain);
       const usefulPage = decodedPath === "/" || USEFUL_FIRST_PARTY_PATH.test(decodedPath);
       if (genericTitle || EXCLUDED_FIRST_PARTY_PATH.test(decodedPath) || !usefulPage) return null;
       evidenceCategory = "official_site_page";
