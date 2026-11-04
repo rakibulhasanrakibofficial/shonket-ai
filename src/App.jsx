@@ -222,6 +222,7 @@ const linkInspectionRequestRef=useRef(0);
 const analysisScrollRequestRef=useRef(0);
 const lastAutoScrolledRequestRef=useRef(0);
 const resultLanguage=analysis?.responseLanguage || (analysisLanguage==='bn'?'bn':'en');
+ const officialPortalCount=Number(analysis?.claimVerification?.officialPortalCount)||analysis?.officialSearch?.searchedPortals?.length||analysis?.webEvidence?.searchedPortals?.length||0;
 const preferredVoiceLanguage=resultLanguage==='bn'?'bn':'en';
 const matchingVoiceOptions=voiceOptions.filter(voice=>String(voice.lang||'').toLowerCase().startsWith(preferredVoiceLanguage));
 const selectableVoiceOptions=matchingVoiceOptions.length?matchingVoiceOptions:voiceOptions;
@@ -667,7 +668,7 @@ return bn?'নির্বাচিত উৎস থেকে রেফারে
 </div>
 <p className="claim-verification-summary mt-4 text-sm leading-7 text-slate-200">{resultLanguage==='bn'?(analysis.claimVerification.summary_bn||analysis.claimVerification.officialSearchSummary_bn||'দাবিটির নির্দিষ্ট তথ্য স্বাধীনভাবে নিশ্চিত করা যায়নি.'):(analysis.claimVerification.summary_en||analysis.claimVerification.officialSearchSummary_en||'The specific details of this claim have not been independently confirmed.')}</p>
 <div className="claim-verification-stats mt-4 flex flex-wrap items-center gap-2.5">
-{analysis.claimVerification.officialPortalCount>0&&<span className="claim-stat-chip claim-stat-portals"><Globe2 size={15}/><strong>{analysis.claimVerification.officialPortalCount}</strong><span>{resultLanguage==='bn'?'টি অফিসিয়াল পোর্টাল পরীক্ষা':'official portals checked'}</span></span>}
+{officialPortalCount>0&&<span className="claim-stat-chip claim-stat-portals"><Globe2 size={15}/><strong>{officialPortalCount}</strong><span>{resultLanguage==='bn'?'টি অফিসিয়াল পোর্টাল পরীক্ষা':'official portals checked'}</span></span>}
 {analysis.claimVerification.officialSourceCount>0&&<span className="claim-stat-chip claim-stat-sources"><FileText size={15}/><strong>{analysis.claimVerification.officialSourceCount}</strong><span>{resultLanguage==='bn'?'টি রেফারেন্স পাওয়া':'references retrieved'}</span></span>}
 {analysis.claimVerification.officialEvidenceStatus==='related_official_notice'&&<span className="claim-stat-chip claim-stat-related"><ShieldCheck size={15}/><span>{resultLanguage==='bn'?'সম্পর্কিত নোটিশ পাওয়া গেছে':'Related notice found'}</span></span>}
 {analysis.claimVerification.officialEvidenceStatus==='contextual_guidance'&&<span className="claim-stat-chip claim-stat-guidance"><Info size={15}/><span>{resultLanguage==='bn'?'সাধারণ নিরাপত্তা নির্দেশনা':'General safety guidance only'}</span></span>}
