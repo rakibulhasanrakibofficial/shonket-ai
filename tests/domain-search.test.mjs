@@ -492,7 +492,7 @@ test("URLhaus host lookups return safe references without exposing malware URLs"
   );
   const evidence=JSON.parse(response.body).webEvidence;
   assert.equal(response.statusCode,200);assert.equal(requests.length,1);
-  assert.equal(evidence.threatIntelligence.status,"matches_found");
+  assert.equal(evidence.threatIntelligence.status,"active_records_found");
   assert.deepEqual(evidence.threatIntelligence.providers.map(p=>p.name),["URLhaus"]);
   const provider=evidence.threatIntelligence.providers[0];
   assert.equal(provider.status,"active_records_found");assert.equal(provider.targets[0].status,"active_malware_urls");
