@@ -119,9 +119,13 @@ if (
   !domainEvidence ||
   domainEvidence.searched !== true ||
   domainEvidence.domain !== "github.com" ||
-  !validDomainStatuses.includes(domainEvidence.status)
+  !validDomainStatuses.includes(domainEvidence.status) ||
+  !["results_found", "partial_results"].includes(domainEvidence.status) ||
+  Number(domainEvidence.sourceCount || 0) < 1 ||
+  !Array.isArray(domainEvidence.sources) ||
+  !domainEvidence.sources.some(source => /^https?:\\/\\//i.test(String(source.url || "")))
 ) {
-  throw new Error("The live domain-search route did not return a valid evidence state.");
+  throw new Error("The live domain-search route did not return a relevant public web result.");
 }
 
 console.log("Worker health: OK");
