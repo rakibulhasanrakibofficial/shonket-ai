@@ -93,7 +93,12 @@ function localAssessment(message, language, status = "not_configured", contextTy
     },
     retrievedSources,
     officialSearch,
-    claimVerification: status === "pending" ? {
+    claimVerification: isUrlContext ? {
+      status: "not_applicable",
+      officialSearchAttempted: false,
+      summary_en: "Claim verification is not part of a URL-only structure review.",
+      summary_bn: "URL-only structure review-তে দাবি যাচাই করা হয় না।"
+    } : status === "pending" ? {
       ...result.claimVerification,
       status: "unverified",
       officialSearchAttempted: true,
