@@ -458,6 +458,7 @@ async function inspect(){
   }
 
   setUrlResult(inspected);
+  const searchRestricted=/age-restricted|18\\+|gambling|casino|betting/i.test(inspected.linkCategory);
   addHistory({
     type:"Link Inspector",
     title:inspected.host,
@@ -468,17 +469,17 @@ async function inspect(){
 
   const linkContext=buildUrlReviewContext(inspected);
   const pendingEvidence={
-    searched:true,
+    searched:!searchRestricted,
     searchExecuted:false,
     provider:"DuckDuckGo",
-    status:"pending",
+    status:searchRestricted?"restricted_category":"pending",
     domain:inspected.rootDomain,
     queryCount:0,
     successfulQueryCount:0,
     sourceCount:0,
     sources:[],
-    summary_en:"Searching public web references for this domain.",
-    summary_bn:"এই ডোমেইন সম্পর্কে পাবলিক ওয়েব রেফারেন্স খোঁজা হচ্ছে।"
+    summary_en:searchRestricted?"Web search is not run for age-restricted categories.":"Searching public web references for this domain.",
+    summary_bn:searchRestricted?"বয়স-সীমাবদ্ধ ক্যাটাগরিতে ওয়েব সার্চ চালানো হয় না।":"এই ডোমেইন সম্পর্কে পাবলিক ওয়েব রেফারেন্স খোঁজা হচ্ছে।"
   };
   setLinkBusy(true);
   setLinkAnalysis({
@@ -493,7 +494,9 @@ async function inspect(){
 
   // Search only the hostname/base domain. The full path, query string,
   // fragments and potential reset tokens stay in the browser.
-  searchDomainEvidence({
+  if(searchRestricted) {
+    linkOfficialSearchRef.current=pendingEvidence;
+  } else searchDomainEvidence({
     hostname:inspected.host,
     rootDomain:inspected.rootDomain
   }).then(payload=>{
@@ -683,12 +686,12 @@ return <div id="home" className="min-h-screen overflow-hidden bg-[#080914] text-
 <p className="mt-2 text-[11px] leading-5 text-slate-400">{t('The URL pattern score is calculated locally. The explanation below uses only the submitted hostname and local indicators; no domain-reputation lookup or page visit was performed.','URL pattern score ব্রাউজারেই হিসাব করা হয়েছে। নিচের ব্যাখ্যা শুধু hostname ও স্থানীয় সংকেত ব্যবহার করে; কোনো domain-reputation lookup বা page visit করা হয়নি।')}</p>
 </section>
 {<section className="rounded-2xl border border-cyan-300/20 bg-[#0b1020]/90 p-4" data-testid="domain-web-evidence">
-<div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Globe2 size={17} className="text-cyan-200"/><p className="text-[10px] font-extrabold tracking-[.14em] text-cyan-100">{t('LIVE WEB SEARCH · DOMAIN EVIDENCE','লাইভ ওয়েব সার্চ · ডোমেইন তথ্য')}</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold ${['results_found','partial_results'].includes(linkAnalysis.webEvidence?.status)?'border-emerald-300/25 bg-emerald-300/[.07] text-emerald-100':linkAnalysis.webEvidence?.status==='pending'?'border-cyan-300/25 bg-cyan-300/[.07] text-cyan-100':'border-amber-200/20 bg-amber-200/[.05] text-amber-100'}`}>{linkAnalysis.webEvidence?.status==='pending'?t('SEARCHING','অনুসন্ধান চলছে'):linkAnalysis.webEvidence?.status==='results_found'?t('RESULTS FOUND','ফলাফল পাওয়া গেছে'):linkAnalysis.webEvidence?.status==='partial_results'?t('PARTIAL RESULTS','আংশিক ফলাফল'):linkAnalysis.webEvidence?.status==='no_results'?t('NO RELEVANT MATCHES','প্রাসঙ্গিক ফল নেই'):linkAnalysis.webEvidence?.status==='rate_limited'?t('RATE LIMITED','সার্চ সীমা পূর্ণ'):linkAnalysis.webEvidence?.status==='not_configured'?t('NOT CONFIGURED','সংযুক্ত নয়'):linkAnalysis.webEvidence?.status==='unavailable'?t('SEARCH UNAVAILABLE','সার্চ পাওয়া যাচ্ছে না'):String(linkAnalysis.webEvidence?.status||'pending').replace(/_/g,' ').toUpperCase()}</span></div>
+<div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Globe2 size={17} className="text-cyan-200"/><p className="text-[10px] font-extrabold tracking-[.14em] text-cyan-100">{t('LIVE WEB SEARCH · DOMAIN EVIDENCE','লাইভ ওয়েব সার্চ · ডোমেইন তথ্য')}</p></div><span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold ${['results_found','partial_results'].includes(linkAnalysis.webEvidence?.status)?'border-emerald-300/25 bg-emerald-300/[.07] text-emerald-100':linkAnalysis.webEvidence?.status==='pending'?'border-cyan-300/25 bg-cyan-300/[.07] text-cyan-100':'border-amber-200/20 bg-amber-200/[.05] text-amber-100'}`}>{linkAnalysis.webEvidence?.status==='pending'?t('SEARCHING','অনুসন্ধান চলছে'):linkAnalysis.webEvidence?.status==='results_found'?t('RESULTS FOUND','ফলাফল পাওয়া গেছে'):linkAnalysis.webEvidence?.status==='partial_results'?t('PARTIAL RESULTS','আংশিক ফলাফল'):linkAnalysis.webEvidence?.status==='no_results'?t('NO RELEVANT MATCHES','প্রাসঙ্গিক ফল নেই'):linkAnalysis.webEvidence?.status==='rate_limited'?t('RATE LIMITED','সার্চ সীমা পূর্ণ'):linkAnalysis.webEvidence?.status==='not_configured'?t('NOT CONFIGURED','সংযুক্ত নয়'):linkAnalysis.webEvidence?.status==='restricted_category'?t('NOT SEARCHED','সার্চ করা হয়নি'):linkAnalysis.webEvidence?.status==='unavailable'?t('SEARCH UNAVAILABLE','সার্চ পাওয়া যাচ্ছে না'):String(linkAnalysis.webEvidence?.status||'pending').replace(/_/g,' ').toUpperCase()}</span></div>
 <p className="mt-2 break-all text-xs font-semibold text-slate-200">{linkAnalysis.webEvidence?.domain||urlResult.rootDomain}</p>
 <p className="mt-2 text-xs leading-5 text-slate-300">{analysisLanguage==='bn'?(linkAnalysis.webEvidence?.summary_bn||'ডোমেইন-সম্পর্কিত ওয়েব ফলাফল খোঁজা হচ্ছে।'):(linkAnalysis.webEvidence?.summary_en||'Searching for domain-related web references.')}</p>
 {linkAnalysis.webEvidence?.status==='pending'&&<div className="official-search-pending mt-3" role="status"><span className="official-search-spinner"/><span className="text-xs text-slate-300">{t('Searching the web for domain mentions, identity and security reports…','ডোমেইনের উল্লেখ, পরিচয় ও নিরাপত্তা রিপোর্ট খোঁজা হচ্ছে…')}</span></div>}
 {linkAnalysis.webEvidence?.sources?.length>0&&<div className="mt-3 grid gap-2.5">{linkAnalysis.webEvidence.sources.map((source,i)=><a key={source.url||i} href={source.url} target="_blank" rel="noopener noreferrer" className="web-evidence-source group flex min-w-0 items-start gap-3 rounded-xl p-3"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/[.06]"><Globe2 size={15} className="text-cyan-100"/></span><span className="min-w-0 flex-1"><span className="block text-xs font-extrabold leading-5 text-slate-100 group-hover:text-cyan-100">{source.title}</span><span className="mt-1 block break-all text-[10px] text-cyan-100/70">{source.domain||getLiveSourceDomain(source)||source.url}</span>{source.snippet&&<span className="mt-1.5 block text-[11px] leading-5 text-slate-400">{source.snippet}</span>}<span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-100">{t('OPEN SEARCH RESULT','সার্চ ফলাফল খুলুন')} <ExternalLink size={12}/></span></span></a>)}</div>}
-{linkAnalysis.webEvidence?.status!=='pending'&&(!linkAnalysis.webEvidence?.sources||linkAnalysis.webEvidence.sources.length===0)&&<p className="mt-3 rounded-xl border border-white/10 bg-white/[.025] p-3 text-xs text-slate-400">{t('No relevant source cards are available. This is not a clean bill of health; review the URL warnings and verify the owner independently.','প্রাসঙ্গিক কোনো উৎস পাওয়া যায়নি। এটিকে নিরাপদ হওয়ার প্রমাণ ভাববেন না; URL সতর্কতা দেখুন এবং মালিকানা আলাদাভাবে যাচাই করুন।')}</p>}
+{linkAnalysis.webEvidence?.status!=='pending'&&(!linkAnalysis.webEvidence?.sources||linkAnalysis.webEvidence.sources.length===0)&&<p className="mt-3 rounded-xl border border-white/10 bg-white/[.025] p-3 text-xs text-slate-400">{linkAnalysis.webEvidence?.status==='restricted_category'?t('Search results are not surfaced for this age-restricted category.','এই বয়স-সীমাবদ্ধ ক্যাটাগরির সার্চ ফলাফল দেখানো হয় না।'):t('No relevant source cards are available. This is not a clean bill of health; review the URL warnings and verify the owner independently.','প্রাসঙ্গিক কোনো উৎস পাওয়া যায়নি। এটিকে নিরাপদ হওয়ার প্রমাণ ভাববেন না; URL সতর্কতা দেখুন এবং মালিকানা আলাদাভাবে যাচাই করুন।')}</p>}
 <p className="mt-3 border-t border-white/[.07] pt-3 text-[10px] leading-5 text-slate-500">{t('Search engine: ','সার্চ ইঞ্জিন: ')}{linkAnalysis.webEvidence?.provider||'DuckDuckGo'} · {t('Queries completed: ','সম্পন্ন query: ')}{linkAnalysis.webEvidence?.successfulQueryCount??0}/{linkAnalysis.webEvidence?.queryCount??0}. {t('Search snippets are not proof of site safety or maliciousness.','সার্চ snippet সাইট নিরাপদ বা ক্ষতিকর হওয়ার প্রমাণ নয়।')}</p>
 </section>}
 {linkAnalysis.officialSearch&&linkAnalysis.officialSearch.status!=='not_applicable'&&<section className="official-source-search-panel rounded-2xl border border-white/10 bg-[#080e1d]/75 p-4">
