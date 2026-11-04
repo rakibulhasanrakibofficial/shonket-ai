@@ -790,6 +790,7 @@ test('Link Inspector searches the submitted hostname and never sends the full UR
   const submittedUrl = 'https://bkash-bonus.xyz/login?reset_token=private-reset-secret-4821';
   await page.locator('#url').fill(submittedUrl);
   await page.locator('#workspace-panel button.action-button').filter({ hasText: /^Inspect$/ }).click();
+  await expect(page.getByText('AI-ASSISTED EXPLANATION READY')).toBeVisible();
 
   await expect(page.getByText(/DESTINATION IDENTIFICATION/i)).toBeVisible();
   await expect(page.getByText(/Possible brand impersonation/i)).toBeVisible();
