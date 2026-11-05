@@ -2,7 +2,7 @@ import { buildRuleAssessment } from "../../api/ruleAssessment.js";
 import { retrieveKnowledge } from "../../netlify/functions/knowledge-base.mjs";
 import { cleanScreenshotOcrText, extractScreenshotText } from "./screenshotOcrService.js";
 
-const API_BASE_URL = String(import.meta.env?.VITE_API_BASE_URL || "https://shonket-ai.rakibulhasan212029.workers.dev").replace(/\/+$/, "");
+const API_BASE_URL = String(import.meta.env?.VITE_API_BASE_URL || (import.meta.env?.PROD ? "https://shonket-ai.rakibhasan212029.workers.dev" : "")).replace(/\/+$/, "");
 
 function localAssessment(message, language, status = "not_configured", contextType = "message") {
   const detectedLanguage = language === "bn" || language === "en"
