@@ -6,8 +6,21 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20Shonket%20AI-0f766e?style=for-the-badge)](https://rakibulhasanrakibofficial.github.io/shonket-ai/)
 [![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/rakibulhasanrakibofficial/shonket-ai)
+[![E2E Tests](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/workflows/e2e.yml/badge.svg)](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/workflows/e2e.yml)
+[![GitHub Pages](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/workflows/deploy-pages.yml)
 
 > Built for **Ostad Presents YUNet AIgnite Buildathon 2026**.
+
+---
+
+**Try it:** [Launch Shonket AI](https://rakibulhasanrakibofficial.github.io/shonket-ai/) · **Explore the code:** [GitHub repository](https://github.com/rakibulhasanrakibofficial/shonket-ai) · **Report an issue:** [GitHub Issues](https://github.com/rakibulhasanrakibofficial/shonket-ai/issues)
+
+### Contents
+
+- [The problem](#the-problem) · [Our solution](#our-solution) · [Key features](#key-features)
+- [Try a sample](#try-a-sample) · [How it works](#how-it-works) · [Tech stack](#tech-stack)
+- [Architecture](#architecture) · [Live deployment](#live-deployment) · [Run locally](#run-locally)
+- [Security and privacy](#security-and-privacy) · [Responsible use and limitations](#responsible-use-and-limitations) · [Validation](#validation)
 
 ---
 
@@ -41,6 +54,20 @@ It is designed to help users ask three practical questions:
 | **Voice Input** | Lets users dictate a message where browser speech recognition is supported. |
 | **Scam Awareness Simulator** | Offers practice scenarios to help users recognise common manipulation tactics. |
 | **Shareable Results** | Copy or export an analysis result as a print-ready PDF. |
+
+## Try a sample
+
+Open the [live application](https://rakibulhasanrakibofficial.github.io/shonket-ai/), choose the message checker, and paste this **fictional test message**:
+
+> Congratulations! You have won a prize. Pay a processing fee to claim it, and share your OTP to verify your account.
+
+The checker should flag warning signs such as an advance-fee request and an OTP request, then explain why they matter. **Do not interpret the numeric score as the probability of fraud.** Results can vary as detection rules evolve.
+
+For a Bangla-language example, try:
+
+> আপনার অ্যাকাউন্ট বন্ধ হয়ে যাবে। যাচাই করতে এখনই OTP ও PIN দিন।
+
+You can also try the screenshot OCR, link inspector, and awareness simulator from the application interface. Use fictional or non-sensitive examples when testing.
 
 ## How it works
 
@@ -112,7 +139,7 @@ npm install
 npm run dev
 ```
 
-Vite prints the local development URL in the terminal.
+Vite prints the local development URL in the terminal. This starts the **frontend development server**; backend-powered features also require a reachable API. The production backend is implemented in `src/worker.js` and configured in `wrangler.toml`. For local Worker development, use Wrangler and configure the required bindings; never commit secrets. The repository also contains legacy Netlify-related configuration, which should not be confused with the Cloudflare production architecture.
 
 ### Run tests
 
@@ -158,14 +185,28 @@ Shonket AI is a **scam-awareness assistant, not a fraud-detection authority**.
 
 ## Validation
 
-The recorded local QA run for the merged feature work reported:
+The latest checked GitHub Actions run for commit `b6abb092` completed successfully on **5 November 2026**:
 
-- **160 fast tests passed**
-- **49 Playwright E2E tests passed**
-- **1 expected desktop-only skip** (the mobile viewport overflow check runs in the mobile project)
-- Live Worker smoke checks reported successful health, AI binding, rate-limit configuration, rule assessment, official-source guidance, domain search, and URLhaus provider checks.
+| Check | Result |
+|---|---|
+| Fast unit and integration tests | Passed |
+| Vite production build | Passed |
+| GitHub Pages production build | Passed |
+| Cloudflare Wrangler deploy dry-run | Passed |
+| Playwright end-to-end tests | Passed |
+| GitHub Pages deployment workflow | Passed |
 
-These are point-in-time results, not a claim that every possible input has been tested. Automated tests cover representative English, Bangla, and Banglish scam patterns, benign notices, API validation, rate limiting, OCR constraints, URL inspection, responsive UI flows, and asynchronous search behaviour.
+[Review the E2E workflow run](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/runs/42039641022) · [Review the GitHub Pages deployment](https://github.com/rakibulhasanrakibofficial/shonket-ai/actions/runs/42039640893)
+
+**Verification boundary:** A successful Wrangler *dry-run* checks deploy configuration but **does not confirm a new live Worker deployment**. Automated checks are representative, not exhaustive; the live application's external services and browser-dependent features can still fail. The live Worker smoke-test script is available for additional deployment verification.
+
+### Reporting problems
+
+If you find a false positive, missed scam signal, broken feature, or accessibility issue, [open a GitHub issue](https://github.com/rakibulhasanrakibofficial/shonket-ai/issues) with steps to reproduce, expected versus actual behaviour, and a **redacted** example. Do not post real OTPs, PINs, private messages, or personal data.
+
+## Buildathon context
+
+Created as a solo project for **Ostad Presents YUNet AIgnite Buildathon 2026**, with a focus on Bangladesh-specific scam patterns, accessible explanations, and evidence-aware guidance. Shonket AI is an educational safety tool, not an official government, banking, or law-enforcement service.
 
 ## Project goal
 
