@@ -2,7 +2,7 @@ const RULES = [
   {
     id: "credential_request",
     weight: 40,
-    regex: /\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|ekhoni|ekhon|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:ekhoni\s*)?(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i,
+    regex: /\b(?:they\s+)?(?:are\s+)?ask(?:ing|ed)?\s+(?:me\s+)?for\s+(?:my\s+)?(?:(?:b?kash|because)\s+)?(?:otp|pin|password|verification code|passcode)\b|\bask(?:ing|ed)?\s+for\s+(?:my\s+)?(?:otp|pin|password)\b|\b(?:reply with|send|share|provide|tell me|give me)\s+(?:your\s+)?(?:otp|one[- ]time password|pin|password|verification code|passcode)\b|\b(?:otp|pin|password)\s+(?:pathan|diben|den|share koren)\b|\b(?:otp|pin|password)(?:\s*(?:and|or|ও|এবং|,)\s*(?:otp|pin|password|ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:(?:now|ekhoni|ekhon|এখনই)\s*)?(?:send|share|provide|pathan|diben|den|পাঠান|দিন|দেন)|(?:ওটিপি|পিন|পাসওয়ার্ড)(?:\s*(?:ও|এবং|,)\s*(?:ওটিপি|পিন|পাসওয়ার্ড))?\s*(?:এখনই\s*)?(?:দিন|পাঠান|শেয়ার করুন|শেয়ার করুন)|\b(?:otp|pin|password|verification code|code)\s*(?:ta|টা|টি)?\s*(?:ekhoni\s*)?(?:bolun|bolben|janan|din|den|pathan|diben|share koren|share korben|bolen)\b|ওটিপি(?:\s*কোড)?\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)|পিন\s*(?:টা|টি)?\s*(?:বলুন|জানান|দেন)/i,
     tactic: "credential_request",
     quoteBn: "গোপন কোড বা পাসওয়ার্ড চাওয়া হয়েছে",
     quoteEn: "A secret code or password is requested",
@@ -22,7 +22,7 @@ const RULES = [
   {
     id: "prize_claim",
     weight: 22,
-    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner)\b|\bprize\s+(?:jitsen|jitse|paichen|paisen|peyechen|peyেছেন)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen|peyechen)\b|\blottery\s+te\s+(?:jitsen|jitse|paisen|paichen|peyechen)\b|\b(?:apni\s+)?(?:prize|puraskar)\s+(?:peyechen|peyেছেন|peyecho|peycho|jitsen|jitse|paichen|paisen)\b|\bwinner\s+(?:hoyechen|hoyecho|hoyesen)\b|পুরস্কার জিতেছেন|পুরস্কার পেয়েছেন|পুরস্কার পেয়েছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
+    regex: /\b(?:you (?:have )?won|you(?:'ve| have) won|cash prize|claim your prize|lottery winner|congratulations.{0,40}winner|prize money|selected as (?:a )?winner|you are (?:a )?winner|won\\s+(?:৳\\s*)?\\d{2,7}\\s*(?:tk|taka|bdt)?|\bprize\s+(?:jitsen|jitse|paichen|paisen|peyechen|peyেছেন)\b|\bpuraskar\s+(?:jitsen|jitse|paichen|paisen|peyechen)\b|\blottery\s+te\s+(?:jitsen|jitse|paisen|paichen|peyechen)\b|\b(?:apni\s+)?(?:prize|puraskar)\s+(?:peyechen|peyেছেন|peyecho|peycho|jitsen|jitse|paichen|paisen)\b|\bwinner\s+(?:hoyechen|hoyecho|hoyesen)\b|পুরস্কার জিতেছেন|পুরস্কার পেয়েছেন|পুরস্কার পেয়েছেন|নগদ পুরস্কার|লটারি জিতেছেন|বিজয়ী নির্বাচিত/i,
     tactic: "unverified_prize_claim",
     quoteBn: "পুরস্কার জেতার দাবি করা হয়েছে",
     quoteEn: "A prize or winnings claim is made",
