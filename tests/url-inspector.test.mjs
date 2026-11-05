@@ -266,7 +266,8 @@ test("Google-looking hostname is explained as a brand mismatch, not as a keyword
   assert.equal(result.categorySource, "Brand-name mismatch against estimated base domain");
   assert.match(result.linkCategory, /Possible google brand impersonation/i);
   assert.ok(result.signals.some(signal => signal.id === "brand"));
-  assert.equal(result.riskScore, 40);
+  assert.ok(result.signals.some(signal => signal.id === "phishing"));
+  assert.equal(result.riskScore, 54);
   assert.equal(result.riskLevel, "medium");
 });
 
