@@ -216,17 +216,17 @@ export function inspectUrl(input) {
       40
     );
   }
-  if (/\b(login|log-in|signin|sign-in|verify|verification|secure-account|account-recovery|password-reset|auth)\b/i.test(fullPath)) {
+  if (/\b(login|log-in|signin|sign-in|verify|verification|secure-account|account-recovery|password-reset|auth)\b/i.test(fullPath) || /\b(login|log-in|signin|sign-in|verify|verification|secure-account|account-recovery|password-reset|auth)\b/i.test(hostnamePatternText)) {
     addSignal(
       signals, "phishing", "Login or verification wording",
-      "The URL path or query uses login, verification, or account-recovery wording. Legitimate services can also use these terms; this is only a clue.",
+      "The hostname, path, or query uses login, verification, or account-recovery wording. Legitimate services can also use these terms; this is only a clue.",
       14
     );
   }
-  if (/\b(pay|payment|checkout|billing|wallet|deposit|withdraw|claim-fee|processing-fee)\b/i.test(fullPath)) {
+  if (/\b(pay|payment|checkout|billing|wallet|deposit|withdraw|claim-fee|processing-fee)\b/i.test(fullPath) || /\b(pay|payment|checkout|billing|wallet|deposit|withdraw|claim-fee|processing-fee)\b/i.test(hostnamePatternText)) {
     addSignal(
       signals, "financial", "Payment-related URL wording",
-      "The URL includes payment, wallet, billing, or fee-related wording. The wording alone does not prove fraud.",
+      "The hostname, path, or query includes payment, wallet, billing, or fee-related wording. The wording alone does not prove fraud.",
       18
     );
   }
@@ -237,10 +237,10 @@ export function inspectUrl(input) {
       20
     );
   }
-  if (/\b(otp|pin|password|passcode|nid|national-id|passport|identity|personal-details|bank-details)\b/i.test(fullPath)) {
+  if (/\b(otp|pin|password|passcode|nid|national-id|passport|identity|personal-details|bank-details)\b/i.test(fullPath) || /\b(otp|pin|password|passcode|nid|national-id|passport|identity|personal-details|bank-details)\b/i.test(hostnamePatternText)) {
     addSignal(
       signals, "identity", "Sensitive-information wording",
-      "The URL mentions credentials or identity/financial information. Do not enter secrets unless you independently confirm the official domain.",
+      "The hostname, path, or query mentions credentials or identity/financial information. Do not enter secrets unless you independently confirm the official domain.",
       24
     );
   }
