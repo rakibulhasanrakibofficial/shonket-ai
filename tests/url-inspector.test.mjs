@@ -37,6 +37,17 @@ test("estimates common compound public suffixes correctly", () => {
   assert.equal(inspectUrl("https://a.example.com.au").rootDomain, "example.com.au");
 });
 
+
+test("detects suspicious hostname wording without flagging official brand subdomains", () => {
+  const suspicious = inspectUrl("https://secure-login.example.com");
+  assert.ok(suspicious.signals.some(signal => signal.id === "phishing"));
+  assert.equal(suspicious.riskScore, 14);
+
+  const official = inspectUrl("https://login.microsoftonline.com");
+  assert.ok(!official.signals.some(signal => signal.id === "phishing"));
+  assert.equal(official.riskScore, 0);
+});
+
 test("detects a brand-name mismatch and combines independent URL indicators", () => {
   const result = inspectUrl("https://bkash-bonus.xyz/login?otp=123456");
   assert.match(result.linkCategory, /brand impersonation/i);
