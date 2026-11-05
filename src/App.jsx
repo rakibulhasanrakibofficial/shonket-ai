@@ -205,7 +205,7 @@ function Brand() {
           <span className="font-display text-[20px] font-extrabold tracking-[-.055em]">Shonket</span>
           <span className="brand-ai text-[10px] font-extrabold tracking-[.14em]">AI</span>
         </span>
-        <span className="brand-tagline hidden xl:block">AI Scam &amp; Fraud Detection for Bangladesh</span>
+        <span className="brand-tagline hidden xl:block">AI Scam Awareness &amp; Detection</span>
       </span>
     </a>
   );
