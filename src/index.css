@@ -3110,3 +3110,32 @@
     transition: none !important;
   }
 }
+
+
+/* Mobile Link Inspector result layout: give the URL full width and keep the dock clear. */
+@media (max-width: 640px) {
+  #workspace-panel .link-scan-result-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  #workspace-panel .link-scan-result-score {
+    width: 100%;
+    text-align: left;
+  }
+  #workspace-panel .link-scan-result-score > span {
+    display: inline-flex;
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  #workspace-panel .link-scan-result-host {
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.5;
+  }
+  #workspace-panel .link-detail-card-technical {
+    margin-bottom: 12px;
+  }
+}
