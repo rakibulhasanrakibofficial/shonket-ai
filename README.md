@@ -1,192 +1,178 @@
 # SHONKET AI
 
-Bangladesh-focused scam-awareness and message-checking toolkit.
+### Detect. Understand. Practise. Protect.
 
-**Tagline:** Detect. Understand. Practise. Protect.
+**A Bangladesh-focused AI-assisted scam-awareness tool that helps people examine suspicious messages, understand warning signs, and verify claims against selected official sources.**
 
-## Features
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20Shonket%20AI-0f766e?style=for-the-badge)](https://rakibulhasanrakibofficial.github.io/shonket-ai/)
+[![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/rakibulhasanrakibofficial/shonket-ai)
 
-- Bangla and English scam checks using a deterministic rule engine.
-- Optional LLM-assisted explanations. The LLM cannot change the deterministic verdict or risk score.
-- Lexical RAG over a curated knowledge base of Bangladesh digital-safety guidance.
-- Screenshot upload (PNG/JPG/WebP up to 2.5 MB). OCR runs in the browser with Tesseract.js in English and Bangla; image files are not uploaded.
-- Microphone dictation, link-structure inspector, result copy/PDF export, and scam-awareness simulator.
-- Supported message categories can trigger a category-aware search of selected Bangladesh official or institutional sources: education/scholarship (SHED and DSHE listings), explicitly government recruitment (Alljobs by Teletalk), mobile financial services (bKash safety pages and CIRT/ScamCheck guidance), banking (Bangladesh Bank ICT alerts and BFIU circulars), cybersecurity (BGD e-GOV CIRT and ScamCheck), courier/delivery, telecom/SMS, online commerce, and investment/loan claims (using relevant CIRT, ScamCheck, Bangladesh Bank or BFIU sources). This is **not whole-web search**. Matching listings, official advisories, and general safety guidance are labelled separately. Static guidance is contextual and does not authenticate a specific sender or message. A related notice title is not proof that every claim detail is genuine; no match does not prove a claim is false. Some allowlisted pages may be temporarily unreachable, in which case the result is marked partial or unavailable.
-- AI-generated explanations are advisory and do not authenticate senders, domains, notices, or offers.
+> Built for **Ostad Presents YUNet AIgnite Buildathon 2026**.
+
+---
+
+## The problem
+
+Scam messages often arrive through SMS, WhatsApp, Facebook, email, and fake job or scholarship announcements. They use urgency, prize claims, advance fees, suspicious links, and requests for OTPs or personal information.
+
+People are often left with two poor choices: trust the message, or search the internet themselves and struggle to decide which sources are reliable.
+
+## Our solution
+
+**Shonket AI** turns a suspicious message into an understandable risk assessment. It combines explainable rule-based checks, optional AI-generated explanations, curated Bangladesh-focused safety guidance, and a limited search of selected official or institutional sources.
+
+It is designed to help users ask three practical questions:
+
+1. **What looks suspicious?** See the warning signs and a transparent heuristic risk score.
+2. **What can I verify?** Review relevant official notices or contextual safety guidance, with the evidence type clearly labelled.
+3. **What should I do next?** Get practical safety steps instead of a verdict with no explanation.
+
+## Key features
+
+| Feature | What it does |
+|---|---|
+| **Scam Message Checker** | Examines message text for patterns such as OTP requests, advance fees, prize claims, urgency, and suspicious links. |
+| **Bangla + English** | Supports Bangla and English analysis, with Banglish patterns covered by representative tests. |
+| **Official-Source Search** | Searches selected Bangladesh government or institutional sources for supported categories such as scholarships, recruitment, banking, mobile financial services, and cybersecurity. |
+| **Claim Verification** | Separates a matching notice from general safety guidance. A related advisory is never presented as proof that a specific message is genuine. |
+| **AI Explanation** | Provides an optional, easier-to-understand explanation. AI does not control the deterministic verdict or risk score. |
+| **Link Inspector** | Examines URL structure and can query hostname-based threat intelligence. It does not open the submitted webpage. |
+| **Screenshot OCR** | Extracts English and Bangla text from supported screenshots in the browser using Tesseract.js. |
+| **Voice Input** | Lets users dictate a message where browser speech recognition is supported. |
+| **Scam Awareness Simulator** | Offers practice scenarios to help users recognise common manipulation tactics. |
+| **Shareable Results** | Copy or export an analysis result as a print-ready PDF. |
+
+## How it works
+
+1. The user pastes a message, dictates it, or uploads a screenshot.
+2. If a screenshot is provided, OCR extracts text locally in the browser. The image itself is not uploaded.
+3. The deterministic rule engine checks the extracted or entered text and produces the verdict, heuristic score, and matched warning signals.
+4. Curated safety guidance is retrieved where relevant.
+5. For supported categories, the backend searches a capped allowlist of selected official or institutional sources.
+6. The interface presents the result, evidence type, uncertainty, and recommended safety actions. Optional AI text explains the result but cannot override the rule assessment.
+
+### Important distinction
+
+Official-source search is **not unrestricted whole-web search**. It only checks configured sources for supported categories. Results distinguish matching listings or notices from general safety guidance. A search result does not authenticate the sender, and no result does not prove a claim is false.
+
+## Tech stack
+
+- **Frontend:** React, Vite, JavaScript, CSS
+- **Backend/API:** Cloudflare Workers
+- **AI inference:** Cloudflare Workers AI — Gemma 4 26B A4B Instruct
+- **Scam assessment:** Deterministic JavaScript rule engine
+- **Knowledge retrieval:** Lexical RAG over a curated safety knowledge base
+- **Official-source retrieval:** Category-aware search over an HTTPS allowlist
+- **Screenshot OCR:** Tesseract.js (English + Bangla, browser-side)
+- **Threat intelligence:** URLhaus Community API (optional server-side integration)
+- **Testing:** Node.js test runner and Playwright
 
 ## Architecture
 
-- **Frontend:** React + Vite, deployed to GitHub Pages.
-- **API:** Cloudflare Worker at \`POST /api/analyze\`; health check at \`GET /health\`.
-- **LLM:** Cloudflare Workers AI through the native \`env.AI\` binding. Runtime API tokens are not required for inference.
-- **Rule engine:** \`api/ruleAssessment.js\`.
-- **RAG:** Lexical retrieval over curated sources in \`netlify/functions/knowledge-base.mjs\`.
-- **Live official-source search:** `netlify/functions/live-official-search.mjs` routes supported message categories to a capped allowlist of official/institutional pages, including `shed.gov.bd`, `dshe.gov.bd`, `alljobs.teletalk.com.bd`, `bkash.com`, `bb.org.bd`, `bfiu.org.bd`, `cirt.gov.bd`, and `scamcheck.gov.bd`. It fetches only configured HTTPS pages, not user-supplied URLs.
-- **Shared analysis handler:** \`netlify/functions/analyze.mjs\` is reused by the Cloudflare Worker and remains compatible with the legacy Netlify function adapter.
-- **Screenshot OCR:** Tesseract.js in the browser. The screenshot itself is not sent to the API or LLM provider.
+```mermaid
+flowchart TD
+    A[User message / voice / screenshot] --> B{Input type}
+    B -->|Screenshot| C[Browser OCR: Tesseract.js]
+    B -->|Text or voice transcript| D[Message text]
+    C --> D
+    D --> E[Cloudflare Worker API]
+    E --> F[Deterministic rule engine]
+    E --> G[Curated safety knowledge retrieval]
+    E --> H[Selected official-source search]
+    E --> I[Optional Workers AI explanation]
+    F --> J[Result assembly]
+    G --> J
+    H --> J
+    I --> J
+    J --> K[Risk signals, evidence, uncertainty and safety steps]
+```
 
-The curated RAG implementation is lexical retrieval, not vector embeddings or a vector database. The official-source search is a separate, category-aware retrieval step over selected allowlisted pages, not unrestricted web search. Search results distinguish matching official notices from contextual safety guidance. Neither a related listing nor absence of a result proves that a specific sender or claim is genuine or fraudulent.
+## Live deployment
 
-## Cloudflare Worker deployment
-
-The repository already contains the Worker entry point and configuration:
-
-- Worker entry: \`src/worker.js\`
-- Wrangler config: \`wrangler.toml\`
-- Workers AI binding: \`AI\`
-- Per-IP request protection: \`ANALYZE_RATE_LIMITER\`
-- Static asset directory: \`dist\`
-
-### 1. Add a GitHub Actions secret
-
-In GitHub, open **Settings → Secrets and variables → Actions → Secrets → New repository secret**.
-
-Create:
-
-| Secret | Value |
+| Component | URL |
 |---|---|
-| \`CLOUDFLARE_API_TOKEN\` | A Cloudflare API token created from the **Edit Cloudflare Workers** template, scoped to the Cloudflare account that owns this Worker. |
+| **Web application** | https://rakibulhasanrakibofficial.github.io/shonket-ai/ |
+| **Cloudflare Worker API** | https://shonket-ai.rakibhasan212029.workers.dev |
+| **API health check** | https://shonket-ai.rakibhasan212029.workers.dev/health |
+| **Source code** | https://github.com/rakibulhasanrakibofficial/shonket-ai |
 
-This token is used only by GitHub Actions to deploy the Worker. It is not used by the application at runtime and must never be committed to the repository or shared in chat. The Cloudflare account ID is already configured in the deployment workflow.
+## Run locally
 
-### 2. Deploy the Worker
+### Requirements
 
-After adding the secret, open **Actions → Deploy Cloudflare Worker API → Run workflow**. The workflow runs the fast test suite, builds the static assets, and deploys with Wrangler.
+- Node.js 20 or later
+- npm
 
-The account must have its \`workers.dev\` subdomain enabled. Cloudflare assigns the actual Worker URL after deployment; it follows this pattern:
-
-\`https://shonket-ai.<your-workers-subdomain>.workers.dev\`
-
-Open \`/health\` on that URL. The response should report:
-
-- \`ok: true\`
-- \`aiBindingConfigured: true\`
-- \`rateLimitConfigured: true\`
-
-### 3. Connect GitHub Pages to the Worker
-
-After the first successful Worker deployment, copy the exact Worker origin (no trailing slash).
-
-In GitHub, open **Settings → Secrets and variables → Actions → Variables → New repository variable**.
-
-Create:
-
-| Variable | Value |
-|---|---|
-| \`SHONKET_API_BASE_URL\` | The exact Worker origin, for example \`https://shonket-ai.<your-workers-subdomain>.workers.dev\` |
-
-Then run **Actions → Deploy GitHub Pages → Run workflow**. The frontend build will use this Worker origin for \`/api/analyze\`.
-
-Until this variable is configured, the frontend can still use its local deterministic rule engine and browser-side screenshot OCR; hosted LLM and live portal search will not be available through the frontend.
-
-### 4. Optional URLhaus threat-intelligence provider
-
-The Link Inspector can query URLhaus for malware-hosting intelligence. This is separate from the local URL-pattern score and from general web search.
-
-Add this as a **Cloudflare Worker Secret** in the Cloudflare dashboard (**Workers & Pages → shonket-ai → Settings → Variables and Secrets → Add secret**):
-
-| Secret name | Purpose |
-|---|---|
-| `URLHAUS_AUTH_KEY` | URLhaus Auth-Key for malware-hosting hostname lookups. |
-
-Do not put this value in `wrangler.toml`, GitHub variables, frontend environment variables, source files, screenshots, or chat. It must remain a server-side Worker Secret. The application shows **API KEY NEEDED** until the secret is configured.
-
-Privacy and result interpretation:
-- URLhaus checks hostnames only. Submitted URL paths, query strings, fragments, usernames, passwords and tokens are not sent.
-- The UI exposes the provider's host report reference and summary, never malware URLs or payload links returned in its data.
-- A URLhaus record indicates a malware-hosting observation; it is not necessarily a phishing verdict or a live scan.
-- A database miss is not evidence that a site is safe. This is not a live page visit, malware scan, or ownership verification.
-
-URLhaus Community API requires an Auth-Key and is free under fair-use principles; paid enhanced access may be required for commercial or for-profit use. Re-check provider terms before monetising the project.
-
-Official documentation:
-- [URLhaus Community API](https://urlhaus.abuse.ch/api)
-- [URLhaus query API](https://urlhaus-api.abuse.ch/)
-
-### 5. Cloudflare free-plan limits
-
-Cloudflare Workers Free currently includes 100,000 Worker requests per day. Workers AI has a separate free allocation of 10,000 Neurons per day, resetting at 00:00 UTC. These are independent limits: the API can remain reachable after the AI allocation is exhausted, but LLM inference will fail until the allocation resets. This is a finite free tier, not unlimited usage.
-
-The built-in Cloudflare rate-limiting binding is approximate and can allow some bursts beyond its configured threshold; it is an abuse-control layer, not a strict global quota ledger. The current configuration is 12 requests per minute per client IP key.
-
-Official details:
-- [Workers Free plan pricing](https://developers.cloudflare.com/workers/platform/pricing/)
-- [Workers account limits](https://developers.cloudflare.com/workers/platform/limits/)
-- [Workers AI pricing and daily free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/)
-- [Workers AI errors and quota exhaustion](https://developers.cloudflare.com/workers-ai/platform/errors/)
-
-## Local development and tests
-
-- \`npm install\`
-- \`npm run dev\` starts the Vite frontend.
-- \`npm run test:fast\` runs rule-engine, RAG, redaction, Netlify compatibility, and Cloudflare Worker tests.
-- \`npm run test:e2e\` runs desktop/mobile Playwright checks.
-- \`npm run build\` creates a root-path build.
-- \`npm run build:github-pages\` builds with the GitHub Pages subpath.
-- \`npm run deploy\` builds and deploys the Cloudflare Worker with Wrangler (requires Cloudflare authentication).
-
-## API behavior
-
-- \`POST /api/analyze\` accepts up to 4,000 characters. Request bodies are capped at 16 KB.
-- The response includes deterministic rule assessment, \`aiAnalysis\`, \`retrievedSources\`, and official-search status.
-- If Workers AI is unavailable or its free allocation is exhausted, the endpoint still returns the rule-based result and retrieved safety guidance.
-- LLM explanations never override the deterministic verdict or risk score.
-- Screenshot binaries are not accepted by the API; OCR runs in the browser and only extracted text is sent to the checker.
-
-## Privacy and data handling
-
-The message is sent to the Cloudflare Worker for rule assessment and RAG retrieval. When Workers AI is configured, the handler redacts common email addresses, URLs, Bangladeshi mobile numbers, and long digit strings before sending a copy to the AI model. Redaction cannot guarantee removal of every personal detail. The handler does not write submitted messages to an application database.
-
-Do not enter passwords, OTPs, PINs, account numbers, private documents, or other sensitive personal information.
-
-## Curated knowledge sources
-
-- [bKash — Fraud Awareness](https://www.bkash.com/bn/page/fraud-awareness)
-- [bKash — Security Tips](https://www.bkash.com/index.php/en/page/security-tips)
-- [BGD e-GOV CIRT — Error524 smishing advisory (13 April 2026)](https://www.cirt.gov.bd/advisories/global-campaign-targeting-bd)
-- [Government of Bangladesh — ScamCheck: Victim of a Scam](https://scamcheck.gov.bd/victim-of-a-scam/)
-
-## Limitations
-
-- Risk scores are deterministic heuristics, not calibrated probabilities.
-- A suspicious result is a warning for further checking, not proof of fraud. A low-risk result is not a guarantee of safety.
-- The curated RAG corpus can become outdated; it is not a live web search.
-- Official-source search is limited to the configured source allowlist and a small number of relevant categories per message. It does not crawl the full web. Government notice attachments/PDFs are not parsed, and some pages may be unavailable or block automated retrieval. A `guidance_only` or `partial_guidance` result is safety context, not confirmation of the specific message.
-- URL inspection checks URL structure only. It does not resolve redirects, check domain reputation, or visit the submitted URL.
-- Screenshot OCR can misread blurry or cropped text. Always review extracted text.
-- The browser's speech-recognition provider may process audio under its own terms. SHONKET does not receive raw microphone audio.
-
-## Demo walkthrough
-
-Use this flow for a short product demonstration:
-
-1. Open the deployed app and select Bangla or English.
-2. Paste a clearly suspicious sample message containing a prize claim and an upfront processing-fee request. Run the check and explain the deterministic verdict, score, matched signals, and safe next steps.
-3. Show the claim-verification panel. Explain the difference between a matching official notice and general safety guidance; do not describe guidance-only results as proof.
-4. Open Link Inspector and inspect a harmless example URL. Explain that the tool evaluates URL structure and selected hostname intelligence without visiting the submitted page.
-5. Open the scam-awareness simulator, complete one scenario, and restart it.
-6. If time permits, upload a small PNG/JPG/WebP screenshot and show that OCR extracts text in the browser before analysis.
-
-For a fair demo, use synthetic messages and non-sensitive URLs. Never show real OTPs, passwords, account details, or private messages.
-
-## Validation coverage
-
-The repository's automated tests cover representative cases, not every possible input. Current test coverage includes:
-
-- English, Bangla, and Banglish scam patterns, including OTP requests, prize claims, advance fees, job fees, phishing links, and contradictory anti-scam wording.
-- Benign notices and safety warnings to reduce false positives.
-- Low-signal and unverified claims, representative heuristic-score cases, and the 4,000-character assessment limit.
-- API method/body handling, rate-limit configuration and rejection, trusted client-IP handling, and screenshot payload rejection.
-- Screenshot OCR language selection, invalid/oversized image rejection, OCR cleanup, and local-only OCR behavior.
-- URL Inspector domain parsing, brand/domain mismatch patterns, hostname-only provider requests, and rate-limit/no-result states.
-- Desktop/mobile UI flows, result copy/PDF export, screenshot preview lifecycle, speech-recognition fallback, simulator completion, and asynchronous search-result ordering.
-
-The recorded local QA run for the merged change reported 160 fast tests passed, plus 49 Playwright E2E tests passed and 1 expected desktop-only skip. The live Worker smoke check also reported successful health, AI binding, rate-limit configuration, rule assessment, official-source guidance, domain search, and URLhaus provider checks. These are point-in-time results; rerun the commands below after code or configuration changes.
+### Setup
 
 ```bash
+git clone https://github.com/rakibulhasanrakibofficial/shonket-ai.git
+cd shonket-ai
+npm install
+npm run dev
+```
+
+Vite prints the local development URL in the terminal.
+
+### Run tests
+
+```bash
+# Fast unit and integration tests
 npm run test:fast
+
+# Desktop and mobile browser tests
 npx playwright test
+
+# Production build
+npm run build
+
+# Live Worker smoke test
 node scripts/live-worker-smoke.mjs
 ```
 
-Do not claim exhaustive testing. Add regression tests whenever a new input class, parser edge case, provider response, or failure mode is discovered.
+The live smoke test requires the deployed Worker to be reachable. Playwright may require browser installation in a fresh environment; see the [Playwright documentation](https://playwright.dev/docs/intro).
+
+## Security and privacy
+
+- Screenshot OCR runs in the browser. Screenshot files are not sent to the API.
+- The API does not write submitted messages to an application database.
+- Common email addresses, URLs, Bangladeshi mobile numbers, and long digit strings are redacted from the copy sent to the AI model. Redaction is not guaranteed to catch every personal detail.
+- URLhaus lookups use the hostname; URL paths, query strings, fragments, usernames, passwords, and tokens are not sent.
+- Rate limiting is configured at the Worker layer.
+- Never enter passwords, OTPs, PINs, bank details, account numbers, or private documents.
+
+## Responsible use and limitations
+
+Shonket AI is a **scam-awareness assistant, not a fraud-detection authority**.
+
+- Risk scores are heuristic points, not calibrated probabilities.
+- A suspicious result is a reason to investigate, not proof of fraud. A low-risk result is not a guarantee of safety.
+- AI explanations can be wrong and must not be treated as authentication.
+- Official-source search covers a limited allowlist; pages may be unavailable, incomplete, or changed.
+- The tool does not authenticate senders, resolve every redirect, visit submitted webpages, or perform a full malware scan.
+- URLhaus records indicate reported malware-hosting activity; a database miss does not mean a domain is safe.
+- OCR may misread blurry, cropped, or stylised text. Review extracted text before relying on an assessment.
+- Browser speech recognition may be processed by the browser's speech provider under its own terms.
+
+**If a message claims to be from a bank, mobile financial service, university, employer, or government agency, verify it independently using that organisation's official app, website, or published contact channel.**
+
+## Validation
+
+The recorded local QA run for the merged feature work reported:
+
+- **160 fast tests passed**
+- **49 Playwright E2E tests passed**
+- **1 expected desktop-only skip** (the mobile viewport overflow check runs in the mobile project)
+- Live Worker smoke checks reported successful health, AI binding, rate-limit configuration, rule assessment, official-source guidance, domain search, and URLhaus provider checks.
+
+These are point-in-time results, not a claim that every possible input has been tested. Automated tests cover representative English, Bangla, and Banglish scam patterns, benign notices, API validation, rate limiting, OCR constraints, URL inspection, responsive UI flows, and asynchronous search behaviour.
+
+## Project goal
+
+Shonket AI aims to make digital-safety checks more understandable and accessible for people in Bangladesh by combining explainable signals, relevant local guidance, and clear next steps.
+
+**Detect. Understand. Practise. Protect.**
+
+---
+
+*Made for safer digital awareness in Bangladesh.*
