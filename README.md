@@ -2,7 +2,7 @@
 
 ### Detect. Understand. Practise. Protect.
 
-**A Bangladesh-focused AI-assisted scam-awareness tool that helps people examine suspicious messages, understand warning signs, and verify claims against selected official sources.**
+**An AI-assisted scam-awareness platform that helps people examine suspicious messages, understand warning signs, and verify claims against selected official sources.**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20Shonket%20AI-0f766e?style=for-the-badge)](https://rakibulhasanrakibofficial.github.io/shonket-ai/)
 [![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/rakibulhasanrakibofficial/shonket-ai)
@@ -32,7 +32,7 @@ People are often left with two poor choices: trust the message, or search the in
 
 ## Our solution
 
-**Shonket AI** turns a suspicious message into an understandable risk assessment. It combines explainable rule-based checks, optional AI-generated explanations, curated Bangladesh-focused safety guidance, and a limited search of selected official or institutional sources.
+**Shonket AI** turns a suspicious message into an understandable risk assessment. It combines explainable rule-based checks, optional AI-generated explanations, curated safety guidance, and a limited search of selected official or institutional sources.
 
 It is designed to help users ask three practical questions:
 
@@ -46,7 +46,7 @@ It is designed to help users ask three practical questions:
 |---|---|
 | **Scam Message Checker** | Examines message text for patterns such as OTP requests, advance fees, prize claims, urgency, and suspicious links. |
 | **Bangla + English** | Supports Bangla and English analysis, with Banglish patterns covered by representative tests. |
-| **Official-Source Search** | Searches selected Bangladesh government or institutional sources for supported categories such as scholarships, recruitment, banking, mobile financial services, and cybersecurity. |
+| **Official-Source Search** | Searches a configured set of official or institutional sources for supported categories. Source coverage is currently region-specific and can be expanded. |
 | **Claim Verification** | Separates a matching notice from general safety guidance. A related advisory is never presented as proof that a specific message is genuine. |
 | **AI Explanation** | Provides an optional, easier-to-understand explanation. AI does not control the deterministic verdict or risk score. |
 | **Link Inspector** | Examines URL structure and can query hostname-based threat intelligence. It does not open the submitted webpage. |
@@ -206,14 +206,14 @@ If you find a false positive, missed scam signal, broken feature, or accessibili
 
 ## Buildathon context
 
-Created as a solo project for **Ostad Presents YUNet AIgnite Buildathon 2026**, with a focus on Bangladesh-specific scam patterns, accessible explanations, and evidence-aware guidance. Shonket AI is an educational safety tool, not an official government, banking, or law-enforcement service.
+Created as a solo project for **Ostad Presents YUNet AIgnite Buildathon 2026**, with a focus on accessible scam awareness, explainable signals, and evidence-aware guidance for a global audience. Shonket AI is an educational safety tool, not an official government, banking, or law-enforcement service.
 
 ## Project goal
 
-Shonket AI aims to make digital-safety checks more understandable and accessible for people in Bangladesh by combining explainable signals, relevant local guidance, and clear next steps.
+Shonket AI aims to make digital-safety checks more understandable and accessible to people everywhere. It supports Bangla and English, while its official-source coverage currently includes selected region-specific sources.
 
 **Detect. Understand. Practise. Protect.**
 
 ---
 
-*Made for safer digital awareness in Bangladesh.*
+*Built to support safer digital decisions, wherever you are.*
