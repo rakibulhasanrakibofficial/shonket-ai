@@ -192,6 +192,10 @@ export function inspectUrl(input) {
   ].join(" ");
 
   const signals = [];
+  const isOfficialBrandHost = !isIp && Object.values(OFFICIAL_BRAND_DOMAINS)
+    .flat()
+    .some(domain => host === domain || host.endsWith("." + domain));
+  const hostnamePatternText = isOfficialBrandHost ? "" : host;
   const impersonatedBrand = !isIp && Object.keys(OFFICIAL_BRAND_DOMAINS).find(brand => {
     // Match a standalone brand token (or a brand followed by digits), not
     // an arbitrary substring such as "apple" inside "applepie.example".
